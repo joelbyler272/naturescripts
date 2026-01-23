@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Logo } from "@/components/shared/Logo"
+import { Navigation } from "@/components/app/Navigation"
 import { Footer } from "@/components/shared/Footer"
 import { routes } from "@/lib/constants/routes"
 import { colors } from "@/lib/constants/colors"
@@ -12,29 +12,10 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-background">
+      {/* Same Navigation as Remedy Database and Library */}
+      <Navigation isAuthenticated={false} />
+
       <div className="mx-auto w-full max-w-5xl px-6 py-12 md:py-20">
-
-        {/* Header / Logo */}
-        <header className="mb-20 md:mb-28 flex items-center justify-between">
-          <Logo showTagline={true} linkToHome={false} />
-
-          {/* Nav Links - minimal for landing */}
-          <nav className="hidden md:flex items-center gap-8">
-            <Link href={routes.remedies} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Remedy Database
-            </Link>
-            <Link href={routes.signIn} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Sign In
-            </Link>
-            <Link
-              href={routes.signUp}
-              className="text-sm px-4 py-2 rounded-full bg-foreground text-background hover:bg-foreground/90 transition-colors"
-            >
-              Get Started
-            </Link>
-          </nav>
-        </header>
-
         {/* Hero */}
         <section className="flex flex-col items-center text-center">
           {/* Headline */}
