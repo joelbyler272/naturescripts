@@ -1,43 +1,52 @@
-import Link from "next/link"
-import { cn } from "@/lib/utils"
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
+import { routes } from '@/lib/constants/routes'
+import { colors } from '@/lib/constants/colors'
 
 interface LogoProps {
-  className?: string
-  size?: "sm" | "md" | "lg"
+  size?: 'sm' | 'default' | 'lg' | 'display'
   showTagline?: boolean
+  className?: string
   linkToHome?: boolean
 }
 
-export function Logo({
+export function Logo({ 
+  size = 'default', 
+  showTagline = true, 
   className,
-  size = "md",
-  showTagline = true,
-  linkToHome = true
+  linkToHome = true 
 }: LogoProps) {
   const sizeClasses = {
-    sm: "text-xl",
-    md: "text-[1.6rem]",
-    lg: "text-3xl"
+    sm: 'text-[1.2rem]',
+    default: 'text-[1.6rem]',
+    lg: 'text-[2.5rem]',
+    display: 'text-[clamp(4rem,12vw,8rem)]',
   }
 
   const taglineSizes = {
-    sm: "text-[8px]",
-    md: "text-[9px]",
-    lg: "text-[10px]"
+    sm: 'text-[7px]',
+    default: 'text-[9px]',
+    lg: 'text-[11px]',
+    display: 'hidden',
   }
 
-  const content = (
-    <div className={cn("inline-block", className)}>
+  const logoContent = (
+    <div className={cn('inline-block', className)}>
       <div className={cn(
-        "font-semibold tracking-tight leading-none font-serif",
+        'font-semibold tracking-tight leading-none font-serif',
         sizeClasses[size]
       )}>
         <span className="text-foreground">Nature</span>
-        <span className="text-accent font-light">Scripts</span>
+        <span 
+          className="font-light"
+          style={{ color: colors.sage.DEFAULT }}
+        >
+          Scripts
+        </span>
       </div>
-      {showTagline && (
+      {showTagline && size !== 'display' && (
         <span className={cn(
-          "mt-0.5 block w-full text-right tracking-[0.4em] text-muted-foreground/40 uppercase",
+          'mt-0.5 block w-full text-right tracking-[0.4em] text-muted-foreground/40 uppercase',
           taglineSizes[size]
         )}>
           Protocol
@@ -48,11 +57,11 @@ export function Logo({
 
   if (linkToHome) {
     return (
-      <Link href="/" className="cursor-pointer">
-        {content}
+      <Link href={routes.home} className="cursor-pointer">
+        {logoContent}
       </Link>
     )
   }
 
-  return content
+  return logoContent
 }
