@@ -158,7 +158,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Protocol Preview Section - NEW */}
+      {/* Protocol Preview Section */}
       <section className="py-28 md:py-40">
         <div className="mx-auto max-w-6xl px-6">
           <div className="text-center mb-20">
@@ -500,27 +500,6 @@ export default function LandingPage() {
       </section>
 
       <Footer />
-
-      {/* CSS for floating animation */}
-      <style jsx global>{`
-        @keyframes float-slow {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); }
-          33% { transform: translate(30px, -30px) rotate(5deg); }
-          66% { transform: translate(-20px, 20px) rotate(-5deg); }
-        }
-        @keyframes float-medium {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); }
-          33% { transform: translate(-25px, 25px) rotate(-5deg); }
-          66% { transform: translate(25px, -15px) rotate(5deg); }
-        }
-        @keyframes float-fast {
-          0%, 100% { transform: translate(0, 0); }
-          50% { transform: translate(15px, -20px); }
-        }
-        .animate-float-slow { animation: float-slow 20s ease-in-out infinite; }
-        .animate-float-medium { animation: float-medium 15s ease-in-out infinite; }
-        .animate-float-fast { animation: float-fast 10s ease-in-out infinite; }
-      `}</style>
     </main>
   )
 }
