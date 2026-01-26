@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
+import { PanelLeftClose, PanelLeft } from 'lucide-react';
 
 interface NSLogoProps {
   collapsed: boolean;
@@ -15,68 +16,74 @@ export function NSLogo({ collapsed, onToggle }: NSLogoProps) {
 
   return (
     <div 
-      className="relative flex items-center"
+      className="flex items-center justify-between w-full"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Link
-        href={routes.dashboard}
-        className="flex items-center hover:opacity-90 transition-opacity overflow-hidden"
-        onClick={(e) => {
-          // If collapsed and hovered, clicking expands instead of navigating
-          if (collapsed && isHovered) {
-            e.preventDefault();
-            onToggle();
-          }
-        }}
-      >
-        {/* The logo with animated letters */}
-        <span className="flex items-baseline whitespace-nowrap">
-          {/* N - always visible, bold black */}
-          <span className="text-xl font-bold text-foreground">N</span>
-          
-          {/* "ature" - animated */}
-          <span 
+      {/* Logo or Toggle Button (when collapsed and hovered) */}
+      <div className="flex items-center">
+        {collapsed && isHovered ? (
+          // Show expand button when collapsed and hovered
+          <button
+            onClick={onToggle}
             className={cn(
-              "text-xl font-bold text-foreground overflow-hidden transition-all duration-300 ease-out",
-              collapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"
+              'w-8 h-8 flex items-center justify-center rounded-md',
+              'text-muted-foreground hover:text-foreground hover:bg-secondary/50',
+              'transition-all duration-150'
             )}
+            title="Expand navigation"
           >
-            ature
-          </span>
-          
-          {/* S - always visible, bold sage green */}
-          <span className="text-xl font-bold text-accent">S</span>
-          
-          {/* "cripts" - animated */}
-          <span 
-            className={cn(
-              "text-xl font-bold text-accent overflow-hidden transition-all duration-300 ease-out",
-              collapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"
-            )}
+            <PanelLeft className="w-5 h-5" />
+          </button>
+        ) : (
+          // Show logo
+          <Link
+            href={routes.dashboard}
+            className="flex items-center hover:opacity-90 transition-opacity overflow-hidden"
           >
-            cripts
-          </span>
-        </span>
-      </Link>
+            <span className="flex items-baseline whitespace-nowrap">
+              {/* N - always visible, bold black */}
+              <span className="text-xl font-bold text-foreground">N</span>
+              
+              {/* "ature" - animated */}
+              <span 
+                className={cn(
+                  "text-xl font-bold text-foreground overflow-hidden transition-all duration-300 ease-out",
+                  collapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"
+                )}
+              >
+                ature
+              </span>
+              
+              {/* S - always visible, bold sage green */}
+              <span className="text-xl font-bold text-accent">S</span>
+              
+              {/* "cripts" - animated */}
+              <span 
+                className={cn(
+                  "text-xl font-bold text-accent overflow-hidden transition-all duration-300 ease-out",
+                  collapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"
+                )}
+              >
+                cripts
+              </span>
+            </span>
+          </Link>
+        )}
+      </div>
 
-      {/* Expand tooltip/button - only shows when collapsed and hovered */}
-      {collapsed && isHovered && (
+      {/* Collapse button - only visible when expanded */}
+      {!collapsed && (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
+          onClick={onToggle}
           className={cn(
-            "absolute left-full ml-2 z-50",
-            "px-3 py-1.5 text-sm font-medium",
-            "bg-foreground text-background rounded-md",
-            "whitespace-nowrap shadow-lg",
-            "hover:bg-foreground/90 transition-colors",
-            "animate-in fade-in slide-in-from-left-1 duration-150"
+            'w-8 h-8 flex items-center justify-center rounded-md',
+            'text-muted-foreground hover:text-foreground hover:bg-secondary/50',
+            'transition-colors'
           )}
+          title="Collapse navigation"
         >
-          Expand navigation
+          <PanelLeftClose className="w-5 h-5" />
         </button>
       )}
     </div>
