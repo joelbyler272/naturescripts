@@ -6,9 +6,15 @@ interface SidebarContextType {
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   toggleCollapsed: () => void;
+  mounted: boolean;
 }
 
-const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
+const SidebarContext = createContext<SidebarContextType>({
+  collapsed: false,
+  setCollapsed: () => {},
+  toggleCollapsed: () => {},
+  mounted: false,
+});
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -33,22 +39,13 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     handleSetCollapsed(!collapsed);
   };
 
-  // Prevent hydration mismatch
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
   return (
-    <SidebarContext.Provider value={{ collapsed, setCollapsed: handleSetCollapsed, toggleCollapsed }}>
+    <SidebarContext.Provider value={{ collapsed, setCollapsed: handleSetCollapsed, toggleCollapsed, mounted }}>
       {children}
     </SidebarContext.Provider>
   );
 }
 
 export function useSidebar() {
-  const context = useContext(SidebarContext);
-  if (context === undefined) {
-    throw new Error('useSidebar must be used within a SidebarProvider');
-  }
-  return context;
+  return useContext(SidebarContext);
 }
