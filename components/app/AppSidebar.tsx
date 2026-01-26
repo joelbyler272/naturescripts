@@ -10,12 +10,9 @@ import { routes } from '@/lib/constants/routes';
 import {
   Home,
   Leaf,
-  LayoutDashboard,
-  FileText,
-  Activity,
   BookOpen,
-  Library,
   Search,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +21,7 @@ const SIDEBAR_WIDTH_COLLAPSED = 56;
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
   // Load saved preference
@@ -32,6 +30,7 @@ export function AppSidebar() {
     if (saved !== null) {
       setCollapsed(saved === 'true');
     }
+    setMounted(true);
   }, []);
 
   // Save preference
@@ -48,6 +47,16 @@ export function AppSidebar() {
   const isResourcesSection = pathname.startsWith(routes.remedies) || 
     pathname.startsWith(routes.library);
 
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <aside
+        className="h-screen bg-white border-r border-border/50 flex flex-col sticky top-0"
+        style={{ width: SIDEBAR_WIDTH_EXPANDED }}
+      />
+    );
+  }
+
   return (
     <aside
       className={cn(
@@ -59,7 +68,7 @@ export function AppSidebar() {
       {/* Header - Logo and Toggle */}
       <div
         className={cn(
-          'flex items-center h-14 border-b border-border/30',
+          'flex items-center h-14 border-b border-border/30 shrink-0',
           collapsed ? 'flex-col justify-center gap-1 py-2' : 'justify-between px-3'
         )}
       >
@@ -69,7 +78,7 @@ export function AppSidebar() {
 
       {/* Search Bar (expanded only) */}
       {!collapsed && (
-        <div className="px-3 py-3">
+        <div className="px-3 py-3 shrink-0">
           <button
             className={cn(
               'w-full flex items-center gap-2 px-3 py-2 rounded-lg',
@@ -88,7 +97,7 @@ export function AppSidebar() {
 
       {/* Collapsed Search Icon */}
       {collapsed && (
-        <div className="px-2 py-3 flex justify-center">
+        <div className="px-2 py-3 flex justify-center shrink-0">
           <button
             className={cn(
               'w-10 h-10 flex items-center justify-center rounded-lg',
@@ -125,7 +134,7 @@ export function AppSidebar() {
             collapsed={collapsed}
             defaultExpanded={false}
             items={[
-              { href: routes.tracking, label: 'Tracking' },
+              { href: routes.tracking, label: 'Health Tracking' },
             ]}
           />
 
@@ -144,11 +153,11 @@ export function AppSidebar() {
       </nav>
 
       {/* Bottom Section - Help/Support */}
-      <div className="border-t border-border/30 p-2">
+      <div className="border-t border-border/30 p-2 shrink-0">
         <SidebarItem
           href="/help"
           label="Help & Support"
-          icon={Search}
+          icon={HelpCircle}
           collapsed={collapsed}
         />
       </div>
