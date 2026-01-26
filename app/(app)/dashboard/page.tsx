@@ -1,10 +1,15 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { WelcomeHeader } from '@/components/app/WelcomeHeader';
 import { ProtocolCard } from '@/components/protocol/ProtocolCard';
 import { MOCK_USER, MOCK_CONSULTATIONS } from '@/lib/data/hardcoded';
 import { routes } from '@/lib/constants/routes';
-import { Plus, ArrowRight, Sparkles, Leaf } from 'lucide-react';
+import { ArrowRight, Sparkles, Leaf, Send } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Tips that rotate - adds personality
 const TIPS = [
@@ -14,7 +19,19 @@ const TIPS = [
   { text: "Keeping a symptom journal helps track what's working", icon: Sparkles },
 ];
 
+// Placeholder suggestions
+const SUGGESTIONS = [
+  "I've been feeling fatigued lately",
+  "Help with sleep issues",
+  "Digestive discomfort after meals",
+  "Stress and anxiety support",
+];
+
 export default function DashboardPage() {
+  const router = useRouter();
+  const [inputValue, setInputValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  
   const consultationsUsed = 2;
   const consultationsLimit = 3;
 
@@ -32,8 +49,21 @@ export default function DashboardPage() {
   const todaysTip = TIPS[new Date().getDate() % TIPS.length];
   const TipIcon = todaysTip.icon;
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputValue.trim()) {
+      // In a real app, we'd pass the input to the consultation page
+      router.push(routes.consultation);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setInputValue(suggestion);
+    // Could auto-submit or just fill the input
+  };
+
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       {/* Welcome Header with inline usage indicator */}
       <div className="mb-8">
         <div className="flex items-start justify-between">
@@ -42,7 +72,7 @@ export default function DashboardPage() {
             <p className="text-muted-foreground mt-1">
               {activeProtocol 
                 ? "Your protocol is in progress. Keep up the great work!"
-                : "Ready for your next consultation?"
+                : "What's on your mind today?"
               }
             </p>
           </div>
@@ -64,25 +94,54 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Primary CTA - Full width */}
-      <Link href={routes.consultation} className="block mb-8">
-        <div className="bg-accent hover:bg-accent/90 transition-all hover:shadow-lg rounded-xl p-6 text-white cursor-pointer group">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                <Plus className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Start New Consultation</h2>
-                <p className="text-white/80 text-sm">
-                  Describe your symptoms and get a personalized protocol
-                </p>
-              </div>
-            </div>
-            <ArrowRight className="w-5 h-5 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+      {/* Chat Input Bar */}
+      <div className="mb-6">
+        <form onSubmit={handleSubmit}>
+          <div 
+            className={cn(
+              "relative flex items-center bg-white rounded-2xl border transition-all duration-200",
+              isFocused 
+                ? "border-accent shadow-[0_0_0_3px_rgba(107,142,127,0.1)]" 
+                : "border-border/50 hover:border-border"
+            )}
+          >
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder="Describe how you're feeling or what you'd like help with..."
+              className="flex-1 px-5 py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-base"
+            />
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className={cn(
+                "mr-2 w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                inputValue.trim()
+                  ? "bg-accent text-white hover:bg-accent/90"
+                  : "bg-secondary/50 text-muted-foreground"
+              )}
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
+        </form>
+
+        {/* Quick suggestions */}
+        <div className="flex flex-wrap gap-2 mt-3">
+          {SUGGESTIONS.map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => handleSuggestionClick(suggestion)}
+              className="px-3 py-1.5 text-sm text-muted-foreground bg-white border border-border/50 rounded-full hover:border-accent/50 hover:text-foreground transition-colors"
+            >
+              {suggestion}
+            </button>
+          ))}
         </div>
-      </Link>
+      </div>
 
       {/* Active Protocol Card */}
       {activeProtocol && (
@@ -119,7 +178,7 @@ export default function DashboardPage() {
       )}
 
       {/* Tip of the Day */}
-      <div className="mb-8 flex items-center gap-3 px-4 py-3 bg-secondary/30 rounded-lg">
+      <div className="mb-8 flex items-center gap-3 px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
         <TipIcon className="w-4 h-4 text-accent flex-shrink-0" />
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Tip:</span> {todaysTip.text}
@@ -150,13 +209,13 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-secondary/20 rounded-xl border border-dashed border-border/50">
+          <div className="text-center py-12 bg-white/60 rounded-xl border border-dashed border-border/50">
             <div className="w-12 h-12 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-3">
               <Leaf className="w-6 h-6 text-muted-foreground" />
             </div>
             <p className="text-foreground font-medium">No protocols yet</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Start your first consultation to get a personalized herbal protocol
+              Start your first consultation above to get a personalized herbal protocol
             </p>
           </div>
         )}
