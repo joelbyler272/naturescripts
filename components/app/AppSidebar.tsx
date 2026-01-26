@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { NSLogo } from './NSLogo';
-import { SidebarToggle } from './SidebarToggle';
 import { SidebarSection } from './SidebarSection';
 import { SidebarItem } from './SidebarItem';
 import { routes } from '@/lib/constants/routes';
@@ -13,6 +12,7 @@ import {
   BookOpen,
   Search,
   HelpCircle,
+  PanelLeftClose,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -61,19 +61,18 @@ export function AppSidebar() {
     <aside
       className={cn(
         'h-screen bg-white border-r border-border/50 flex flex-col sticky top-0',
-        'transition-[width] duration-200 ease-out'
+        'transition-[width] duration-300 ease-out'
       )}
       style={{ width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED }}
     >
-      {/* Header - Logo and Toggle */}
+      {/* Header - Logo only (toggle is now built into the logo) */}
       <div
         className={cn(
           'flex items-center h-14 border-b border-border/30 shrink-0',
-          collapsed ? 'flex-col justify-center gap-1 py-2' : 'justify-between px-3'
+          collapsed ? 'justify-center px-2' : 'px-3'
         )}
       >
-        <NSLogo collapsed={collapsed} />
-        <SidebarToggle collapsed={collapsed} onToggle={toggleCollapsed} />
+        <NSLogo collapsed={collapsed} onToggle={toggleCollapsed} />
       </div>
 
       {/* Search Bar (expanded only) */}
@@ -152,14 +151,29 @@ export function AppSidebar() {
         </div>
       </nav>
 
-      {/* Bottom Section - Help/Support */}
-      <div className="border-t border-border/30 p-2 shrink-0">
+      {/* Bottom Section - Help/Support and Collapse button */}
+      <div className="border-t border-border/30 p-2 shrink-0 space-y-1">
         <SidebarItem
           href="/help"
           label="Help & Support"
           icon={HelpCircle}
           collapsed={collapsed}
         />
+        
+        {/* Collapse button - only visible when expanded */}
+        {!collapsed && (
+          <button
+            onClick={toggleCollapsed}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg',
+              'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+              'transition-colors text-sm'
+            )}
+          >
+            <PanelLeftClose className="w-5 h-5" />
+            <span>Collapse</span>
+          </button>
+        )}
       </div>
     </aside>
   );
