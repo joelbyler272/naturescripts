@@ -1,154 +1,184 @@
 # Dashboard Design Decisions
 
 *Based on Ramp.com analysis - January 25, 2026*
-
-## Navigation Pattern: Hybrid Approach
-
-### What Ramp Does
-- Left sidebar for authenticated users
-- Collapsible sections (Home → Overview, My expenses, My travel)
-- User menu in top-right corner
-
-### Our Decision: Keep Top Nav + Contextual Elements
-
-| Aspect | Ramp | NatureScripts | Rationale |
-|--------|------|---------------|-----------|
-| Primary Nav | Left sidebar | **Keep top nav** | NatureScripts is consultation-focused, not transaction-heavy like Ramp |
-| User Menu | Top-right dropdown | ✅ Keep as-is | Works well |
-| Sub-navigation | Sidebar nested items | Tab bar or breadcrumbs | Simpler hierarchy |
-
-### Why Not Full Sidebar?
-- Ramp users navigate between many sections frequently (expenses, travel, cards)
-- NatureScripts users primarily: Start consultation → Review protocol → Track progress
-- A sidebar adds complexity without proportional benefit for our use case
-
-### What We're Adopting from Ramp
-- ✅ Personalized greeting header
-- ✅ Action-oriented quick actions (like Ramp's "Request" button panel)
-- ✅ Activity feed with recent items
-- ✅ Empty state handling ("You're all caught up!")
+*Updated: January 25, 2026 - Final app shell spec*
 
 ---
 
-## Route Structure: Keep /dashboard
+## App Shell Architecture
 
-| Route | Purpose |
-|-------|---------|
-| `/dashboard` | Main home after login (keep) |
-| `/consultation` | Start/manage consultations |
-| `/protocols` | View saved protocols |
-| `/tracking` | Health tracking (Pro) |
-| `/settings` | User settings |
+NatureScripts uses a **proper app shell** for authenticated users - not a website with navigation, but a dedicated application experience.
 
-The `/dashboard` vs `/home` choice is mostly semantic. Our current structure is cleaner since we have a marketing `/` (home) route.
+### Key Decisions
+- ✅ Left sidebar navigation (collapsible)
+- ✅ No top nav bar
+- ✅ No footer
+- ✅ User initials avatar for settings/profile
+- ✅ Time-based personalized greeting
 
 ---
 
-## Dashboard Layout
+## Layout Specification
 
+### Expanded Sidebar
 ```
-┌─────────────────────────────────────────────────────────┐
-│  [Logo]  Dashboard  Protocols  Library       [User ▾]   │  ← Top Nav (keep)
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  Good morning, Joel 👋                                  │  ← Personalized greeting
-│  Ready for your next consultation?                      │
-│                                                         │
-│  ┌─────────────────────────────────┐  ┌──────────────┐ │
-│  │ [Prompt/Banner]                 │  │ Quick Actions│ │  ← Right sidebar
-│  │ Complete your health profile    │  │              │ │
-│  │ to get better recommendations   │  └──────────────┘ │
-│  └─────────────────────────────────┘  │ [Start New]  │ │
-│                                        │ [View Proto] │ │
-│  ┌─────────────────────────────────┐  │ [Track]      │ │
-│  │ You're all caught up! ✓        │  └──────────────┘ │  ← Empty state
-│  │ (or active protocol progress)   │                    │
-│  └─────────────────────────────────┘                    │
-│                                                         │
-│  Recent Consultations          [View all →]             │  ← Activity feed
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ 🌿 Digestive Support Protocol    Jan 20 • Active    ││
-│  │ 🌿 Sleep Optimization            Jan 15 • Completed ││
-│  │ 🌿 Stress Management             Jan 10 • Completed ││
-│  └─────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────┘
+┌────────────────┬─────────────────────────────────────────────┐
+│                │                                         [JB]│
+│  NS            │                                             │
+│                │  Good morning, Joel                         │
+│  ────────────  │                                             │
+│                │                                             │
+│  [≡] Dashboard │  ┌─────────────────────────────────────────┐│
+│  [📋] Protocols│  │                                         ││
+│  [📚] Library  │  │  Main Content Area                      ││
+│  [📈] Tracking │  │                                         ││
+│                │  │                                         ││
+│                │  └─────────────────────────────────────────┘│
+│                │                                             │
+│  ────────────  │                                             │
+│  [◀] Collapse  │                                             │
+└────────────────┴─────────────────────────────────────────────┘
+```
+
+### Collapsed Sidebar
+```
+┌────┬──────────────────────────────────────────────────────────┐
+│ NS │                                                      [JB]│
+│    │                                                          │
+│ ── │  Good morning, Joel                                      │
+│[≡] │                                                          │
+│[📋]│  ┌──────────────────────────────────────────────────────┐│
+│[📚]│  │                                                      ││
+│[📈]│  │  Main Content Area                                   ││
+│    │  │                                                      ││
+│    │  └──────────────────────────────────────────────────────┘│
+│ ── │                                                          │
+│[▶] │                                                          │
+└────┴──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementation Plan
+## Element Specifications
 
-### Files to Create/Update
+### Left Sidebar
 
-**Updated:**
-- `app/(app)/dashboard/page.tsx` - Main dashboard with new layout
+| Element | Spec |
+|---------|------|
+| **Width (expanded)** | 240px |
+| **Width (collapsed)** | 64px |
+| **Background** | White or very light grey |
+| **Border** | Right border, subtle (border-border/50) |
 
-**New Components:**
-- `components/app/WelcomeHeader.tsx` - Personalized time-based greeting
-- `components/app/QuickActions.tsx` - Right sidebar action panel
+### NS Logo
+- **Design:** "N" in black (font-bold), "S" in sage green (font-normal)
+- **Behavior:** Clicks to `/dashboard` (home)
+- **Position:** Top of sidebar
+
+### Navigation Items
+| Route | Label | Icon |
+|-------|-------|------|
+| `/dashboard` | Dashboard | LayoutDashboard or Home |
+| `/protocols` | Protocols | FileText or ClipboardList |
+| `/remedies` | Library | BookOpen or Library |
+| `/tracking` | Tracking | TrendingUp or Activity |
+
+- Active state: Sage green background tint, sage text
+- Hover state: Light grey background
+- Collapsed: Icons only, tooltip on hover
+
+### Collapse Button
+- **Position:** Bottom of sidebar
+- **Expanded state:** Shows "Collapse" with left arrow
+- **Collapsed state:** Shows right arrow only
+- **Behavior:** Toggles sidebar width, saves preference to localStorage
+
+### User Avatar (JB)
+- **Position:** Top-right corner of main content area
+- **Design:** Circle with user initials, sage green background, white text
+- **Size:** 40px diameter
+- **Behavior:** Opens dropdown or navigates to `/settings`
+- **Dropdown options:** Settings, Profile, Sign out
+
+### Greeting
+- **Logic:**
+  - 5am - 12pm: "Good morning, {firstName}"
+  - 12pm - 5pm: "Good afternoon, {firstName}"
+  - 5pm - 5am: "Good evening, {firstName}"
+- **Position:** Top of main content area, below user avatar line
+- **Typography:** text-2xl or text-3xl, font-semibold
+
+---
+
+## Main Content Area
+
+### Dashboard (`/dashboard`)
+Primary content when user lands:
+
+1. **Greeting header** (as specified above)
+2. **Active Protocol Card** (if user has one in progress)
+   - Protocol name
+   - Days active
+   - Quick actions (View, Log symptoms)
+3. **Quick Actions** (if no active protocol)
+   - Start New Consultation (primary CTA)
+   - Browse Library
+4. **Recent Consultations** (activity feed)
+   - List of past protocols
+   - Date, status badge (Active/Completed)
+   - Click to view details
+5. **Daily Limit Banner** (free tier only)
+   - Shows X/3 consultations used today
+
+---
+
+## Mobile Behavior
+
+| Viewport | Sidebar Behavior |
+|----------|------------------|
+| Desktop (>1024px) | Sidebar visible, collapsible |
+| Tablet (768-1024px) | Sidebar collapsed by default |
+| Mobile (<768px) | Sidebar hidden, hamburger menu opens as overlay |
+
+---
+
+## Files to Create
+
+### New App Layout
+- `app/(app)/layout.tsx` - App shell with sidebar
+
+### New Components
+- `components/app/AppSidebar.tsx` - Collapsible left sidebar
+- `components/app/NSLogo.tsx` - NS logo component
+- `components/app/UserAvatar.tsx` - Initials circle with dropdown
+- `components/app/WelcomeHeader.tsx` - Time-based greeting
+- `components/app/ActiveProtocolCard.tsx` - Current protocol status
 - `components/app/ActivityFeed.tsx` - Recent consultations list
-- `components/app/ContextualBanner.tsx` - Prompts like "Complete your profile"
-- `components/app/EmptyState.tsx` - "You're all caught up!" component
+
+### Updated
+- `app/(app)/dashboard/page.tsx` - New dashboard layout
 
 ### Keep Existing
-- Top navigation pattern
-- Route structure
-- Design system (sage green #6B8E7F, Inter + Crimson Pro fonts)
-- DailyLimitBanner (free tier)
-- ProtocolCard component
+- `components/app/DailyLimitBanner.tsx`
+- `components/protocol/ProtocolCard.tsx`
 
 ---
 
-## Component Specifications
+## Design Tokens
 
-### WelcomeHeader
 ```tsx
-// Time-based greeting
-// Morning: "Good morning, {name} 👋"
-// Afternoon: "Good afternoon, {name}"
-// Evening: "Good evening, {name}"
-// Subtext: Contextual based on state
-// - Has active protocol: "Your {protocol_name} protocol is in progress"
-// - No protocols: "Ready for your first consultation?"
-// - Returning user: "Ready for your next consultation?"
-```
+// Sidebar
+const SIDEBAR_WIDTH_EXPANDED = 240;
+const SIDEBAR_WIDTH_COLLAPSED = 64;
 
-### QuickActions
-```tsx
-// Sticky right sidebar (desktop) or horizontal cards (mobile)
-// Actions:
-// - Start New Consultation (primary, sage green)
-// - View Protocols (secondary)
-// - Track Progress (Pro badge if free tier)
-```
+// Colors (from existing design system)
+const sage = '#6B8E7F';
+const sageLight = '#E8F0EC';
 
-### ActivityFeed
-```tsx
-// Recent consultations with:
-// - Icon (🌿 or herb emoji)
-// - Protocol title
-// - Date
-// - Status badge (Active, Completed)
-// - Click to view protocol detail
-// Max 5 items, "View all" link if more
-```
-
-### ContextualBanner
-```tsx
-// Dismissible prompts based on user state:
-// - "Complete your health profile for better recommendations"
-// - "Upgrade to Pro for unlimited consultations"
-// - "Your Digestive Support protocol has been active for 7 days"
-```
-
-### EmptyState
-```tsx
-// When no recent activity:
-// - Checkmark icon
-// - "You're all caught up!"
-// - Subtle CTA to start consultation
+// Transitions
+const SIDEBAR_TRANSITION = 'width 200ms ease-in-out';
 ```
 
 ---
 
-*This document serves as the source of truth for dashboard implementation.*
+*This document is the source of truth for dashboard implementation.*
