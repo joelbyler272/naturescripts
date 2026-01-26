@@ -12,7 +12,6 @@ import {
   BookOpen,
   Search,
   HelpCircle,
-  PanelLeftClose,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -65,7 +64,7 @@ export function AppSidebar() {
       )}
       style={{ width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED }}
     >
-      {/* Header - Logo only (toggle is now built into the logo) */}
+      {/* Header - Logo and Toggle */}
       <div
         className={cn(
           'flex items-center h-14 border-b border-border/30 shrink-0',
@@ -151,29 +150,14 @@ export function AppSidebar() {
         </div>
       </nav>
 
-      {/* Bottom Section - Help/Support and Collapse button */}
-      <div className="border-t border-border/30 p-2 shrink-0 space-y-1">
+      {/* Bottom Section - Help/Support */}
+      <div className="border-t border-border/30 p-2 shrink-0">
         <SidebarItem
           href="/help"
           label="Help & Support"
           icon={HelpCircle}
           collapsed={collapsed}
         />
-        
-        {/* Collapse button - only visible when expanded */}
-        {!collapsed && (
-          <button
-            onClick={toggleCollapsed}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-lg',
-              'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-              'transition-colors text-sm'
-            )}
-          >
-            <PanelLeftClose className="w-5 h-5" />
-            <span>Collapse</span>
-          </button>
-        )}
       </div>
     </aside>
   );
