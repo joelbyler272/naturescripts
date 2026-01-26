@@ -13,9 +13,9 @@ export default function AppLayout({
       <AppSidebar />
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
         {/* Top Bar with User Avatar */}
-        <header className="flex justify-end items-center px-6 py-4">
+        <header className="flex justify-end items-center px-6 h-14 border-b border-border/30 bg-white">
           <UserAvatar 
             firstName={MOCK_USER.first_name} 
             lastName="Byler" 
@@ -23,7 +23,7 @@ export default function AppLayout({
         </header>
         
         {/* Page Content */}
-        <main className="flex-1 px-6 pb-6">
+        <main className="flex-1 px-6 py-6 overflow-y-auto bg-secondary/20">
           {children}
         </main>
       </div>
