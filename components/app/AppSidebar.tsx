@@ -46,12 +46,12 @@ export function AppSidebar() {
 
   return (
     <aside
-      className="h-screen bg-white border-r border-border/50 flex flex-col transition-all duration-200 ease-in-out"
+      className="h-screen bg-white border-r border-border/50 flex flex-col transition-all duration-200 ease-in-out sticky top-0"
       style={{ width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED }}
     >
       {/* Logo */}
       <div className={cn(
-        'flex items-center border-b border-border/30',
+        'flex items-center border-b border-border/30 h-16',
         collapsed ? 'justify-center px-2' : 'px-4'
       )}>
         <NSLogo collapsed={collapsed} />
@@ -83,7 +83,7 @@ export function AppSidebar() {
                 </Link>
               </li>
             );
-          })})
+          })}
         </ul>
       </nav>
 
