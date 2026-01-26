@@ -1,53 +1,84 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 
 interface NSLogoProps {
-  collapsed?: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
-export function NSLogo({ collapsed = false }: NSLogoProps) {
+export function NSLogo({ collapsed, onToggle }: NSLogoProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
-    <Link
-      href={routes.dashboard}
-      className={cn(
-        'flex items-center hover:opacity-80 transition-opacity',
-        collapsed ? 'justify-center' : 'gap-0.5'
-      )}
+    <div 
+      className="relative flex items-center"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Leaf/Script icon for collapsed state */}
-      {collapsed ? (
-        <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-accent"
+      <Link
+        href={routes.dashboard}
+        className="flex items-center hover:opacity-90 transition-opacity overflow-hidden"
+        onClick={(e) => {
+          // If collapsed and hovered, clicking expands instead of navigating
+          if (collapsed && isHovered) {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        {/* The logo with animated letters */}
+        <span className="flex items-baseline whitespace-nowrap">
+          {/* N - always visible, bold black */}
+          <span className="text-xl font-bold text-foreground">N</span>
+          
+          {/* "ature" - animated */}
+          <span 
+            className={cn(
+              "text-xl font-bold text-foreground overflow-hidden transition-all duration-300 ease-out",
+              collapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"
+            )}
           >
-            <path
-              d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c1.5 0 3-.5 4.5-1.5-1.5-1-2.5-2.5-2.5-4.5 0-3 2.5-5.5 5.5-5.5.5 0 1 0 1.5.5C21 10 21 9 21 8c0-3-2.5-6-9-6z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-            <path
-              d="M12 8v8M9 12h6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-      ) : (
-        <>
-          <span className="text-xl font-bold text-foreground">Nature</span>
-          <span className="text-xl font-bold text-accent">Scripts</span>
-        </>
+            ature
+          </span>
+          
+          {/* S - always visible, bold sage green */}
+          <span className="text-xl font-bold text-accent">S</span>
+          
+          {/* "cripts" - animated */}
+          <span 
+            className={cn(
+              "text-xl font-bold text-accent overflow-hidden transition-all duration-300 ease-out",
+              collapsed ? "max-w-0 opacity-0" : "max-w-[100px] opacity-100"
+            )}
+          >
+            cripts
+          </span>
+        </span>
+      </Link>
+
+      {/* Expand tooltip/button - only shows when collapsed and hovered */}
+      {collapsed && isHovered && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          className={cn(
+            "absolute left-full ml-2 z-50",
+            "px-3 py-1.5 text-sm font-medium",
+            "bg-foreground text-background rounded-md",
+            "whitespace-nowrap shadow-lg",
+            "hover:bg-foreground/90 transition-colors",
+            "animate-in fade-in slide-in-from-left-1 duration-150"
+          )}
+        >
+          Expand navigation
+        </button>
       )}
-    </Link>
+    </div>
   );
 }
