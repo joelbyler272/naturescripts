@@ -19,7 +19,7 @@ export const SIDEBAR_WIDTH_EXPANDED = 240;
 export const SIDEBAR_WIDTH_COLLAPSED = 56;
 
 export function AppSidebar() {
-  const { collapsed, toggleCollapsed } = useSidebar();
+  const { collapsed, toggleCollapsed, mounted } = useSidebar();
   const pathname = usePathname();
 
   // Determine which section should be expanded by default based on current route
@@ -28,6 +28,16 @@ export function AppSidebar() {
     pathname.startsWith('/protocols');
   const isResourcesSection = pathname.startsWith(routes.remedies) || 
     pathname.startsWith(routes.library);
+
+  // Prevent hydration mismatch - show expanded state initially
+  if (!mounted) {
+    return (
+      <aside
+        className="h-screen bg-white border-r border-border/50 flex flex-col sticky top-0"
+        style={{ width: SIDEBAR_WIDTH_EXPANDED }}
+      />
+    );
+  }
 
   return (
     <aside
