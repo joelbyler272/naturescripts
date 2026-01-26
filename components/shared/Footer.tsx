@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Logo } from "./Logo"
 import { routes } from "@/lib/constants/routes"
 import { colors } from "@/lib/constants/colors"
 
@@ -54,17 +53,17 @@ function FooterLink({ href, label, external }: { href: string; label: string; ex
     <Link
       href={href}
       {...linkProps}
-      className="group flex items-center gap-2.5 text-[15px] text-foreground/70 transition-colors hover:text-accent"
+      className="group flex items-center gap-2.5 text-[15px] text-foreground transition-colors hover:text-accent"
     >
+      {/* Chevron arrow - black */}
       <svg
-        className="w-2 h-2 flex-shrink-0"
+        className="w-2 h-2 flex-shrink-0 text-foreground"
         fill="none"
         viewBox="0 0 6 10"
         stroke="currentColor"
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ color: colors.sage.DEFAULT }}
       >
         <path d="M1 1l4 4-4 4" />
       </svg>
@@ -76,7 +75,8 @@ function FooterLink({ href, label, external }: { href: string; label: string; ex
 function FooterColumn({ title, links }: { title: string; links: Array<{ label: string; href: string; external?: boolean }> }) {
   return (
     <div className="space-y-4">
-      <h4 className="text-[14px] font-medium text-foreground/60">{title}</h4>
+      {/* Column title - lighter grey */}
+      <h4 className="text-[14px] font-medium text-muted-foreground/60">{title}</h4>
       <ul className="space-y-3">
         {links.map((link) => (
           <li key={link.href}>
@@ -93,8 +93,8 @@ export function Footer() {
 
   return (
     <footer className="bg-secondary/60 border-t border-border/20">
-      {/* Large Logo Section */}
-      <div className="mx-auto max-w-6xl px-6 pt-20 pb-16">
+      {/* Large Logo Section - original padding */}
+      <div className="mx-auto max-w-6xl px-6 pt-10 pb-10">
         <div className="flex justify-center">
           <h2 className="text-[clamp(4rem,12vw,8rem)] tracking-tight leading-none font-serif select-none">
             <span className="text-foreground font-semibold">Nature</span>
