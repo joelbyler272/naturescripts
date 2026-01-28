@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
-import { Button } from '@/components/ui/button';
 import { ConsultationState, ConversationMessage, GeneratedProtocol } from '@/lib/consultation/types';
-import { generateMockResponse, getInitialGreeting, createMessage, getResponseDelay } from '@/lib/consultation/mockAI';
+import { generateMockResponse, getFirstQuestion, createMessage, getResponseDelay } from '@/lib/consultation/mockAI';
 import { generateProtocol } from '@/lib/consultation/generateProtocol';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ChatInterfaceProps {
@@ -19,6 +18,7 @@ interface ChatInterfaceProps {
 export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasInitialized = useRef(false);
   
   const [state, setState] = useState<ConsultationState>({
     messages: [],
@@ -39,39 +39,71 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
 
   // Initialize conversation
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    
     const initializeChat = async () => {
-      setIsTyping(true);
+      const messages: ConversationMessage[] = [];
       
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const greeting = getInitialGreeting(initialQuery);
-      const assistantMessage = createMessage('assistant', greeting);
-      
-      setState(prev => ({
-        ...prev,
-        messages: [assistantMessage],
-      }));
-      
-      setIsTyping(false);
-      
-      // If there's an initial query, send it as user message after greeting
+      // If there's an initial query, show it first as user message
       if (initialQuery) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        handleUserMessage(initialQuery);
+        const userMessage = createMessage('user', initialQuery);
+        messages.push(userMessage);
+        
+        setState({
+          messages,
+          questionCount: 1,
+          isComplete: false,
+          collectedInfo: {},
+        });
+        
+        // Show typing indicator
+        setIsTyping(true);
+        await new Promise(resolve => setTimeout(resolve, getResponseDelay()));
+        
+        // Get first follow-up question
+        const firstQuestion = getFirstQuestion(initialQuery);
+        const assistantMessage = createMessage('assistant', firstQuestion);
+        
+        setState(prev => ({
+          ...prev,
+          messages: [...prev.messages, assistantMessage],
+        }));
+        
+        setIsTyping(false);
+      } else {
+        // No initial query - show greeting
+        setIsTyping(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const greeting = "Hello! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?";
+        const assistantMessage = createMessage('assistant', greeting);
+        
+        setState({
+          messages: [assistantMessage],
+          questionCount: 0,
+          isComplete: false,
+          collectedInfo: {},
+        });
+        
+        setIsTyping(false);
       }
     };
     
     initializeChat();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   const handleUserMessage = async (content: string) => {
     // Add user message
     const userMessage = createMessage('user', content);
+    const newQuestionCount = state.questionCount + 1;
+    
+    const updatedMessages = [...state.messages, userMessage];
     
     setState(prev => ({
       ...prev,
-      messages: [...prev.messages, userMessage],
-      questionCount: prev.questionCount + 1,
+      messages: updatedMessages,
+      questionCount: newQuestionCount,
     }));
     
     // Show typing indicator
@@ -82,9 +114,8 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     
     // Get AI response
     const updatedState: ConsultationState = {
-      ...state,
-      messages: [...state.messages, userMessage],
-      questionCount: state.questionCount + 1,
+      messages: updatedMessages,
+      questionCount: newQuestionCount,
       isComplete: false,
       collectedInfo: state.collectedInfo,
     };
@@ -104,17 +135,21 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   };
 
   const handleGenerateProtocol = async () => {
-    setIsGenerating(true);
-    
-    // Add generating message
-    const generatingMessage = createMessage('assistant', "Creating your personalized protocol... ✨");
+    // Add user message "Generate my protocol"
+    const userMessage = createMessage('user', 'Generate my protocol');
     setState(prev => ({
       ...prev,
-      messages: [...prev.messages, generatingMessage],
+      messages: [...prev.messages, userMessage],
     }));
     
+    setIsGenerating(true);
+    setIsReadyToGenerate(false);
+    
+    // Show typing indicator
+    setIsTyping(true);
+    
     // Simulate generation time
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 2500));
     
     // Generate protocol
     const protocol = generateProtocol(state);
@@ -128,16 +163,15 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     
     setState(prev => ({
       ...prev,
-      messages: prev.messages.slice(0, -1).concat(successMessage), // Replace generating message
+      messages: [...prev.messages, successMessage],
     }));
     
+    setIsTyping(false);
     setIsGenerating(false);
   };
 
   const handleViewProtocol = () => {
     if (generatedProtocol) {
-      // In a real app, we'd save to database first
-      // For now, store in sessionStorage and redirect
       sessionStorage.setItem('generated-protocol', JSON.stringify(generatedProtocol));
       router.push(`/protocols/${generatedProtocol.id}`);
     }
@@ -160,42 +194,42 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
         {/* Generate Protocol Button */}
         {isReadyToGenerate && !generatedProtocol && !isGenerating && (
           <div className="flex justify-center pt-4">
-            <Button
+            <button
               onClick={handleGenerateProtocol}
-              className="bg-accent hover:bg-accent/90 text-white px-6 py-5 rounded-xl text-base"
+              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
             >
-              <Sparkles className="w-5 h-5 mr-2" />
-              Generate My Protocol
-            </Button>
+              Generate my protocol
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         )}
         
         {/* View Protocol Button */}
         {generatedProtocol && (
           <div className="flex justify-center pt-4">
-            <Button
+            <button
               onClick={handleViewProtocol}
-              className="bg-accent hover:bg-accent/90 text-white px-6 py-5 rounded-xl text-base"
+              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
             >
-              View Your Protocol
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
+              View your protocol
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         )}
         
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - disabled after protocol generation */}
+      {/* Input Area */}
       <ChatInput
         onSend={handleUserMessage}
         disabled={isTyping || isReadyToGenerate || isGenerating || !!generatedProtocol}
         placeholder={
           isReadyToGenerate
-            ? "Click 'Generate My Protocol' above to continue"
+            ? "Click the button above to generate your protocol"
             : generatedProtocol
             ? "Protocol generated! Click to view."
-            : "Describe your symptoms or concerns..."
+            : "Share more details..."
         }
       />
     </div>
