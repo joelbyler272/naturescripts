@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Crimson_Pro } from "next/font/google"
 import localFont from "next/font/local"
+import { AuthProvider } from "@/lib/auth/AuthContext"
 import "./globals.css"
 
 const inter = Inter({
@@ -48,7 +49,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${crimsonPro.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )
