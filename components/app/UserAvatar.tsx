@@ -2,18 +2,20 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { Settings, User, LogOut } from 'lucide-react';
 
-interface UserAvatarProps {
-  firstName: string;
-  lastName?: string;
-}
-
-export function UserAvatar({ firstName, lastName }: UserAvatarProps) {
+export function UserAvatar() {
+  const { user, signOut } = useAuth();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Get user info from metadata or email
+  const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User';
+  const lastName = user?.user_metadata?.last_name || '';
   const initials = `${firstName.charAt(0)}${lastName?.charAt(0) || ''}`;
 
   useEffect(() => {
@@ -27,6 +29,13 @@ export function UserAvatar({ firstName, lastName }: UserAvatarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleSignOut = async () => {
+    setIsOpen(false);
+    await signOut();
+    router.push('/');
+    router.refresh();
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -38,6 +47,14 @@ export function UserAvatar({ firstName, lastName }: UserAvatarProps) {
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-border/50 py-1 z-50">
+          <div className="px-4 py-2 border-b border-border/50">
+            <p className="text-sm font-medium text-foreground truncate">
+              {firstName} {lastName}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {user?.email}
+            </p>
+          </div>
           <Link
             href={routes.settings}
             className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors"
@@ -57,10 +74,7 @@ export function UserAvatar({ firstName, lastName }: UserAvatarProps) {
           <hr className="my-1 border-border/50" />
           <button
             className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors w-full text-left"
-            onClick={() => {
-              setIsOpen(false);
-              // TODO: Implement sign out
-            }}
+            onClick={handleSignOut}
           >
             <LogOut className="w-4 h-4" />
             Sign out
