@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { WelcomeHeader } from '@/components/app/WelcomeHeader';
 import { ProtocolCard } from '@/components/protocol/ProtocolCard';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { MOCK_CONSULTATIONS } from '@/lib/data/hardcoded';
+import { useConsultations } from '@/lib/hooks/useConsultations';
+import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { routes } from '@/lib/constants/routes';
-import { ArrowRight, Sparkles, Leaf, Send } from 'lucide-react';
+import { ArrowRight, Sparkles, Leaf, Send, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Tips that rotate - adds personality
@@ -31,25 +32,14 @@ const SUGGESTIONS = [
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { activeProtocol, pastProtocols, loading: consultationsLoading } = useConsultations();
+  const { usage, loading: usageLoading, isAtLimit, isPro } = useUsageLimits();
+  
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   
   // Get user's first name from metadata or email
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
-  
-  const consultationsUsed = 2;
-  const consultationsLimit = 3;
-  const userTier = 'free'; // TODO: Get from user profile
-
-  // Find active protocol (if any) - less than 14 days old
-  const activeProtocol = MOCK_CONSULTATIONS.find(c => {
-    const createdDate = new Date(c.created_at);
-    const daysSinceCreation = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysSinceCreation < 14;
-  });
-
-  // Past protocols (exclude active one)
-  const pastProtocols = MOCK_CONSULTATIONS.filter(c => c.id !== activeProtocol?.id);
 
   // Get tip of the day based on date
   const todaysTip = TIPS[new Date().getDate() % TIPS.length];
@@ -57,18 +47,20 @@ export default function DashboardPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      // Navigate to consultation with the query
+    if (inputValue.trim() && !isAtLimit) {
       const query = encodeURIComponent(inputValue.trim());
       router.push(`${routes.consultation}?q=${query}`);
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    // Navigate directly to consultation with the suggestion
-    const query = encodeURIComponent(suggestion);
-    router.push(`${routes.consultation}?q=${query}`);
+    if (!isAtLimit) {
+      const query = encodeURIComponent(suggestion);
+      router.push(`${routes.consultation}?q=${query}`);
+    }
   };
+
+  const isLoading = consultationsLoading || usageLoading;
 
   return (
     <div className="w-full">
@@ -85,22 +77,49 @@ export default function DashboardPage() {
             </p>
           </div>
           
-          {/* Subtle usage indicator for free tier */}
-          {userTier === 'free' && (
+          {/* Usage indicator for free tier */}
+          {!isPro && (
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">
-                {consultationsUsed}/{consultationsLimit} today
-              </p>
-              <Link 
-                href={routes.upgrade}
-                className="text-xs text-accent hover:text-accent/80 transition-colors"
-              >
-                Go unlimited →
-              </Link>
+              {usageLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : (
+                <>
+                  <p className={cn(
+                    "text-sm",
+                    isAtLimit ? "text-destructive font-medium" : "text-muted-foreground"
+                  )}>
+                    {usage.currentCount}/{usage.dailyLimit} today
+                  </p>
+                  <Link 
+                    href={routes.upgrade}
+                    className="text-xs text-accent hover:text-accent/80 transition-colors"
+                  >
+                    Go unlimited →
+                  </Link>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Limit Reached Banner */}
+      {isAtLimit && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-800">
+              Daily limit reached
+            </p>
+            <p className="text-sm text-amber-700 mt-1">
+              You've used all 3 free consultations for today. 
+              <Link href={routes.upgrade} className="underline ml-1">
+                Upgrade to Pro
+              </Link> for unlimited consultations.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Chat Input Bar */}
       <div className="mb-6">
@@ -108,7 +127,8 @@ export default function DashboardPage() {
           <div 
             className={cn(
               "relative flex items-center bg-white rounded-2xl border transition-all duration-200",
-              isFocused 
+              isAtLimit && "opacity-50 cursor-not-allowed",
+              isFocused && !isAtLimit
                 ? "border-accent shadow-[0_0_0_3px_rgba(107,142,127,0.1)]" 
                 : "border-border/50 hover:border-border"
             )}
@@ -119,15 +139,19 @@ export default function DashboardPage() {
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder="Describe how you're feeling or what you'd like help with..."
-              className="flex-1 px-5 py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-base"
+              disabled={isAtLimit}
+              placeholder={isAtLimit 
+                ? "Daily limit reached - upgrade for unlimited access"
+                : "Describe how you're feeling or what you'd like help with..."
+              }
+              className="flex-1 px-5 py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-base disabled:cursor-not-allowed"
             />
             <button
               type="submit"
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isAtLimit}
               className={cn(
                 "mr-2 w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                inputValue.trim()
+                inputValue.trim() && !isAtLimit
                   ? "bg-accent text-white hover:bg-accent/90"
                   : "bg-secondary/50 text-muted-foreground"
               )}
@@ -143,7 +167,13 @@ export default function DashboardPage() {
             <button
               key={suggestion}
               onClick={() => handleSuggestionClick(suggestion)}
-              className="px-3 py-1.5 text-sm text-muted-foreground bg-white border border-border/50 rounded-full hover:border-accent/50 hover:text-foreground transition-colors"
+              disabled={isAtLimit}
+              className={cn(
+                "px-3 py-1.5 text-sm bg-white border rounded-full transition-colors",
+                isAtLimit 
+                  ? "text-muted-foreground border-border/30 cursor-not-allowed opacity-50"
+                  : "text-muted-foreground border-border/50 hover:border-accent/50 hover:text-foreground"
+              )}
             >
               {suggestion}
             </button>
@@ -151,8 +181,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        </div>
+      )}
+
       {/* Active Protocol Card */}
-      {activeProtocol && (
+      {!isLoading && activeProtocol && (
         <div className="mb-8">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
             Active Protocol
@@ -186,48 +223,52 @@ export default function DashboardPage() {
       )}
 
       {/* Tip of the Day */}
-      <div className="mb-8 flex items-center gap-3 px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
-        <TipIcon className="w-4 h-4 text-accent flex-shrink-0" />
-        <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Tip:</span> {todaysTip.text}
-        </p>
-      </div>
+      {!isLoading && (
+        <div className="mb-8 flex items-center gap-3 px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
+          <TipIcon className="w-4 h-4 text-accent flex-shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Tip:</span> {todaysTip.text}
+          </p>
+        </div>
+      )}
 
       {/* Past Protocols */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Past Protocols
-          </h2>
-          {pastProtocols.length > 3 && (
-            <Link 
-              href={routes.protocols}
-              className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
-            >
-              View all
-              <ArrowRight className="w-3 h-3" />
-            </Link>
+      {!isLoading && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Past Protocols
+            </h2>
+            {pastProtocols.length > 3 && (
+              <Link 
+                href={routes.protocols}
+                className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
+              >
+                View all
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            )}
+          </div>
+
+          {pastProtocols.length > 0 ? (
+            <div className="space-y-2">
+              {pastProtocols.slice(0, 3).map((consultation) => (
+                <ProtocolCard key={consultation.id} consultation={consultation} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white/60 rounded-xl border border-dashed border-border/50">
+              <div className="w-12 h-12 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Leaf className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <p className="text-foreground font-medium">No protocols yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Start your first consultation above to get a personalized herbal protocol
+              </p>
+            </div>
           )}
         </div>
-
-        {pastProtocols.length > 0 ? (
-          <div className="space-y-2">
-            {pastProtocols.slice(0, 3).map((consultation) => (
-              <ProtocolCard key={consultation.id} consultation={consultation} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-white/60 rounded-xl border border-dashed border-border/50">
-            <div className="w-12 h-12 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Leaf className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <p className="text-foreground font-medium">No protocols yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Start your first consultation above to get a personalized herbal protocol
-            </p>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
