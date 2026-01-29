@@ -3,7 +3,7 @@
 import { AppSidebar } from '@/components/app/AppSidebar';
 import { UserAvatar } from '@/components/app/UserAvatar';
 import { SidebarProvider, useSidebar } from '@/components/app/SidebarContext';
-import { MOCK_USER } from '@/lib/data/hardcoded';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@/lib/utils';
 
 interface AppShellContentProps {
@@ -13,6 +13,7 @@ interface AppShellContentProps {
 
 function AppShellContent({ children, maxWidth = 'max-w-4xl' }: AppShellContentProps) {
   const { collapsed } = useSidebar();
+  const { user, loading } = useAuth();
   
   return (
     <div className="min-h-screen flex bg-background">
@@ -27,12 +28,11 @@ function AppShellContent({ children, maxWidth = 'max-w-4xl' }: AppShellContentPr
         )}
       >
         {/* User Avatar - Fixed to top right */}
-        <div className="absolute top-4 right-6 z-10">
-          <UserAvatar 
-            firstName={MOCK_USER.first_name} 
-            lastName="Byler" 
-          />
-        </div>
+        {user && !loading && (
+          <div className="absolute top-4 right-6 z-10">
+            <UserAvatar />
+          </div>
+        )}
         
         {/* Page Content - Centered */}
         <main className="flex-1 overflow-y-auto bg-secondary/20">

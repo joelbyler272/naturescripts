@@ -1,17 +1,18 @@
 import { Navigation } from '@/components/app/Navigation';
 import { Footer } from '@/components/shared/Footer';
 import { AppShell } from '@/components/app/AppShell';
-import { isAuthenticated } from '@/lib/auth/mock';
+import { createClient } from '@/lib/supabase/server';
 
-export default function PublicLayout({
+export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const authenticated = isAuthenticated();
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // If authenticated, use the app shell (sidebar, no footer, avatar)
-  if (authenticated) {
+  if (user) {
     return <AppShell maxWidth="max-w-6xl">{children}</AppShell>;
   }
 

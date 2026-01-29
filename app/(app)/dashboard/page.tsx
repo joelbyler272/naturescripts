@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { WelcomeHeader } from '@/components/app/WelcomeHeader';
 import { ProtocolCard } from '@/components/protocol/ProtocolCard';
-import { MOCK_USER, MOCK_CONSULTATIONS } from '@/lib/data/hardcoded';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { MOCK_CONSULTATIONS } from '@/lib/data/hardcoded';
 import { routes } from '@/lib/constants/routes';
 import { ArrowRight, Sparkles, Leaf, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,11 +30,16 @@ const SUGGESTIONS = [
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   
+  // Get user's first name from metadata or email
+  const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
+  
   const consultationsUsed = 2;
   const consultationsLimit = 3;
+  const userTier = 'free'; // TODO: Get from user profile
 
   // Find active protocol (if any) - less than 14 days old
   const activeProtocol = MOCK_CONSULTATIONS.find(c => {
@@ -70,7 +76,7 @@ export default function DashboardPage() {
       <div className="mb-8">
         <div className="flex items-start justify-between">
           <div>
-            <WelcomeHeader firstName={MOCK_USER.first_name} />
+            <WelcomeHeader firstName={firstName} />
             <p className="text-muted-foreground mt-1">
               {activeProtocol 
                 ? "Your protocol is in progress. Keep up the great work!"
@@ -80,7 +86,7 @@ export default function DashboardPage() {
           </div>
           
           {/* Subtle usage indicator for free tier */}
-          {MOCK_USER.tier === 'free' && (
+          {userTier === 'free' && (
             <div className="text-right">
               <p className="text-sm text-muted-foreground">
                 {consultationsUsed}/{consultationsLimit} today

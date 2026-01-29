@@ -5,10 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MOCK_USER } from '@/lib/data/hardcoded';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { User, CreditCard, Shield, AlertTriangle } from 'lucide-react';
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+  
+  // Get user info from Supabase auth
+  const firstName = user?.user_metadata?.first_name || '';
+  const lastName = user?.user_metadata?.last_name || '';
+  const email = user?.email || '';
+  const emailVerified = user?.email_confirmed_at ? true : false;
+  const userTier = 'free' as 'free' | 'pro'; // TODO: Get from user profile/subscription
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -36,17 +45,25 @@ export default function SettingsPage() {
               <CardDescription>Update your personal information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="firstName" className="text-sm font-medium text-foreground">
-                  First Name
-                </label>
-                <Input id="firstName" defaultValue={MOCK_USER.first_name} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="firstName" className="text-sm font-medium text-foreground">
+                    First Name
+                  </label>
+                  <Input id="firstName" defaultValue={firstName} />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="lastName" className="text-sm font-medium text-foreground">
+                    Last Name
+                  </label>
+                  <Input id="lastName" defaultValue={lastName} />
+                </div>
               </div>
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-foreground">
                   Email
                 </label>
-                <Input id="email" type="email" defaultValue={MOCK_USER.email} disabled />
+                <Input id="email" type="email" defaultValue={email} disabled />
                 <p className="text-xs text-muted-foreground">
                   Email cannot be changed. Contact support if you need to update it.
                 </p>
@@ -71,14 +88,14 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-semibold text-foreground">Current Plan</p>
                   <p className="text-sm text-muted-foreground">
-                    {MOCK_USER.tier === 'pro' ? 'Pro - $9/month' : 'Free - $0/month'}
+                    {userTier === 'pro' ? 'Pro - $9/month' : 'Free - $0/month'}
                   </p>
                 </div>
-                <Badge variant={MOCK_USER.tier === 'pro' ? 'secondary' : 'outline'}>
-                  {MOCK_USER.tier.toUpperCase()}
+                <Badge variant={userTier === 'pro' ? 'secondary' : 'outline'}>
+                  {userTier.toUpperCase()}
                 </Badge>
               </div>
-              {MOCK_USER.tier === 'free' ? (
+              {userTier === 'free' ? (
                 <Button className="w-full bg-accent hover:bg-accent/90">Upgrade to Pro</Button>
               ) : (
                 <div className="flex space-x-2">
@@ -109,8 +126,8 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h4 className="font-medium text-foreground mb-2">Email Verification</h4>
-                <Badge variant={MOCK_USER.email_verified ? 'secondary' : 'destructive'}>
-                  {MOCK_USER.email_verified ? 'Verified' : 'Not Verified'}
+                <Badge variant={emailVerified ? 'secondary' : 'destructive'}>
+                  {emailVerified ? 'Verified' : 'Not Verified'}
                 </Badge>
               </div>
             </CardContent>
