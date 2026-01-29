@@ -1,20 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const callbackError = searchParams.get('error');
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -23,7 +23,7 @@ export default function SignInPage() {
     setError(null);
 
     const supabase = createClient();
-    
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -41,7 +41,7 @@ export default function SignInPage() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     const supabase = createClient();
-    
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -209,5 +209,17 @@ export default function SignInPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }

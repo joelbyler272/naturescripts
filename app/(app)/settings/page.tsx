@@ -16,7 +16,7 @@ export default function SettingsPage() {
   const lastName = user?.user_metadata?.last_name || '';
   const email = user?.email || '';
   const emailVerified = user?.email_confirmed_at ? true : false;
-  const userTier = 'free'; // TODO: Get from user profile/subscription
+  const userTier = 'free' as 'free' | 'pro'; // TODO: Get from user profile/subscription
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
