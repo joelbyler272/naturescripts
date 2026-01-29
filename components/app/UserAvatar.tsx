@@ -36,6 +36,8 @@ export function UserAvatar() {
     router.refresh();
   };
 
+  if (!user) return null;
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
