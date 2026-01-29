@@ -8,8 +8,8 @@ import { SidebarItem } from './SidebarItem';
 import { routes } from '@/lib/constants/routes';
 import {
   Home,
-  Leaf,
   BookOpen,
+  Leaf,
   Search,
   HelpCircle,
 } from 'lucide-react';
@@ -26,8 +26,6 @@ export function AppSidebar() {
   const isHomeSection = pathname === routes.dashboard || 
     pathname.startsWith('/consultations') || 
     pathname.startsWith('/protocols');
-  const isResourcesSection = pathname.startsWith(routes.remedies) || 
-    pathname.startsWith(routes.library);
 
   // Prevent hydration mismatch - show expanded state initially
   if (!mounted) {
@@ -50,8 +48,8 @@ export function AppSidebar() {
       {/* Header - Logo and Toggle */}
       <div
         className={cn(
-          'flex items-center h-14 border-b border-border/30 shrink-0',
-          collapsed ? 'justify-center px-2' : 'px-3'
+          'flex items-center justify-center h-14 border-b border-border/30 shrink-0',
+          collapsed ? 'px-2' : 'px-3'
         )}
       >
         <NSLogo collapsed={collapsed} onToggle={toggleCollapsed} />
@@ -108,27 +106,20 @@ export function AppSidebar() {
             ]}
           />
 
-          {/* Wellness Section */}
-          <SidebarSection
+          {/* Remedy Database - standalone item */}
+          <SidebarItem
+            href={routes.remedies}
+            label="Remedy Database"
             icon={Leaf}
-            label="Wellness"
             collapsed={collapsed}
-            defaultExpanded={false}
-            items={[
-              { href: routes.tracking, label: 'Health Tracking' },
-            ]}
           />
 
-          {/* Resources Section */}
-          <SidebarSection
+          {/* Library - standalone item */}
+          <SidebarItem
+            href={routes.library}
+            label="Library"
             icon={BookOpen}
-            label="Resources"
             collapsed={collapsed}
-            defaultExpanded={isResourcesSection}
-            items={[
-              { href: routes.remedies, label: 'Remedy Database' },
-              { href: routes.library, label: 'Library' },
-            ]}
           />
         </div>
       </nav>
