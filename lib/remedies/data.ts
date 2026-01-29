@@ -11,16 +11,12 @@ export const REMEDIES: Remedy[] = [
     tags: ['stress', 'anxiety', 'sleep', 'energy', 'thyroid', 'hormones', 'cortisol'],
     rating: 8.4,
     summary: 'A powerful adaptogenic herb used for over 3,000 years in Ayurvedic medicine to help the body manage stress, support energy levels, and promote restful sleep.',
-    overview: `Ashwagandha is one of the most important herbs in Ayurveda, the traditional medicine system of India. The name comes from Sanskrit and roughly translates to "smell of the horse," which refers both to its unique smell and the traditional belief that consuming it gives you the strength and vitality of a horse.
-
-The root is the primary part used medicinally. It contains active compounds called withanolides, which are responsible for most of its health benefits. Modern research has validated many of the traditional uses, making ashwagandha one of the most studied adaptogens available today.
+    overview: `Ashwagandha is one of the most important herbs in Ayurveda, the traditional medicine system of India. The name comes from Sanskrit and roughly translates to "smell of the horse," which refers both to its unique smell and the traditional belief that consuming it gives you the strength and vitality of a horse. The root contains active compounds called withanolides, which are responsible for most of its health benefits.
 
 What makes ashwagandha special is its ability to work in multiple directions. Unlike stimulants that push your body in one direction, adaptogens help your body find balance. If you're wound up and anxious, ashwagandha can help calm you down. If you're depleted and fatigued, it can help restore your energy. This balancing effect is why so many people find it helpful for a wide range of concerns.`,
-    howItWorks: `Ashwagandha works primarily through the HPA axis, which is your body's central stress response system. When you experience stress, your hypothalamus signals your pituitary gland, which then tells your adrenal glands to release cortisol. Over time, chronic stress can dysregulate this system.
+    howItWorks: `Ashwagandha works primarily through the HPA axis, which is your body's central stress response system. When you experience stress, your hypothalamus signals your pituitary gland, which then tells your adrenal glands to release cortisol. Over time, chronic stress can dysregulate this system. Ashwagandha helps normalize cortisol levels, particularly in people with elevated stress.
 
-Ashwagandha helps normalize cortisol levels, particularly in people with elevated stress. It also appears to modulate GABA receptors in the brain, which promotes a calming effect without sedation. Additionally, it has antioxidant properties and may support thyroid function by influencing thyroid hormone production.
-
-The withanolides in ashwagandha also have anti-inflammatory effects and may support the immune system, though these benefits are secondary to its stress-modulating effects.`,
+It also modulates GABA receptors in the brain, which promotes a calming effect without sedation. The withanolides have anti-inflammatory and antioxidant properties, and may support thyroid function by influencing thyroid hormone production.`,
     benefits: [
       {
         name: 'Stress and Anxiety Reduction',
