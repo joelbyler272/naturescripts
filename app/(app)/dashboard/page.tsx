@@ -52,14 +52,16 @@ export default function DashboardPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim()) {
-      // In a real app, we'd pass the input to the consultation page
-      router.push(routes.consultation);
+      // Navigate to consultation with the query
+      const query = encodeURIComponent(inputValue.trim());
+      router.push(`${routes.consultation}?q=${query}`);
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    setInputValue(suggestion);
-    // Could auto-submit or just fill the input
+    // Navigate directly to consultation with the suggestion
+    const query = encodeURIComponent(suggestion);
+    router.push(`${routes.consultation}?q=${query}`);
   };
 
   return (
