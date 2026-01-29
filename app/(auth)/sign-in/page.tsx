@@ -56,7 +56,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary/40 via-background to-accent/5 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary/40 via-background to-accent/5 px-4 py-8">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-accent/10 rounded-full blur-3xl" />
