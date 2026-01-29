@@ -22,17 +22,17 @@ function AppShellContent({ children, maxWidth = 'max-w-4xl' }: AppShellContentPr
       {/* Main Content Area */}
       <div 
         className={cn(
-          "flex-1 flex flex-col min-h-screen overflow-hidden",
+          "flex-1 flex flex-col min-h-screen overflow-hidden relative",
           "transition-all duration-300 ease-out"
         )}
       >
-        {/* Top Bar with User Avatar */}
-        <header className="flex justify-end items-center px-6 h-14 border-b border-border/30 bg-white shrink-0">
+        {/* User Avatar - Fixed to top right */}
+        <div className="absolute top-4 right-6 z-10">
           <UserAvatar 
             firstName={MOCK_USER.first_name} 
             lastName="Byler" 
           />
-        </header>
+        </div>
         
         {/* Page Content - Centered */}
         <main className="flex-1 overflow-y-auto bg-secondary/20">
