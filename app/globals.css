@@ -4,6 +4,10 @@
 
 /* NatureScripts Design System - Clean, Clinical, Warm */
 :root {
+  /* Font stacks (no Google Fonts fetch — works offline) */
+  --font-inter: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-crimson: Georgia, "Times New Roman", "Liberation Serif", serif;
+
   /* Backgrounds */
   --background: oklch(0.975 0.003 90);
   --foreground: oklch(0.18 0.01 90);

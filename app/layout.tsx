@@ -1,21 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Crimson_Pro } from "next/font/google"
 import localFont from "next/font/local"
 import { AuthProvider } from "@/lib/auth/AuthContext"
 import "./globals.css"
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: '--font-inter'
-})
-
-const crimsonPro = Crimson_Pro({
-  subsets: ["latin"],
-  weight: ["300", "400", "600"],
-  variable: '--font-crimson'
-})
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
@@ -47,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${crimsonPro.variable} ${geistMono.variable}`}>
+    <html lang="en" className={geistMono.variable}>
       <body className="font-sans antialiased">
         <AuthProvider>
           {children}
