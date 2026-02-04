@@ -1,6 +1,12 @@
-import { BookOpen, Bell } from 'lucide-react';
+import type { Metadata } from 'next';
+import { BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Library',
+  description: 'Health guides, herbal monographs, and research-backed articles to support your natural wellness journey.',
+};
 
 export default function LibraryPage() {
   return (
