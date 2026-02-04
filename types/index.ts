@@ -12,16 +12,20 @@ export interface User {
 }
 
 // Consultation Types
+export type ConsultationStatus = 'in_progress' | 'completed' | 'abandoned';
+
 export interface Consultation {
   id: string;
   user_id: string;
   initial_input: string;
   conversation_log: Message[];
-  protocol_data: Protocol;
+  protocol_data: Protocol | Record<string, any> | null;
   protocol_version: number;
   parent_consultation_id?: string;
   tier_at_creation: UserTier;
+  status: ConsultationStatus;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Message {
@@ -30,7 +34,7 @@ export interface Message {
   timestamp: string;
 }
 
-// Protocol Types
+// Protocol Types (original schema — kept for backwards compat)
 export interface Protocol {
   analysis: {
     patterns: string[];
