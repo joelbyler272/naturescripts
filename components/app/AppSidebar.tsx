@@ -12,6 +12,7 @@ import {
   Leaf,
   Search,
   HelpCircle,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,12 +23,10 @@ export function AppSidebar() {
   const { collapsed, toggleCollapsed, mounted } = useSidebar();
   const pathname = usePathname();
 
-  // Determine which section should be expanded by default based on current route
   const isHomeSection = pathname === routes.dashboard || 
     pathname.startsWith('/consultations') || 
     pathname.startsWith('/protocols');
 
-  // Prevent hydration mismatch - show expanded state initially
   if (!mounted) {
     return (
       <aside
@@ -93,7 +92,6 @@ export function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 py-2 overflow-y-auto">
         <div className="space-y-1 px-2">
-          {/* Home Section */}
           <SidebarSection
             icon={Home}
             label="Home"
@@ -106,7 +104,6 @@ export function AppSidebar() {
             ]}
           />
 
-          {/* Remedy Database - standalone item */}
           <SidebarItem
             href={routes.remedies}
             label="Remedy Database"
@@ -114,17 +111,23 @@ export function AppSidebar() {
             collapsed={collapsed}
           />
 
-          {/* Library - standalone item */}
           <SidebarItem
             href={routes.library}
             label="Library"
             icon={BookOpen}
             collapsed={collapsed}
           />
+
+          <SidebarItem
+            href={routes.settings}
+            label="Settings"
+            icon={Settings}
+            collapsed={collapsed}
+          />
         </div>
       </nav>
 
-      {/* Bottom Section - Help/Support */}
+      {/* Bottom Section */}
       <div className="border-t border-border/30 p-2 shrink-0">
         <SidebarItem
           href="/help"
