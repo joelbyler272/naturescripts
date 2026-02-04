@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -52,36 +52,16 @@ export default function DashboardPage() {
 
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [visibleSuggestions, setVisibleSuggestions] = useState<string[]>([]);
   const [currentTip, setCurrentTip] = useState('');
 
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
 
-  // Rotate 3 suggestions every 5 seconds
-  const rotateSuggestions = useCallback(() => {
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-    return seededShuffle(HEALTH_SUGGESTIONS, dayOfYear);
+  // Pick 3 suggestions once on mount (re-shuffles on page refresh via timestamp seed)
+  const visibleSuggestions = useMemo(() => {
+    const seed = Math.floor(Date.now() / 1000);
+    const shuffled = seededShuffle(HEALTH_SUGGESTIONS, seed);
+    return shuffled.slice(0, 3);
   }, []);
-
-  useEffect(() => {
-    const shuffled = rotateSuggestions();
-    let index = 0;
-
-    const updateVisible = () => {
-      const start = (index * 3) % shuffled.length;
-      const items = [
-        shuffled[start % shuffled.length],
-        shuffled[(start + 1) % shuffled.length],
-        shuffled[(start + 2) % shuffled.length],
-      ];
-      setVisibleSuggestions(items);
-      index++;
-    };
-
-    updateVisible();
-    const interval = setInterval(updateVisible, 5000);
-    return () => clearInterval(interval);
-  }, [rotateSuggestions]);
 
   // Rotate tips every 8 seconds
   useEffect(() => {
@@ -201,7 +181,7 @@ export default function DashboardPage() {
           </div>
         </form>
 
-        {/* Rotating suggestions */}
+        {/* Suggestions — static 3, change on page refresh */}
         <div className="flex flex-wrap gap-2 mt-3">
           {visibleSuggestions.map((suggestion) => (
             <button
@@ -209,7 +189,7 @@ export default function DashboardPage() {
               onClick={() => handleSuggestionClick(suggestion)}
               disabled={isAtLimit}
               className={cn(
-                "px-3 py-1.5 text-xs sm:text-sm bg-white border rounded-full transition-all duration-300",
+                "px-3 py-1.5 text-xs sm:text-sm bg-white border rounded-full transition-colors",
                 isAtLimit
                   ? "text-muted-foreground border-border/30 cursor-not-allowed opacity-50"
                   : "text-muted-foreground border-border/50 hover:border-accent/50 hover:text-foreground"
@@ -230,7 +210,7 @@ export default function DashboardPage() {
 
       {/* Rotating Tip */}
       {!isLoading && (
-        <div className="mb-6 flex items-center gap-3 px-3 sm:px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
+        <div className="mb-5 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white/60 border border-border/30 rounded-lg">
           <Lightbulb className="w-4 h-4 text-accent flex-shrink-0" />
           <p className="text-xs sm:text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Tip:</span> {currentTip}
@@ -241,7 +221,7 @@ export default function DashboardPage() {
       {/* Past Protocols — show last 2, always show View All */}
       {!isLoading && (
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Your Protocols
             </h2>
@@ -255,13 +235,13 @@ export default function DashboardPage() {
           </div>
 
           {pastProtocols.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {pastProtocols.slice(0, 2).map((consultation) => (
                 <ProtocolCard key={consultation.id} consultation={consultation} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 sm:py-12 bg-white/60 rounded-xl border border-dashed border-border/50">
+            <div className="text-center py-8 sm:py-10 bg-white/60 rounded-xl border border-dashed border-border/50">
               <div className="w-12 h-12 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Leaf className="w-6 h-6 text-muted-foreground" />
               </div>

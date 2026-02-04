@@ -9,7 +9,7 @@ import { ConsultationState, ConversationMessage, GeneratedProtocol } from '@/lib
 import { generateMockResponse, getFirstQuestion, createMessage, getResponseDelay } from '@/lib/consultation/mockAI';
 import { generateProtocol } from '@/lib/consultation/generateProtocol';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { createConsultation, updateConsultation, incrementDailyUsage } from '@/lib/supabase/database';
+import { createConsultation, updateConsultation, incrementDailyUsage, checkCanConsult } from '@/lib/supabase/database';
 import { ArrowRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -24,14 +24,14 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
   const consultationId = useRef<string | null>(null);
-  
+
   const [state, setState] = useState<ConsultationState>({
     messages: [],
     questionCount: 0,
     isComplete: false,
     collectedInfo: {},
   });
-  
+
   const [isTyping, setIsTyping] = useState(false);
   const [isReadyToGenerate, setIsReadyToGenerate] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,26 +42,29 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [state.messages, isTyping]);
 
+  // Initialize chat — check limit but do NOT increment yet
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
-    
+
     const initializeChat = async () => {
       if (user?.id) {
         try {
-          const usageResult = await incrementDailyUsage(user.id);
-          
-          if (!usageResult.canConsult) {
+          // Only CHECK if they can consult — don't increment yet
+          const usageStatus = await checkCanConsult(user.id);
+
+          if (!usageStatus.canConsult) {
             setUsageError('You have reached your daily limit of 3 consultations. Upgrade to Pro for unlimited access.');
             return;
           }
-          
+
+          // Create consultation record (in_progress, no usage counted yet)
           const consultation = await createConsultation(
             user.id,
             initialQuery || 'New consultation',
             'free'
           );
-          
+
           if (consultation) {
             consultationId.current = consultation.id;
           }
@@ -69,50 +72,50 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
           console.error('Error initializing consultation:', error);
         }
       }
-      
+
       const messages: ConversationMessage[] = [];
-      
+
       if (initialQuery) {
         const userMessage = createMessage('user', initialQuery);
         messages.push(userMessage);
-        
+
         setState({
           messages,
           questionCount: 1,
           isComplete: false,
           collectedInfo: {},
         });
-        
+
         setIsTyping(true);
         await new Promise(resolve => setTimeout(resolve, getResponseDelay()));
-        
+
         const firstQuestion = getFirstQuestion(initialQuery);
         const assistantMessage = createMessage('assistant', firstQuestion);
-        
+
         setState(prev => ({
           ...prev,
           messages: [...prev.messages, assistantMessage],
         }));
-        
+
         setIsTyping(false);
       } else {
         setIsTyping(true);
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         const greeting = "Hello! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?";
         const assistantMessage = createMessage('assistant', greeting);
-        
+
         setState({
           messages: [assistantMessage],
           questionCount: 0,
           isComplete: false,
           collectedInfo: {},
         });
-        
+
         setIsTyping(false);
       }
     };
-    
+
     initializeChat();
   }, [initialQuery, user?.id]);
 
@@ -120,32 +123,32 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     const userMessage = createMessage('user', content);
     const newQuestionCount = state.questionCount + 1;
     const updatedMessages = [...state.messages, userMessage];
-    
+
     setState(prev => ({
       ...prev,
       messages: updatedMessages,
       questionCount: newQuestionCount,
     }));
-    
+
     setIsTyping(true);
     await new Promise(resolve => setTimeout(resolve, getResponseDelay()));
-    
+
     const updatedState: ConsultationState = {
       messages: updatedMessages,
       questionCount: newQuestionCount,
       isComplete: false,
       collectedInfo: state.collectedInfo,
     };
-    
+
     const { message, isReadyToGenerate: ready } = generateMockResponse(updatedState);
     const assistantMessage = createMessage('assistant', message);
-    
+
     setState(prev => ({
       ...prev,
       messages: [...prev.messages, assistantMessage],
       isComplete: ready,
     }));
-    
+
     setIsTyping(false);
     setIsReadyToGenerate(ready);
   };
@@ -156,17 +159,17 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
       ...prev,
       messages: [...prev.messages, userMessage],
     }));
-    
+
     setIsGenerating(true);
     setIsReadyToGenerate(false);
     setIsTyping(true);
-    
+
     await new Promise(resolve => setTimeout(resolve, 2500));
-    
+
     const protocol = generateProtocol(state);
     setGeneratedProtocol(protocol);
-    
-    // Save protocol to database with the FULL conversation log and protocol data
+
+    // Save protocol AND increment usage only now that a protocol is actually created
     if (consultationId.current && user?.id) {
       try {
         const allMessages = [...state.messages, userMessage];
@@ -179,27 +182,29 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
           protocol_data: protocol as any,
           status: 'completed',
         });
+
+        // NOW increment daily usage — protocol was successfully created
+        await incrementDailyUsage(user.id);
       } catch (error) {
         console.error('Error saving consultation:', error);
       }
     }
-    
+
     const successMessage = createMessage(
-      'assistant', 
+      'assistant',
       `Your ${protocol.primaryConcern} protocol is ready! I've created ${protocol.recommendations.length} personalized recommendation${protocol.recommendations.length > 1 ? 's' : ''} based on our conversation.`
     );
-    
+
     setState(prev => ({
       ...prev,
       messages: [...prev.messages, successMessage],
     }));
-    
+
     setIsTyping(false);
     setIsGenerating(false);
   };
 
   const handleViewProtocol = () => {
-    // Navigate using the DB consultation ID (not the local protocol ID)
     if (consultationId.current) {
       router.push(`/protocols/${consultationId.current}`);
     }
@@ -237,9 +242,9 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
         {state.messages.map((message, index) => (
           <ChatMessage key={index} role={message.role} content={message.content} />
         ))}
-        
+
         {isTyping && <TypingIndicator />}
-        
+
         {isReadyToGenerate && !generatedProtocol && !isGenerating && (
           <div className="flex justify-center pt-4">
             <button
@@ -251,7 +256,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
             </button>
           </div>
         )}
-        
+
         {generatedProtocol && (
           <div className="flex justify-center pt-4">
             <button
@@ -263,7 +268,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
             </button>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
