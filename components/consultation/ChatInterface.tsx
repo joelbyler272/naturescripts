@@ -38,21 +38,17 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [state.messages, isTyping]);
 
-  // Initialize conversation and track usage
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
     
     const initializeChat = async () => {
-      // Increment usage and create consultation in database
       if (user?.id) {
         try {
-          // Increment daily usage
           const usageResult = await incrementDailyUsage(user.id);
           
           if (!usageResult.canConsult) {
@@ -60,7 +56,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
             return;
           }
           
-          // Create consultation record
           const consultation = await createConsultation(
             user.id,
             initialQuery || 'New consultation',
@@ -72,13 +67,11 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
           }
         } catch (error) {
           console.error('Error initializing consultation:', error);
-          // Continue anyway - don't block the user
         }
       }
       
       const messages: ConversationMessage[] = [];
       
-      // If there's an initial query, show it first as user message
       if (initialQuery) {
         const userMessage = createMessage('user', initialQuery);
         messages.push(userMessage);
@@ -90,11 +83,9 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
           collectedInfo: {},
         });
         
-        // Show typing indicator
         setIsTyping(true);
         await new Promise(resolve => setTimeout(resolve, getResponseDelay()));
         
-        // Get first follow-up question
         const firstQuestion = getFirstQuestion(initialQuery);
         const assistantMessage = createMessage('assistant', firstQuestion);
         
@@ -105,7 +96,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
         
         setIsTyping(false);
       } else {
-        // No initial query - show greeting
         setIsTyping(true);
         await new Promise(resolve => setTimeout(resolve, 500));
         
@@ -127,10 +117,8 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   }, [initialQuery, user?.id]);
 
   const handleUserMessage = async (content: string) => {
-    // Add user message
     const userMessage = createMessage('user', content);
     const newQuestionCount = state.questionCount + 1;
-    
     const updatedMessages = [...state.messages, userMessage];
     
     setState(prev => ({
@@ -139,13 +127,9 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
       questionCount: newQuestionCount,
     }));
     
-    // Show typing indicator
     setIsTyping(true);
-    
-    // Simulate AI thinking
     await new Promise(resolve => setTimeout(resolve, getResponseDelay()));
     
-    // Get AI response
     const updatedState: ConsultationState = {
       messages: updatedMessages,
       questionCount: newQuestionCount,
@@ -154,7 +138,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     };
     
     const { message, isReadyToGenerate: ready } = generateMockResponse(updatedState);
-    
     const assistantMessage = createMessage('assistant', message);
     
     setState(prev => ({
@@ -168,7 +151,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   };
 
   const handleGenerateProtocol = async () => {
-    // Add user message "Generate my protocol"
     const userMessage = createMessage('user', 'Generate my protocol');
     setState(prev => ({
       ...prev,
@@ -177,22 +159,19 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     
     setIsGenerating(true);
     setIsReadyToGenerate(false);
-    
-    // Show typing indicator
     setIsTyping(true);
     
-    // Simulate generation time
     await new Promise(resolve => setTimeout(resolve, 2500));
     
-    // Generate protocol
     const protocol = generateProtocol(state);
     setGeneratedProtocol(protocol);
     
-    // Save to database
+    // Save protocol to database with the FULL conversation log and protocol data
     if (consultationId.current && user?.id) {
       try {
+        const allMessages = [...state.messages, userMessage];
         await updateConsultation(consultationId.current, {
-          conversation_log: state.messages.map(m => ({
+          conversation_log: allMessages.map(m => ({
             role: m.role,
             content: m.content,
             timestamp: m.timestamp,
@@ -205,7 +184,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
       }
     }
     
-    // Add success message
     const successMessage = createMessage(
       'assistant', 
       `Your ${protocol.primaryConcern} protocol is ready! I've created ${protocol.recommendations.length} personalized recommendation${protocol.recommendations.length > 1 ? 's' : ''} based on our conversation.`
@@ -221,13 +199,12 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   };
 
   const handleViewProtocol = () => {
-    if (generatedProtocol) {
-      sessionStorage.setItem('generated-protocol', JSON.stringify(generatedProtocol));
-      router.push(`/protocols/${generatedProtocol.id}`);
+    // Navigate using the DB consultation ID (not the local protocol ID)
+    if (consultationId.current) {
+      router.push(`/protocols/${consultationId.current}`);
     }
   };
 
-  // Show error if usage limit reached
   if (usageError) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] bg-white rounded-xl border border-border/50 p-8 text-center">
@@ -235,9 +212,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
           <AlertCircle className="w-8 h-8 text-amber-600" />
         </div>
         <h2 className="text-xl font-semibold text-foreground mb-2">Daily Limit Reached</h2>
-        <p className="text-muted-foreground mb-6 max-w-md">
-          {usageError}
-        </p>
+        <p className="text-muted-foreground mb-6 max-w-md">{usageError}</p>
         <div className="flex gap-3">
           <Link
             href="/dashboard"
@@ -258,19 +233,13 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
 
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-xl border border-border/50 overflow-hidden">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {state.messages.map((message, index) => (
-          <ChatMessage
-            key={index}
-            role={message.role}
-            content={message.content}
-          />
+          <ChatMessage key={index} role={message.role} content={message.content} />
         ))}
         
         {isTyping && <TypingIndicator />}
         
-        {/* Generate Protocol Button */}
         {isReadyToGenerate && !generatedProtocol && !isGenerating && (
           <div className="flex justify-center pt-4">
             <button
@@ -283,7 +252,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
           </div>
         )}
         
-        {/* View Protocol Button */}
         {generatedProtocol && (
           <div className="flex justify-center pt-4">
             <button
@@ -299,7 +267,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <ChatInput
         onSend={handleUserMessage}
         disabled={isTyping || isReadyToGenerate || isGenerating || !!generatedProtocol}

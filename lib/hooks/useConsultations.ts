@@ -8,7 +8,7 @@ import {
   createConsultation,
   updateConsultation,
 } from '@/lib/supabase/database';
-import { Consultation, Message, Protocol } from '@/types';
+import { Consultation, Message } from '@/types';
 
 export function useConsultations() {
   const { user } = useAuth();
@@ -16,7 +16,6 @@ export function useConsultations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch user's consultations
   const refresh = useCallback(async () => {
     if (!user?.id) {
       setConsultations([]);
@@ -37,26 +36,18 @@ export function useConsultations() {
     }
   }, [user?.id]);
 
-  // Load on mount
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  // Get active protocol (most recent, less than 14 days old)
-  const activeProtocol = consultations.find(c => {
-    const createdDate = new Date(c.created_at);
-    const daysSinceCreation = Math.floor(
-      (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return daysSinceCreation < 14;
-  });
-
-  // Get past protocols (completed, older than active)
-  const pastProtocols = consultations.filter(c => c.id !== activeProtocol?.id);
+  // All completed consultations are "past protocols" — there is no "active" concept
+  // A protocol is simply a completed consultation that has protocol_data
+  const pastProtocols = consultations.filter(c => 
+    c.status === 'completed' && c.protocol_data != null
+  );
 
   return {
     consultations,
-    activeProtocol,
     pastProtocols,
     loading,
     error,
@@ -70,7 +61,6 @@ export function useConsultation(consultationId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch single consultation
   const fetch = useCallback(async () => {
     if (!consultationId) {
       setLoading(false);
@@ -94,7 +84,6 @@ export function useConsultation(consultationId?: string) {
     fetch();
   }, [fetch]);
 
-  // Create a new consultation
   const create = useCallback(async (initialInput: string): Promise<Consultation | null> => {
     if (!user?.id) {
       setError('Must be logged in');
@@ -115,7 +104,6 @@ export function useConsultation(consultationId?: string) {
     }
   }, [user?.id, user?.user_metadata?.tier]);
 
-  // Update consultation with new messages
   const addMessage = useCallback(async (message: Message): Promise<boolean> => {
     if (!consultation?.id) {
       setError('No active consultation');
@@ -139,31 +127,6 @@ export function useConsultation(consultationId?: string) {
     }
   }, [consultation]);
 
-  // Complete consultation with protocol
-  const complete = useCallback(async (protocol: Protocol): Promise<boolean> => {
-    if (!consultation?.id) {
-      setError('No active consultation');
-      return false;
-    }
-
-    try {
-      const data = await updateConsultation(consultation.id, {
-        protocol_data: protocol,
-        status: 'completed',
-      });
-      
-      if (data) {
-        setConsultation(data);
-      }
-      return true;
-    } catch (err) {
-      console.error('Error completing consultation:', err);
-      setError('Failed to complete consultation');
-      return false;
-    }
-  }, [consultation]);
-
-  // Abandon consultation
   const abandon = useCallback(async (): Promise<boolean> => {
     if (!consultation?.id) return false;
 
@@ -184,7 +147,6 @@ export function useConsultation(consultationId?: string) {
     fetch,
     create,
     addMessage,
-    complete,
     abandon,
   };
 }
