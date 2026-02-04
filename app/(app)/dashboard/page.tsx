@@ -13,7 +13,6 @@ import { routes } from '@/lib/constants/routes';
 import { ArrowRight, Sparkles, Leaf, Send, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Tips that rotate - adds personality
 const TIPS = [
   { text: "Ashwagandha is best absorbed when taken with food", icon: Leaf },
   { text: "Consistency matters more than perfection with herbal protocols", icon: Sparkles },
@@ -21,7 +20,6 @@ const TIPS = [
   { text: "Keeping a symptom journal helps track what's working", icon: Sparkles },
 ];
 
-// Placeholder suggestions
 const SUGGESTIONS = [
   "I've been feeling fatigued lately",
   "Help with sleep issues",
@@ -38,10 +36,7 @@ export default function DashboardPage() {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   
-  // Get user's first name from metadata or email
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
-
-  // Get tip of the day based on date
   const todaysTip = TIPS[new Date().getDate() % TIPS.length];
   const TipIcon = todaysTip.icon;
 
@@ -65,11 +60,11 @@ export default function DashboardPage() {
   return (
     <div className="w-full">
       {/* Welcome Header with inline usage indicator */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
           <div>
             <WelcomeHeader firstName={firstName} />
-            <p className="text-muted-foreground mt-1">
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               {activeProtocol 
                 ? "Your protocol is in progress. Keep up the great work!"
                 : "What's on your mind today?"
@@ -79,7 +74,7 @@ export default function DashboardPage() {
           
           {/* Usage indicator for free tier */}
           {!isPro && (
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               {usageLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
@@ -105,14 +100,14 @@ export default function DashboardPage() {
 
       {/* Limit Reached Banner */}
       {isAtLimit && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+        <div className="mb-6 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-amber-800">
               Daily limit reached
             </p>
             <p className="text-sm text-amber-700 mt-1">
-              You've used all 3 free consultations for today. 
+              You&apos;ve used all 3 free consultations for today. 
               <Link href={routes.upgrade} className="underline ml-1">
                 Upgrade to Pro
               </Link> for unlimited consultations.
@@ -141,16 +136,16 @@ export default function DashboardPage() {
               onBlur={() => setIsFocused(false)}
               disabled={isAtLimit}
               placeholder={isAtLimit 
-                ? "Daily limit reached - upgrade for unlimited access"
-                : "Describe how you're feeling or what you'd like help with..."
+                ? "Daily limit reached"
+                : "Describe how you're feeling..."
               }
-              className="flex-1 px-5 py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-base disabled:cursor-not-allowed"
+              className="flex-1 px-4 sm:px-5 py-3 sm:py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm sm:text-base disabled:cursor-not-allowed"
             />
             <button
               type="submit"
               disabled={!inputValue.trim() || isAtLimit}
               className={cn(
-                "mr-2 w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                "mr-2 w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all",
                 inputValue.trim() && !isAtLimit
                   ? "bg-accent text-white hover:bg-accent/90"
                   : "bg-secondary/50 text-muted-foreground"
@@ -169,7 +164,7 @@ export default function DashboardPage() {
               onClick={() => handleSuggestionClick(suggestion)}
               disabled={isAtLimit}
               className={cn(
-                "px-3 py-1.5 text-sm bg-white border rounded-full transition-colors",
+                "px-3 py-1.5 text-xs sm:text-sm bg-white border rounded-full transition-colors",
                 isAtLimit 
                   ? "text-muted-foreground border-border/30 cursor-not-allowed opacity-50"
                   : "text-muted-foreground border-border/50 hover:border-accent/50 hover:text-foreground"
@@ -194,27 +189,27 @@ export default function DashboardPage() {
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
             Active Protocol
           </h2>
-          <div className="bg-white border border-border/50 rounded-xl p-5 hover:border-accent/30 transition-colors">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
+          <div className="bg-white border border-border/50 rounded-xl p-4 sm:p-5 hover:border-accent/30 transition-colors">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Leaf className="w-5 h-5 text-accent" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground truncate">
                     {activeProtocol.protocol_data?.analysis?.patterns?.[0] || 'Your Protocol'}
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                     Started {new Date(activeProtocol.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    {' · '}
+                    {' \u00b7 '}
                     {Math.floor((Date.now() - new Date(activeProtocol.created_at).getTime()) / (1000 * 60 * 60 * 24))} days in
                   </p>
                 </div>
               </div>
               <Link href={`${routes.protocols}/${activeProtocol.id}`}>
-                <Button variant="outline" size="sm">
-                  View
-                  <ArrowRight className="w-3 h-3 ml-1" />
+                <Button variant="outline" size="sm" className="flex-shrink-0">
+                  <span className="hidden sm:inline">View</span>
+                  <ArrowRight className="w-3 h-3 sm:ml-1" />
                 </Button>
               </Link>
             </div>
@@ -224,9 +219,9 @@ export default function DashboardPage() {
 
       {/* Tip of the Day */}
       {!isLoading && (
-        <div className="mb-8 flex items-center gap-3 px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
+        <div className="mb-8 flex items-center gap-3 px-3 sm:px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
           <TipIcon className="w-4 h-4 text-accent flex-shrink-0" />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Tip:</span> {todaysTip.text}
           </p>
         </div>
@@ -257,12 +252,12 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-white/60 rounded-xl border border-dashed border-border/50">
+            <div className="text-center py-8 sm:py-12 bg-white/60 rounded-xl border border-dashed border-border/50">
               <div className="w-12 h-12 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Leaf className="w-6 h-6 text-muted-foreground" />
               </div>
               <p className="text-foreground font-medium">No protocols yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 px-4">
                 Start your first consultation above to get a personalized herbal protocol
               </p>
             </div>

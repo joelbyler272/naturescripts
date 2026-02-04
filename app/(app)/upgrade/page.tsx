@@ -1,8 +1,30 @@
+'use client';
+
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Crown, Sparkles } from 'lucide-react';
+import { Check, Crown, Sparkles, Loader2 } from 'lucide-react';
 
 export default function UpgradePage() {
+  const [loading, setLoading] = useState(false);
+
+  const handleUpgrade = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('No checkout URL returned:', data.error);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      setLoading(false);
+    }
+  };
+
   const features = {
     free: [
       '3 consultations per day',
@@ -24,19 +46,19 @@ export default function UpgradePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="text-center mb-12">
+      <div className="text-center mb-8 sm:mb-12">
         <div className="inline-flex items-center space-x-2 bg-accent/10 text-accent px-4 py-2 rounded-full text-sm font-medium mb-4">
           <Sparkles className="w-4 h-4" />
           <span>Limited Time: First month 50% off</span>
         </div>
-        <h1 className="text-4xl font-bold text-foreground mb-4">Upgrade to Pro</h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Upgrade to Pro</h1>
+        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
           Unlock unlimited consultations and advanced features for your natural health journey
         </p>
       </div>
 
       {/* Pricing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-12">
         {/* Free Tier */}
         <Card className="border-2 border-accent/20">
           <CardHeader>
@@ -88,8 +110,16 @@ export default function UpgradePage() {
                 </li>
               ))}
             </ul>
-            <Button className="w-full bg-accent hover:bg-accent/90 text-lg py-6">
-              Upgrade to Pro
+            <Button
+              onClick={handleUpgrade}
+              disabled={loading}
+              className="w-full bg-accent hover:bg-accent/90 text-lg py-6"
+            >
+              {loading ? (
+                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Redirecting to Checkout...</>
+              ) : (
+                'Upgrade to Pro'
+              )}
             </Button>
             <p className="text-xs text-center text-muted-foreground mt-3">
               Cancel anytime. No questions asked.
