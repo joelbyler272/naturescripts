@@ -1,19 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { getUserProfile, resetDailyUsage } from '@/lib/supabase/database';
+import { getUserProfile, resetDailyUsage, clearAllConsultations, toggleUserTier } from '@/lib/supabase/database';
+import { isDevUser } from '@/lib/constants/devAccess';
 import { createClient } from '@/lib/supabase/client';
-import { User, CreditCard, Shield, AlertTriangle, Loader2, Check, RotateCcw, Wrench } from 'lucide-react';
+import {
+  User, CreditCard, Shield, AlertTriangle, Loader2, Check,
+  RotateCcw, Wrench, Trash2, ArrowUpDown,
+} from 'lucide-react';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const supabase = createClient();
 
@@ -33,8 +39,13 @@ export default function SettingsPage() {
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Dev tools state
-  const [resetting, setResetting] = useState(false);
-  const [resetDone, setResetDone] = useState(false);
+  const [resettingUsage, setResettingUsage] = useState(false);
+  const [resetUsageDone, setResetUsageDone] = useState(false);
+  const [clearingConsultations, setClearingConsultations] = useState(false);
+  const [clearConsultationsDone, setClearConsultationsDone] = useState(false);
+  const [togglingTier, setTogglingTier] = useState(false);
+
+  const isDev = isDevUser(user?.email);
 
   useEffect(() => {
     if (user) {
@@ -92,18 +103,47 @@ export default function SettingsPage() {
     }
   };
 
+  // Dev tool handlers
   const handleResetUsage = async () => {
     if (!user) return;
-    setResetting(true);
-    setResetDone(false);
+    setResettingUsage(true);
+    setResetUsageDone(false);
     try {
       await resetDailyUsage(user.id);
-      setResetDone(true);
-      setTimeout(() => setResetDone(false), 3000);
+      setResetUsageDone(true);
+      setTimeout(() => setResetUsageDone(false), 3000);
     } catch (err) {
       console.error('Failed to reset usage:', err);
     } finally {
-      setResetting(false);
+      setResettingUsage(false);
+    }
+  };
+
+  const handleClearConsultations = async () => {
+    if (!user) return;
+    setClearingConsultations(true);
+    setClearConsultationsDone(false);
+    try {
+      await clearAllConsultations(user.id);
+      setClearConsultationsDone(true);
+      setTimeout(() => setClearConsultationsDone(false), 3000);
+    } catch (err) {
+      console.error('Failed to clear consultations:', err);
+    } finally {
+      setClearingConsultations(false);
+    }
+  };
+
+  const handleToggleTier = async () => {
+    if (!user) return;
+    setTogglingTier(true);
+    try {
+      const newTier = await toggleUserTier(user.id, userTier);
+      if (newTier) setUserTier(newTier);
+    } catch (err) {
+      console.error('Failed to toggle tier:', err);
+    } finally {
+      setTogglingTier(false);
     }
   };
 
@@ -288,39 +328,91 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Dev Tools */}
-          <Card className="border-amber-200/50">
-            <CardHeader>
-              <CardTitle className="flex items-center text-sm">
-                <Wrench className="w-4 h-4 text-amber-500 mr-2" />
-                Dev Tools
-              </CardTitle>
-              <CardDescription>Development &amp; testing utilities</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Reset Daily Usage</p>
-                  <p className="text-xs text-muted-foreground">Sets today&apos;s consultation count back to 0</p>
+          {/* Dev Tools — only shown for allowed emails */}
+          {isDev && (
+            <Card className="border-amber-200/50 bg-amber-50/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-sm">
+                  <Wrench className="w-4 h-4 text-amber-500 mr-2" />
+                  Dev Tools
+                </CardTitle>
+                <CardDescription>Testing utilities &mdash; only visible to dev accounts</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Reset Daily Usage */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Reset Daily Usage</p>
+                    <p className="text-xs text-muted-foreground">Sets today&apos;s consultation count back to 0</p>
+                  </div>
+                  <Button
+                    onClick={handleResetUsage}
+                    disabled={resettingUsage}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    {resettingUsage ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : resetUsageDone ? (
+                      <><Check className="w-3.5 h-3.5" /> Done</>
+                    ) : (
+                      <><RotateCcw className="w-3.5 h-3.5" /> Reset</>
+                    )}
+                  </Button>
                 </div>
-                <Button
-                  onClick={handleResetUsage}
-                  disabled={resetting}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  {resetting ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : resetDone ? (
-                    <><Check className="w-3.5 h-3.5" /> Reset</>
-                  ) : (
-                    <><RotateCcw className="w-3.5 h-3.5" /> Reset</>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+
+                {/* Clear All Consultations */}
+                <div className="flex items-center justify-between border-t border-amber-200/50 pt-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Clear All Consultations</p>
+                    <p className="text-xs text-muted-foreground">Marks all as abandoned, clears protocol data</p>
+                  </div>
+                  <Button
+                    onClick={handleClearConsultations}
+                    disabled={clearingConsultations}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-destructive hover:text-destructive"
+                  >
+                    {clearingConsultations ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : clearConsultationsDone ? (
+                      <><Check className="w-3.5 h-3.5" /> Cleared</>
+                    ) : (
+                      <><Trash2 className="w-3.5 h-3.5" /> Clear</>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Toggle Tier */}
+                <div className="flex items-center justify-between border-t border-amber-200/50 pt-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Toggle Tier
+                      <Badge variant="outline" className="ml-2 text-[10px]">
+                        {userTier.toUpperCase()}
+                      </Badge>
+                    </p>
+                    <p className="text-xs text-muted-foreground">Switch between free and pro for testing</p>
+                  </div>
+                  <Button
+                    onClick={handleToggleTier}
+                    disabled={togglingTier}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    {togglingTier ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <><ArrowUpDown className="w-3.5 h-3.5" /> Switch to {userTier === 'free' ? 'Pro' : 'Free'}</>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="border-destructive/50">
             <CardHeader>

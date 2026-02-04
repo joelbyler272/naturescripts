@@ -235,6 +235,7 @@ export async function getDailyUsage(userId: string): Promise<number> {
 // DEV TOOLS
 // ============================================
 
+// Reset uses UPDATE (not DELETE) because daily_usage has no DELETE RLS policy.
 export async function resetDailyUsage(userId: string): Promise<boolean> {
   const supabase = createClient();
 
@@ -242,7 +243,7 @@ export async function resetDailyUsage(userId: string): Promise<boolean> {
 
   const { error } = await supabase
     .from('daily_usage')
-    .delete()
+    .update({ consultation_count: 0 })
     .eq('user_id', userId)
     .eq('date', today);
 
@@ -252,4 +253,29 @@ export async function resetDailyUsage(userId: string): Promise<boolean> {
   }
 
   return true;
+}
+
+// Delete all consultations for a user (for testing fresh flows).
+// Uses UPDATE to mark as abandoned since there may not be a DELETE policy.
+export async function clearAllConsultations(userId: string): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('consultations')
+    .update({ status: 'abandoned', protocol_data: null })
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error clearing consultations:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// Toggle tier between free and pro.
+export async function toggleUserTier(userId: string, currentTier: 'free' | 'pro'): Promise<'free' | 'pro' | null> {
+  const newTier = currentTier === 'free' ? 'pro' : 'free';
+  const result = await updateUserProfile(userId, { tier: newTier });
+  return result ? newTier : null;
 }

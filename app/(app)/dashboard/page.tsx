@@ -64,17 +64,10 @@ export default function DashboardPage() {
     setVisibleSuggestions(shuffled.slice(0, 3));
   }, []);
 
-  // Rotate tips every 8 seconds
+  // Pick 1 random tip client-side only (changes on refresh, no rotation)
   useEffect(() => {
-    let tipIndex = 0;
-    setCurrentTip(TIPS[0]);
-
-    const interval = setInterval(() => {
-      tipIndex = (tipIndex + 1) % TIPS.length;
-      setCurrentTip(TIPS[tipIndex]);
-    }, 8000);
-
-    return () => clearInterval(interval);
+    const index = Math.floor(Date.now() / 1000) % TIPS.length;
+    setCurrentTip(TIPS[index]);
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -211,7 +204,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Rotating Tip */}
+      {/* Tip — static, changes on page refresh only */}
       {!isLoading && currentTip && (
         <div className="mb-5 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white/60 border border-border/30 rounded-lg">
           <Lightbulb className="w-4 h-4 text-accent flex-shrink-0" />
