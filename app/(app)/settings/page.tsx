@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { getUserProfile } from '@/lib/supabase/database';
+import { getUserProfile, resetDailyUsage } from '@/lib/supabase/database';
 import { createClient } from '@/lib/supabase/client';
-import { User, CreditCard, Shield, AlertTriangle, Loader2, Check } from 'lucide-react';
+import { User, CreditCard, Shield, AlertTriangle, Loader2, Check, RotateCcw, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
 
@@ -32,6 +32,10 @@ export default function SettingsPage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Dev tools state
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+
   useEffect(() => {
     if (user) {
       setFirstName(user.user_metadata?.first_name || '');
@@ -39,7 +43,6 @@ export default function SettingsPage() {
       setEmail(user.email || '');
       setEmailVerified(!!user.email_confirmed_at);
 
-      // Load tier from profile
       getUserProfile(user.id).then((profile) => {
         if (profile) setUserTier(profile.tier as 'free' | 'pro');
       });
@@ -86,6 +89,21 @@ export default function SettingsPage() {
       setPasswordMessage({ type: 'error', text: message });
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleResetUsage = async () => {
+    if (!user) return;
+    setResetting(true);
+    setResetDone(false);
+    try {
+      await resetDailyUsage(user.id);
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 3000);
+    } catch (err) {
+      console.error('Failed to reset usage:', err);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -179,7 +197,7 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-semibold text-foreground">Current Plan</p>
                   <p className="text-sm text-muted-foreground">
-                    {userTier === 'pro' ? 'Pro — $9/month' : 'Free — $0/month'}
+                    {userTier === 'pro' ? 'Pro \u2014 $9/month' : 'Free \u2014 $0/month'}
                   </p>
                 </div>
                 <Badge variant={userTier === 'pro' ? 'secondary' : 'outline'}>
@@ -266,6 +284,40 @@ export default function SettingsPage() {
                     )}
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dev Tools */}
+          <Card className="border-amber-200/50">
+            <CardHeader>
+              <CardTitle className="flex items-center text-sm">
+                <Wrench className="w-4 h-4 text-amber-500 mr-2" />
+                Dev Tools
+              </CardTitle>
+              <CardDescription>Development &amp; testing utilities</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Reset Daily Usage</p>
+                  <p className="text-xs text-muted-foreground">Sets today&apos;s consultation count back to 0</p>
+                </div>
+                <Button
+                  onClick={handleResetUsage}
+                  disabled={resetting}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  {resetting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : resetDone ? (
+                    <><Check className="w-3.5 h-3.5" /> Reset</>
+                  ) : (
+                    <><RotateCcw className="w-3.5 h-3.5" /> Reset</>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
