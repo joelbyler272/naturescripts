@@ -58,7 +58,7 @@ export default function ProtocolsPage() {
             href={routes.consultation}
             className="text-accent hover:text-accent/80 font-medium text-sm"
           >
-            Start your first consultation →
+            Start your first consultation &rarr;
           </Link>
         </div>
       )}

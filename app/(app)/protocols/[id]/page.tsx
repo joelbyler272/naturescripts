@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { getConsultation } from '@/lib/supabase/database';
 import { Consultation } from '@/types';
 import { routes } from '@/lib/constants/routes';
-import { 
-  ArrowLeft, 
-  Leaf, 
-  Clock, 
-  AlertTriangle, 
+import {
+  ArrowLeft,
+  Leaf,
+  Clock,
+  AlertTriangle,
   CheckCircle2,
   Lightbulb,
   Loader2,
@@ -48,7 +48,6 @@ export default function ProtocolPage() {
     );
   }
 
-  // protocol_data can be the GeneratedProtocol shape or the old Protocol shape
   const protocol = consultation?.protocol_data as any;
 
   if (!consultation || !protocol) {
@@ -63,7 +62,6 @@ export default function ProtocolPage() {
     );
   }
 
-  // Support both shapes: GeneratedProtocol (new) and Protocol (old schema)
   const isNewShape = !!protocol.primaryConcern;
   const title = isNewShape
     ? protocol.primaryConcern
@@ -79,7 +77,6 @@ export default function ProtocolPage() {
   const sizeLabel = isNewShape
     ? ({ light: 'Quick Recommendation', medium: 'Standard Protocol', full: 'Comprehensive Protocol' }[protocol.size as string] || 'Protocol')
     : 'Protocol';
-  // For old shape, extract herb info from phase1
   const oldHerbs = !isNewShape && protocol.phase1?.herbs
     ? protocol.phase1.herbs.map((h: any) => ({
         herb: h.name,
@@ -107,7 +104,7 @@ export default function ProtocolPage() {
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-medium text-accent uppercase tracking-wide">{sizeLabel}</span>
           <span className="text-xs text-muted-foreground">
-            \u00b7 {new Date(consultation.created_at).toLocaleDateString()}
+            &middot; {new Date(consultation.created_at).toLocaleDateString()}
           </span>
         </div>
         <h1 className="text-2xl font-semibold text-foreground mb-2">{title} Protocol</h1>
@@ -194,7 +191,7 @@ export default function ProtocolPage() {
             <ul className="space-y-2">
               {warnings.map((warning: string, index: number) => (
                 <li key={index} className="flex items-start gap-2 text-sm text-amber-800">
-                  <span className="text-amber-500">\u2022</span>
+                  <span className="text-amber-500">&bull;</span>
                   {warning}
                 </li>
               ))}

@@ -11,17 +11,27 @@ import { useConsultations } from '@/lib/hooks/useConsultations';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { HEALTH_SUGGESTIONS } from '@/lib/constants/suggestions';
 import { routes } from '@/lib/constants/routes';
-import { ArrowRight, Sparkles, Leaf, Send, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Leaf } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TIPS = [
-  { text: "Ashwagandha is best absorbed when taken with food", icon: Leaf },
-  { text: "Consistency matters more than perfection with herbal protocols", icon: Sparkles },
-  { text: "Most herbs take 2-4 weeks to show their full effects", icon: Leaf },
-  { text: "Keeping a symptom journal helps track what's working", icon: Sparkles },
+  "Ashwagandha is best absorbed when taken with food",
+  "Consistency matters more than perfection with herbal protocols",
+  "Most herbs take 2-4 weeks to show their full effects",
+  "Keeping a symptom journal helps track what's working",
+  "Adaptogens work best when cycled: 6 weeks on, 1 week off",
+  "Take iron-containing herbs away from tea and coffee",
+  "Probiotics are most effective when taken on an empty stomach",
+  "Chamomile tea before bed can improve sleep onset by 15 minutes",
+  "Turmeric absorption increases 2000% when paired with black pepper",
+  "Magnesium glycinate is the gentlest form on the stomach",
+  "Ginger tea can ease nausea within 20 minutes",
+  "Valerian root works better after 2 weeks of consistent use",
+  "Omega-3 supplements are best taken with a meal containing fat",
+  "Holy basil can help lower cortisol levels during stressful periods",
+  "Elderberry syrup is most effective taken at the first sign of illness",
 ];
 
-// Deterministic shuffle based on a seed (day of year)
 function seededShuffle<T>(arr: T[], seed: number): T[] {
   const copy = [...arr];
   let m = copy.length;
@@ -39,26 +49,24 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { pastProtocols, loading: consultationsLoading } = useConsultations();
   const { usage, loading: usageLoading, isAtLimit, isPro } = useUsageLimits();
-  
+
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [visibleSuggestions, setVisibleSuggestions] = useState<string[]>([]);
-  
-  const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
-  const todaysTip = TIPS[new Date().getDate() % TIPS.length];
-  const TipIcon = todaysTip.icon;
+  const [currentTip, setCurrentTip] = useState('');
 
-  // Rotate 3 suggestions every 5 seconds from the shuffled pool
+  const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
+
+  // Rotate 3 suggestions every 5 seconds
   const rotateSuggestions = useCallback(() => {
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-    const shuffled = seededShuffle(HEALTH_SUGGESTIONS, dayOfYear);
-    return shuffled;
+    return seededShuffle(HEALTH_SUGGESTIONS, dayOfYear);
   }, []);
 
   useEffect(() => {
     const shuffled = rotateSuggestions();
     let index = 0;
-    
+
     const updateVisible = () => {
       const start = (index * 3) % shuffled.length;
       const items = [
@@ -69,11 +77,24 @@ export default function DashboardPage() {
       setVisibleSuggestions(items);
       index++;
     };
-    
+
     updateVisible();
     const interval = setInterval(updateVisible, 5000);
     return () => clearInterval(interval);
   }, [rotateSuggestions]);
+
+  // Rotate tips every 8 seconds
+  useEffect(() => {
+    let tipIndex = 0;
+    setCurrentTip(TIPS[0]);
+
+    const interval = setInterval(() => {
+      tipIndex = (tipIndex + 1) % TIPS.length;
+      setCurrentTip(TIPS[tipIndex]);
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +124,7 @@ export default function DashboardPage() {
               What&apos;s on your mind today?
             </p>
           </div>
-          
+
           {!isPro && (
             <div className="text-left sm:text-right">
               {usageLoading ? (
@@ -116,11 +137,11 @@ export default function DashboardPage() {
                   )}>
                     {usage.currentCount}/{usage.dailyLimit} today
                   </p>
-                  <Link 
+                  <Link
                     href={routes.upgrade}
                     className="text-xs text-accent hover:text-accent/80 transition-colors"
                   >
-                    Go unlimited \u2192
+                    Go unlimited &rarr;
                   </Link>
                 </>
               )}
@@ -144,14 +165,14 @@ export default function DashboardPage() {
       )}
 
       {/* Chat Input Bar */}
-      <div className="mb-6">
+      <div className="mb-4">
         <form onSubmit={handleSubmit}>
-          <div 
+          <div
             className={cn(
               "relative flex items-center bg-white rounded-2xl border transition-all duration-200",
               isAtLimit && "opacity-50 cursor-not-allowed",
               isFocused && !isAtLimit
-                ? "border-accent shadow-[0_0_0_3px_rgba(107,142,127,0.1)]" 
+                ? "border-accent shadow-[0_0_0_3px_rgba(107,142,127,0.1)]"
                 : "border-border/50 hover:border-border"
             )}
           >
@@ -180,8 +201,8 @@ export default function DashboardPage() {
           </div>
         </form>
 
-        {/* Rotating suggestions — 3 visible, cycle every 5s */}
-        <div className="flex flex-wrap gap-2 mt-3 min-h-[2rem]">
+        {/* Rotating suggestions */}
+        <div className="flex flex-wrap gap-2 mt-3">
           {visibleSuggestions.map((suggestion) => (
             <button
               key={suggestion}
@@ -189,7 +210,7 @@ export default function DashboardPage() {
               disabled={isAtLimit}
               className={cn(
                 "px-3 py-1.5 text-xs sm:text-sm bg-white border rounded-full transition-all duration-300",
-                isAtLimit 
+                isAtLimit
                   ? "text-muted-foreground border-border/30 cursor-not-allowed opacity-50"
                   : "text-muted-foreground border-border/50 hover:border-accent/50 hover:text-foreground"
               )}
@@ -207,37 +228,35 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Tip of the Day */}
+      {/* Rotating Tip */}
       {!isLoading && (
-        <div className="mb-8 flex items-center gap-3 px-3 sm:px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
-          <TipIcon className="w-4 h-4 text-accent flex-shrink-0" />
+        <div className="mb-6 flex items-center gap-3 px-3 sm:px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
+          <Lightbulb className="w-4 h-4 text-accent flex-shrink-0" />
           <p className="text-xs sm:text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Tip:</span> {todaysTip.text}
+            <span className="font-medium text-foreground">Tip:</span> {currentTip}
           </p>
         </div>
       )}
 
-      {/* Past Protocols */}
+      {/* Past Protocols — show last 2, always show View All */}
       {!isLoading && (
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Your Protocols
             </h2>
-            {pastProtocols.length > 5 && (
-              <Link 
-                href={routes.protocols}
-                className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
-              >
-                View all
-                <ArrowRight className="w-3 h-3" />
-              </Link>
-            )}
+            <Link
+              href={routes.protocols}
+              className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
+            >
+              View all
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
 
           {pastProtocols.length > 0 ? (
             <div className="space-y-2">
-              {pastProtocols.slice(0, 5).map((consultation) => (
+              {pastProtocols.slice(0, 2).map((consultation) => (
                 <ProtocolCard key={consultation.id} consultation={consultation} />
               ))}
             </div>
