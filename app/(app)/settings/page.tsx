@@ -1,28 +1,99 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { User, CreditCard, Shield, AlertTriangle } from 'lucide-react';
+import { getUserProfile } from '@/lib/supabase/database';
+import { createClient } from '@/lib/supabase/client';
+import { User, CreditCard, Shield, AlertTriangle, Loader2, Check } from 'lucide-react';
+import Link from 'next/link';
+import { routes } from '@/lib/constants/routes';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  
-  // Get user info from Supabase auth
-  const firstName = user?.user_metadata?.first_name || '';
-  const lastName = user?.user_metadata?.last_name || '';
-  const email = user?.email || '';
-  const emailVerified = user?.email_confirmed_at ? true : false;
-  const userTier = 'free' as 'free' | 'pro'; // TODO: Get from user profile/subscription
+  const supabase = createClient();
+
+  // Profile state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [userTier, setUserTier] = useState<'free' | 'pro'>('free');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Password state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.user_metadata?.first_name || '');
+      setLastName(user.user_metadata?.last_name || '');
+      setEmail(user.email || '');
+      setEmailVerified(!!user.email_confirmed_at);
+
+      // Load tier from profile
+      getUserProfile(user.id).then((profile) => {
+        if (profile) setUserTier(profile.tier as 'free' | 'pro');
+      });
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    setSaved(false);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { first_name: firstName, last_name: lastName },
+      });
+      if (error) throw error;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+    setPasswordSaving(true);
+    setPasswordMessage(null);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setPasswordMessage({ type: 'success', text: 'Password updated successfully.' });
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update password.';
+      setPasswordMessage({ type: 'error', text: message });
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Settings</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Settings</h1>
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
 
@@ -45,30 +116,50 @@ export default function SettingsPage() {
               <CardDescription>Update your personal information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label htmlFor="firstName" className="text-sm font-medium text-foreground">
                     First Name
                   </label>
-                  <Input id="firstName" defaultValue={firstName} />
+                  <Input
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="lastName" className="text-sm font-medium text-foreground">
                     Last Name
                   </label>
-                  <Input id="lastName" defaultValue={lastName} />
+                  <Input
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-foreground">
                   Email
                 </label>
-                <Input id="email" type="email" defaultValue={email} disabled />
+                <Input id="email" type="email" value={email} disabled />
                 <p className="text-xs text-muted-foreground">
                   Email cannot be changed. Contact support if you need to update it.
                 </p>
               </div>
-              <Button className="bg-accent hover:bg-accent/90">Save Changes</Button>
+              <Button
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className="bg-accent hover:bg-accent/90"
+              >
+                {saving ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                ) : saved ? (
+                  <><Check className="w-4 h-4 mr-2" /> Saved</>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -88,7 +179,7 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-semibold text-foreground">Current Plan</p>
                   <p className="text-sm text-muted-foreground">
-                    {userTier === 'pro' ? 'Pro - $9/month' : 'Free - $0/month'}
+                    {userTier === 'pro' ? 'Pro — $9/month' : 'Free — $0/month'}
                   </p>
                 </div>
                 <Badge variant={userTier === 'pro' ? 'secondary' : 'outline'}>
@@ -96,10 +187,12 @@ export default function SettingsPage() {
                 </Badge>
               </div>
               {userTier === 'free' ? (
-                <Button className="w-full bg-accent hover:bg-accent/90">Upgrade to Pro</Button>
+                <Link href={routes.upgrade}>
+                  <Button className="w-full bg-accent hover:bg-accent/90">Upgrade to Pro</Button>
+                </Link>
               ) : (
-                <div className="flex space-x-2">
-                  <Button variant="outline">Update Payment</Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button variant="outline">Manage Subscription</Button>
                   <Button variant="outline" className="text-destructive">
                     Cancel Subscription
                   </Button>
@@ -119,16 +212,60 @@ export default function SettingsPage() {
               </CardTitle>
               <CardDescription>Manage your account security</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium text-foreground mb-2">Password</h4>
-                <Button variant="outline">Change Password</Button>
-              </div>
+            <CardContent className="space-y-6">
               <div>
                 <h4 className="font-medium text-foreground mb-2">Email Verification</h4>
                 <Badge variant={emailVerified ? 'secondary' : 'destructive'}>
                   {emailVerified ? 'Verified' : 'Not Verified'}
                 </Badge>
+              </div>
+
+              <div className="border-t pt-6">
+                <h4 className="font-medium text-foreground mb-4">Change Password</h4>
+                <div className="space-y-3 max-w-sm">
+                  <div className="space-y-2">
+                    <label htmlFor="newPassword" className="text-sm font-medium text-foreground">
+                      New Password
+                    </label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                      Confirm Password
+                    </label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+                  {passwordMessage && (
+                    <p className={`text-sm ${
+                      passwordMessage.type === 'success' ? 'text-accent' : 'text-destructive'
+                    }`}>
+                      {passwordMessage.text}
+                    </p>
+                  )}
+                  <Button
+                    onClick={handleChangePassword}
+                    disabled={passwordSaving || !newPassword || !confirmPassword}
+                    variant="outline"
+                  >
+                    {passwordSaving ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...</>
+                    ) : (
+                      'Update Password'
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
