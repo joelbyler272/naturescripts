@@ -72,20 +72,23 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
-          'var(--font-inter)',
-          'Inter',
           'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
           'sans-serif'
         ],
         serif: [
-          'var(--font-crimson)',
-          'Crimson Pro',
           'Georgia',
+          'Times New Roman',
+          'Liberation Serif',
           'serif'
         ],
         mono: [
           'var(--font-geist-mono)',
-          'Geist Mono',
+          'ui-monospace',
           'monospace'
         ]
       },

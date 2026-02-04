@@ -11,10 +11,10 @@ interface ProtocolCardProps {
 
 export function ProtocolCard({ consultation }: ProtocolCardProps) {
   const date = format(new Date(consultation.created_at), 'MMM dd, yyyy');
-  const patterns = consultation.protocol_data.analysis.patterns.slice(0, 3).join(', ');
+  const patterns = consultation.protocol_data?.analysis?.patterns?.slice(0, 3) || [];
 
   return (
-    <Link href={`/protocol/${consultation.id}`}>
+    <Link href={`/protocols/${consultation.id}`}>
       <Card className="hover:border-primary/30 transition-colors cursor-pointer">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
@@ -28,11 +28,17 @@ export function ProtocolCard({ consultation }: ProtocolCardProps) {
                 {consultation.initial_input.length > 60 ? '...' : ''}
               </h3>
               <div className="flex flex-wrap gap-2">
-                {consultation.protocol_data.analysis.patterns.slice(0, 3).map((pattern, idx) => (
-                  <Badge key={idx} variant="outline" className="text-xs">
-                    {pattern}
+                {patterns.length > 0 ? (
+                  patterns.map((pattern, idx) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      {pattern}
+                    </Badge>
+                  ))
+                ) : (
+                  <Badge variant="outline" className="text-xs text-muted-foreground">
+                    In progress
                   </Badge>
-                ))}
+                )}
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-charcoal/40 flex-shrink-0 ml-2" />
