@@ -103,12 +103,16 @@
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
 }
 
 /* Better text rendering */
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
 }
 
 /* Selection color - sage tint */
@@ -129,6 +133,22 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Smooth page transitions */
+  .animate-in {
+    animation: animate-in 0.2s ease-out;
+  }
+  
+  @keyframes animate-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 /* ================================
@@ -136,6 +156,13 @@ body {
    ================================ */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Ensure touch targets are at least 44px */
+@media (max-width: 640px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+  }
 }
 
 /* ================================
@@ -283,6 +310,9 @@ img[data-loading="true"] {
   outline-offset: 2px;
 }
 
+/* ================================
+   Reduced Motion Preferences
+   ================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -294,5 +324,19 @@ img[data-loading="true"] {
   
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* ================================
+   Print Styles
+   ================================ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+    color: black;
   }
 }
