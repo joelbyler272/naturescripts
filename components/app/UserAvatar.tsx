@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { Settings, User, LogOut } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 
 export function UserAvatar() {
   const { user, signOut } = useAuth();
@@ -13,7 +13,6 @@ export function UserAvatar() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Get user info from metadata or email
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User';
   const lastName = user?.user_metadata?.last_name || '';
   const initials = `${firstName.charAt(0)}${lastName?.charAt(0) || ''}`;
@@ -24,7 +23,6 @@ export function UserAvatar() {
         setIsOpen(false);
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -57,14 +55,6 @@ export function UserAvatar() {
               {user?.email}
             </p>
           </div>
-          <Link
-            href={routes.settings}
-            className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            <User className="w-4 h-4" />
-            Profile
-          </Link>
           <Link
             href={routes.settings}
             className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors"

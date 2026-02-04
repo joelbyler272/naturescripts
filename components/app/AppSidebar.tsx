@@ -12,7 +12,6 @@ import {
   Leaf,
   Search,
   HelpCircle,
-  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -67,7 +66,7 @@ export function AppSidebar() {
             <Search className="w-4 h-4" />
             <span className="flex-1 text-left">Search...</span>
             <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border/50">
-              ⌘K
+              \u2318K
             </kbd>
           </button>
         </div>
@@ -82,7 +81,7 @@ export function AppSidebar() {
               'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
               'transition-colors'
             )}
-            title="Search (⌘K)"
+            title="Search (\u2318K)"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -115,13 +114,6 @@ export function AppSidebar() {
             href={routes.library}
             label="Library"
             icon={BookOpen}
-            collapsed={collapsed}
-          />
-
-          <SidebarItem
-            href={routes.settings}
-            label="Settings"
-            icon={Settings}
             collapsed={collapsed}
           />
         </div>

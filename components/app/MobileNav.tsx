@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, MessageSquare, Leaf, BookOpen, Settings } from 'lucide-react';
+import { Home, MessageSquare, Leaf, BookOpen } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +11,6 @@ const navItems = [
   { href: routes.consultation, label: 'Consult', icon: MessageSquare },
   { href: routes.remedies, label: 'Remedies', icon: Leaf },
   { href: routes.library, label: 'Library', icon: BookOpen },
-  { href: routes.settings, label: 'Settings', icon: Settings },
 ];
 
 export function MobileNav() {
