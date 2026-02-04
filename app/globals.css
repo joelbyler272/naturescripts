@@ -132,10 +132,16 @@ body {
 }
 
 /* ================================
+   Mobile Safe Area (for bottom nav)
+   ================================ */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ================================
    Landing Page Animations
    ================================ */
 
-/* Floating botanical elements - subtle, organic movement */
 @keyframes float-slow {
   0%, 100% { 
     transform: translate(0, 0) rotate(0deg) scale(1); 
@@ -184,7 +190,6 @@ body {
   animation: float-fast 12s ease-in-out infinite;
 }
 
-/* Fade in on scroll - for future use with Intersection Observer */
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -200,7 +205,6 @@ body {
   animation: fade-in-up 0.6s ease-out forwards;
 }
 
-/* Subtle pulse for emphasis */
 @keyframes subtle-pulse {
   0%, 100% {
     opacity: 1;
@@ -214,7 +218,6 @@ body {
   animation: subtle-pulse 3s ease-in-out infinite;
 }
 
-/* Counter animation helper */
 @keyframes count-up {
   from {
     opacity: 0;
@@ -230,7 +233,6 @@ body {
   animation: count-up 0.4s ease-out forwards;
 }
 
-/* Progress bar fill animation */
 @keyframes fill-bar {
   from {
     width: 0%;
@@ -244,13 +246,11 @@ body {
   animation: fill-bar 1.5s ease-out forwards;
 }
 
-/* Smooth accordion transition */
 .accordion-content {
   overflow: hidden;
   transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
 }
 
-/* Button hover effects */
 .btn-hover-lift {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -260,7 +260,6 @@ body {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
 }
 
-/* Card hover effects */
 .card-hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
@@ -270,7 +269,6 @@ body {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
 }
 
-/* Smooth image loading */
 img {
   opacity: 1;
   transition: opacity 0.3s ease;
@@ -280,13 +278,11 @@ img[data-loading="true"] {
   opacity: 0;
 }
 
-/* Focus states for accessibility */
 :focus-visible {
   outline: 2px solid oklch(0.58 0.11 152);
   outline-offset: 2px;
 }
 
-/* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
