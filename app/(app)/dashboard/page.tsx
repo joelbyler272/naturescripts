@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { ProtocolCard } from '@/components/protocol/ProtocolCard';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useConsultations } from '@/lib/hooks/useConsultations';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
+import { HEALTH_SUGGESTIONS } from '@/lib/constants/suggestions';
 import { routes } from '@/lib/constants/routes';
 import { ArrowRight, Sparkles, Leaf, Send, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,25 +21,59 @@ const TIPS = [
   { text: "Keeping a symptom journal helps track what's working", icon: Sparkles },
 ];
 
-const SUGGESTIONS = [
-  "I've been feeling fatigued lately",
-  "Help with sleep issues",
-  "Digestive discomfort after meals",
-  "Stress and anxiety support",
-];
+// Deterministic shuffle based on a seed (day of year)
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const copy = [...arr];
+  let m = copy.length;
+  let s = seed;
+  while (m) {
+    s = (s * 9301 + 49297) % 233280;
+    const i = Math.floor((s / 233280) * m--);
+    [copy[m], copy[i]] = [copy[i], copy[m]];
+  }
+  return copy;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { activeProtocol, pastProtocols, loading: consultationsLoading } = useConsultations();
+  const { pastProtocols, loading: consultationsLoading } = useConsultations();
   const { usage, loading: usageLoading, isAtLimit, isPro } = useUsageLimits();
   
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [visibleSuggestions, setVisibleSuggestions] = useState<string[]>([]);
   
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
   const todaysTip = TIPS[new Date().getDate() % TIPS.length];
   const TipIcon = todaysTip.icon;
+
+  // Rotate 3 suggestions every 5 seconds from the shuffled pool
+  const rotateSuggestions = useCallback(() => {
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    const shuffled = seededShuffle(HEALTH_SUGGESTIONS, dayOfYear);
+    return shuffled;
+  }, []);
+
+  useEffect(() => {
+    const shuffled = rotateSuggestions();
+    let index = 0;
+    
+    const updateVisible = () => {
+      const start = (index * 3) % shuffled.length;
+      const items = [
+        shuffled[start % shuffled.length],
+        shuffled[(start + 1) % shuffled.length],
+        shuffled[(start + 2) % shuffled.length],
+      ];
+      setVisibleSuggestions(items);
+      index++;
+    };
+    
+    updateVisible();
+    const interval = setInterval(updateVisible, 5000);
+    return () => clearInterval(interval);
+  }, [rotateSuggestions]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,20 +94,16 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full">
-      {/* Welcome Header with inline usage indicator */}
+      {/* Welcome Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
           <div>
             <WelcomeHeader firstName={firstName} />
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              {activeProtocol 
-                ? "Your protocol is in progress. Keep up the great work!"
-                : "What's on your mind today?"
-              }
+              What&apos;s on your mind today?
             </p>
           </div>
           
-          {/* Usage indicator for free tier */}
           {!isPro && (
             <div className="text-left sm:text-right">
               {usageLoading ? (
@@ -89,7 +120,7 @@ export default function DashboardPage() {
                     href={routes.upgrade}
                     className="text-xs text-accent hover:text-accent/80 transition-colors"
                   >
-                    Go unlimited →
+                    Go unlimited \u2192
                   </Link>
                 </>
               )}
@@ -103,14 +134,10 @@ export default function DashboardPage() {
         <div className="mb-6 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-800">
-              Daily limit reached
-            </p>
+            <p className="text-sm font-medium text-amber-800">Daily limit reached</p>
             <p className="text-sm text-amber-700 mt-1">
-              You&apos;ve used all 3 free consultations for today. 
-              <Link href={routes.upgrade} className="underline ml-1">
-                Upgrade to Pro
-              </Link> for unlimited consultations.
+              You&apos;ve used all 3 free consultations for today.
+              <Link href={routes.upgrade} className="underline ml-1">Upgrade to Pro</Link> for unlimited.
             </p>
           </div>
         </div>
@@ -135,10 +162,7 @@ export default function DashboardPage() {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               disabled={isAtLimit}
-              placeholder={isAtLimit 
-                ? "Daily limit reached"
-                : "Describe how you're feeling..."
-              }
+              placeholder={isAtLimit ? "Daily limit reached" : "Describe how you're feeling..."}
               className="flex-1 px-4 sm:px-5 py-3 sm:py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm sm:text-base disabled:cursor-not-allowed"
             />
             <button
@@ -156,15 +180,15 @@ export default function DashboardPage() {
           </div>
         </form>
 
-        {/* Quick suggestions */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          {SUGGESTIONS.map((suggestion) => (
+        {/* Rotating suggestions — 3 visible, cycle every 5s */}
+        <div className="flex flex-wrap gap-2 mt-3 min-h-[2rem]">
+          {visibleSuggestions.map((suggestion) => (
             <button
               key={suggestion}
               onClick={() => handleSuggestionClick(suggestion)}
               disabled={isAtLimit}
               className={cn(
-                "px-3 py-1.5 text-xs sm:text-sm bg-white border rounded-full transition-colors",
+                "px-3 py-1.5 text-xs sm:text-sm bg-white border rounded-full transition-all duration-300",
                 isAtLimit 
                   ? "text-muted-foreground border-border/30 cursor-not-allowed opacity-50"
                   : "text-muted-foreground border-border/50 hover:border-accent/50 hover:text-foreground"
@@ -183,40 +207,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Active Protocol Card */}
-      {!isLoading && activeProtocol && (
-        <div className="mb-8">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            Active Protocol
-          </h2>
-          <div className="bg-white border border-border/50 rounded-xl p-4 sm:p-5 hover:border-accent/30 transition-colors">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-                <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Leaf className="w-5 h-5 text-accent" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base sm:text-lg font-semibold text-foreground truncate">
-                    {activeProtocol.protocol_data?.analysis?.patterns?.[0] || 'Your Protocol'}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                    Started {new Date(activeProtocol.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    {' \u00b7 '}
-                    {Math.floor((Date.now() - new Date(activeProtocol.created_at).getTime()) / (1000 * 60 * 60 * 24))} days in
-                  </p>
-                </div>
-              </div>
-              <Link href={`${routes.protocols}/${activeProtocol.id}`}>
-                <Button variant="outline" size="sm" className="flex-shrink-0">
-                  <span className="hidden sm:inline">View</span>
-                  <ArrowRight className="w-3 h-3 sm:ml-1" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Tip of the Day */}
       {!isLoading && (
         <div className="mb-8 flex items-center gap-3 px-3 sm:px-4 py-3 bg-white/60 border border-border/30 rounded-lg">
@@ -232,9 +222,9 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Past Protocols
+              Your Protocols
             </h2>
-            {pastProtocols.length > 3 && (
+            {pastProtocols.length > 5 && (
               <Link 
                 href={routes.protocols}
                 className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
@@ -247,7 +237,7 @@ export default function DashboardPage() {
 
           {pastProtocols.length > 0 ? (
             <div className="space-y-2">
-              {pastProtocols.slice(0, 3).map((consultation) => (
+              {pastProtocols.slice(0, 5).map((consultation) => (
                 <ProtocolCard key={consultation.id} consultation={consultation} />
               ))}
             </div>
