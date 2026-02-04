@@ -1,0 +1,18 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#FAFAF9"/>
+  <rect x="40" y="40" width="1120" height="550" rx="24" fill="white" stroke="#E5E5E5" stroke-width="2"/>
+  
+  <!-- Logo/Icon -->
+  <circle cx="600" cy="240" r="80" fill="#6B8E7F" fill-opacity="0.1"/>
+  <path d="M600 180 C580 200, 560 240, 580 280 C590 300, 610 300, 620 280 C640 240, 620 200, 600 180" fill="#6B8E7F"/>
+  <path d="M580 260 C570 270, 565 285, 575 295" stroke="#6B8E7F" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Title -->
+  <text x="600" y="380" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="600" fill="#1A1A1A">NatureScripts</text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="440" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#6B7280">Personalized Natural Health Protocols</text>
+  
+  <!-- Tagline -->
+  <text x="600" y="500" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#9CA3AF">AI-powered herbal, diet, and lifestyle recommendations</text>
+</svg>
