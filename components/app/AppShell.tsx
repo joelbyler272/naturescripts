@@ -17,18 +17,16 @@ function AppShellContent({ children, maxWidth = 'max-w-4xl' }: AppShellContentPr
   const { user, loading } = useAuth();
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Desktop Sidebar - hidden on mobile, sticky on desktop */}
+    <div className="h-screen flex bg-background overflow-hidden">
+      {/* Desktop Sidebar - hidden on mobile, fixed on desktop */}
       <div className="hidden md:flex md:flex-shrink-0">
-        <div className="sticky top-0 h-screen">
-          <AppSidebar />
-        </div>
+        <AppSidebar />
       </div>
 
       {/* Main Content Area */}
       <div
         className={cn(
-          "flex-1 flex flex-col min-h-screen overflow-x-hidden relative",
+          "flex-1 flex flex-col h-screen overflow-hidden relative",
           "transition-all duration-300 ease-out"
         )}
       >
@@ -39,8 +37,8 @@ function AppShellContent({ children, maxWidth = 'max-w-4xl' }: AppShellContentPr
           </div>
         )}
 
-        {/* Page Content - Centered */}
-        <main className="flex-1 bg-secondary/20 pb-20 md:pb-0">
+        {/* Page Content - Scrollable */}
+        <main className="flex-1 bg-secondary/20 pb-20 md:pb-0 overflow-y-auto">
           <div
             className={cn(
               "min-h-full flex justify-center",
