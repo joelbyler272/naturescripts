@@ -1,46 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/consultation
-// TODO: Implement consultation logic in Phase 2
-// - Check user tier and daily limits
-// - Send message to Anthropic API
-// - Process AI response
-// - Save to Supabase
-// - Return protocol data
+// Consultations are currently processed client-side.
+// This endpoint is reserved for future AI API integration.
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { message, conversationLog } = body;
-
-    // TODO: Implement consultation logic
-    console.log('Consultation request:', { message });
-
-    return NextResponse.json(
-      { message: 'Consultation endpoint - implementation pending' },
-      { status: 501 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+  // Consultations are currently handled client-side
+  // This endpoint will be implemented when AI backend is integrated
+  return NextResponse.json(
+    {
+      error: 'Feature in development',
+      message: 'AI-powered consultations are processed client-side. This API endpoint is reserved for future enhancements.',
+    },
+    { status: 400 }
+  );
 }
 
 // GET /api/consultation/[id]
-// TODO: Implement get consultation by ID
+// Consultation data is fetched directly from Supabase client-side.
 export async function GET(request: NextRequest) {
-  try {
-    // TODO: Implement get consultation logic
-    return NextResponse.json(
-      { message: 'Get consultation endpoint - implementation pending' },
-      { status: 501 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+  // Consultation retrieval is handled client-side via Supabase
+  return NextResponse.json(
+    {
+      error: 'Use client-side fetch',
+      message: 'Consultation data should be fetched client-side using Supabase.',
+    },
+    { status: 400 }
+  );
 }

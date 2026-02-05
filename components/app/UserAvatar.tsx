@@ -40,13 +40,20 @@ export function UserAvatar() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center text-sm font-medium hover:bg-accent/90 transition-colors"
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-label={`Account menu for ${firstName}`}
+        className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center text-sm font-medium hover:bg-accent/90 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2"
       >
         {initials.toUpperCase()}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-border/50 py-1 z-50">
+        <div
+          role="menu"
+          aria-orientation="vertical"
+          className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-border/50 py-1 z-50"
+        >
           <div className="px-4 py-2 border-b border-border/50">
             <p className="text-sm font-medium text-foreground truncate">
               {firstName} {lastName}
@@ -57,18 +64,20 @@ export function UserAvatar() {
           </div>
           <Link
             href={routes.settings}
-            className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors"
+            role="menuitem"
+            className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors min-h-[44px]"
             onClick={() => setIsOpen(false)}
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-4 h-4" aria-hidden="true" />
             Settings
           </Link>
-          <hr className="my-1 border-border/50" />
+          <hr className="my-1 border-border/50" aria-hidden="true" />
           <button
-            className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors w-full text-left"
+            role="menuitem"
+            className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors w-full text-left min-h-[44px]"
             onClick={handleSignOut}
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4" aria-hidden="true" />
             Sign out
           </button>
         </div>

@@ -1,28 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/auth/signup
-// TODO: Implement signup logic in Phase 2
-// - Validate email/password
-// - Create user in Supabase
-// - Send verification email
-// - Return user data or error
+// Email/password signup is handled client-side via Supabase Auth.
+// This endpoint exists as a placeholder for future server-side signup enhancements.
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { email, password, firstName } = body;
-
-    // TODO: Implement signup logic
-    console.log('Signup request:', { email, firstName });
-
-    return NextResponse.json(
-      { message: 'Signup endpoint - implementation pending' },
-      { status: 501 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+  // Signup is handled client-side via Supabase Auth
+  // Direct users to use the client-side signup flow at /sign-up
+  return NextResponse.json(
+    {
+      error: 'Please use the signup page',
+      message: 'Email/password signup is handled client-side. Visit /sign-up to create an account.',
+    },
+    { status: 400 }
+  );
 }
