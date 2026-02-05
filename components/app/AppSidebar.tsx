@@ -29,7 +29,7 @@ export function AppSidebar() {
   if (!mounted) {
     return (
       <aside
-        className="h-screen bg-white border-r border-border/50 flex flex-col sticky top-0"
+        className="h-screen bg-white border-r border-border/50 flex flex-col"
         style={{ width: SIDEBAR_WIDTH_EXPANDED }}
       />
     );
@@ -38,7 +38,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        'h-screen bg-white border-r border-border/50 flex flex-col sticky top-0',
+        'h-screen bg-white border-r border-border/50 flex flex-col',
         'transition-[width] duration-300 ease-out'
       )}
       style={{ width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED }}
