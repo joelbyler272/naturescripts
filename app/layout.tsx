@@ -9,7 +9,7 @@ const geistMono = localFont({
   variable: '--font-geist-mono'
 })
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://naturescripts.app';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://naturescripts.vercel.app';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     description: "AI-powered naturopathic consultation. Get personalized herbal, diet, and lifestyle protocols in about a minute.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.svg",
         width: 1200,
         height: 630,
         alt: "NatureScripts — Personalized Natural Health Protocols",
@@ -53,15 +53,14 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "NatureScripts — Personalized Natural Health Protocols",
     description: "AI-powered naturopathic consultation. Get personalized herbal, diet, and lifestyle protocols in about a minute.",
-    images: ["/og-image.png"],
+    images: ["/og-image.svg"],
     creator: "@naturescripts",
   },
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
       { url: "/icon.svg", type: "image/svg+xml" },
     ],
-    apple: "/apple-touch-icon.png",
+    apple: "/apple-touch-icon.svg",
   },
   manifest: "/manifest.json",
 }
