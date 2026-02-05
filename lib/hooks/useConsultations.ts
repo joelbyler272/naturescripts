@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { 
-  getUserConsultations, 
+import {
+  getUserConsultations,
   getConsultation,
   createConsultation,
   updateConsultation,
 } from '@/lib/supabase/database';
 import { Consultation, Message } from '@/types';
+import { logger } from '@/lib/utils/logger';
 
 export function useConsultations() {
   const { user } = useAuth();
@@ -29,7 +30,7 @@ export function useConsultations() {
       setConsultations(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching consultations:', err);
+      logger.error('Error fetching consultations:', err);
       setError('Failed to load consultations');
     } finally {
       setLoading(false);
@@ -40,15 +41,11 @@ export function useConsultations() {
     refresh();
   }, [refresh]);
 
-  // All completed consultations are "past protocols" — there is no "active" concept
-  // A protocol is simply a completed consultation that has protocol_data
-  const pastProtocols = consultations.filter(c => 
-    c.status === 'completed' && c.protocol_data != null
-  );
-
+  // The database query already filters for completed consultations with protocol_data
+  // No client-side filtering needed - this eliminates the N+1 issue
   return {
     consultations,
-    pastProtocols,
+    pastProtocols: consultations, // Already filtered by DB query
     loading,
     error,
     refresh,
@@ -73,7 +70,7 @@ export function useConsultation(consultationId?: string) {
       setConsultation(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching consultation:', err);
+      logger.error('Error fetching consultation:', err);
       setError('Failed to load consultation');
     } finally {
       setLoading(false);
@@ -98,7 +95,7 @@ export function useConsultation(consultationId?: string) {
       }
       return data;
     } catch (err) {
-      console.error('Error creating consultation:', err);
+      logger.error('Error creating consultation:', err);
       setError('Failed to create consultation');
       return null;
     }
@@ -121,7 +118,7 @@ export function useConsultation(consultationId?: string) {
       }
       return true;
     } catch (err) {
-      console.error('Error adding message:', err);
+      logger.error('Error adding message:', err);
       setError('Failed to save message');
       return false;
     }
@@ -135,7 +132,7 @@ export function useConsultation(consultationId?: string) {
       setConsultation(null);
       return true;
     } catch (err) {
-      console.error('Error abandoning consultation:', err);
+      logger.error('Error abandoning consultation:', err);
       return false;
     }
   }, [consultation]);

@@ -58,6 +58,7 @@ export function ChatInput({ onSend, disabled = false, placeholder }: ChatInputPr
       >
         <textarea
           ref={textareaRef}
+          id="chat-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -66,6 +67,8 @@ export function ChatInput({ onSend, disabled = false, placeholder }: ChatInputPr
           placeholder={placeholder || 'Type your message...'}
           disabled={disabled}
           rows={1}
+          aria-label="Message input"
+          aria-describedby="chat-input-help"
           className={cn(
             'flex-1 px-4 py-3 bg-transparent text-foreground placeholder:text-muted-foreground',
             'focus:outline-none text-sm disabled:opacity-50 resize-none',
@@ -75,17 +78,18 @@ export function ChatInput({ onSend, disabled = false, placeholder }: ChatInputPr
         <button
           type="submit"
           disabled={!input.trim() || disabled}
+          aria-label="Send message"
           className={cn(
-            'mr-2 mb-2 w-9 h-9 rounded-lg flex items-center justify-center transition-all flex-shrink-0',
+            'mr-2 mb-2 w-11 h-11 rounded-lg flex items-center justify-center transition-all flex-shrink-0',
             input.trim() && !disabled
-              ? 'bg-accent text-white hover:bg-accent/90'
+              ? 'bg-accent text-white hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent/50'
               : 'bg-secondary/50 text-muted-foreground'
           )}
         >
-          <Send className="w-4 h-4" />
+          <Send className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
-      <p className="text-xs text-muted-foreground mt-2 px-1">
+      <p id="chat-input-help" className="text-xs text-muted-foreground mt-2 px-1">
         Press Enter to send, Shift+Enter for new line
       </p>
     </form>

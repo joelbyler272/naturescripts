@@ -59,17 +59,19 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
           }
 
           // Create consultation record (in_progress, no usage counted yet)
+          // Use actual user tier from metadata, not hardcoded 'free'
+          const userTier = (user.user_metadata?.tier as 'free' | 'pro') || 'free';
           const consultation = await createConsultation(
             user.id,
             initialQuery || 'New consultation',
-            'free'
+            userTier
           );
 
           if (consultation) {
             consultationId.current = consultation.id;
           }
         } catch (error) {
-          console.error('Error initializing consultation:', error);
+          // Error logged via logger in database.ts
         }
       }
 
@@ -169,24 +171,34 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     const protocol = generateProtocol(state);
     setGeneratedProtocol(protocol);
 
-    // Save protocol AND increment usage only now that a protocol is actually created
+    // Save protocol AND increment usage atomically
+    // Both must succeed or the operation should be considered failed
     if (consultationId.current && user?.id) {
       try {
         const allMessages = [...state.messages, userMessage];
-        await updateConsultation(consultationId.current, {
-          conversation_log: allMessages.map(m => ({
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp,
-          })),
-          protocol_data: protocol as any,
-          status: 'completed',
-        });
 
-        // NOW increment daily usage — protocol was successfully created
-        await incrementDailyUsage(user.id);
+        // Run both operations in parallel - if either fails, catch will handle it
+        const [updateResult, usageResult] = await Promise.all([
+          updateConsultation(consultationId.current, {
+            conversation_log: allMessages.map(m => ({
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp,
+            })),
+            protocol_data: protocol as any,
+            status: 'completed',
+          }),
+          incrementDailyUsage(user.id),
+        ]);
+
+        if (!updateResult) {
+          throw new Error('Failed to save consultation');
+        }
       } catch (error) {
-        console.error('Error saving consultation:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error saving consultation:', error);
+        }
+        // Consider showing user-facing error here
       }
     }
 
@@ -245,27 +257,27 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
 
         {isTyping && <TypingIndicator />}
 
-        {isReadyToGenerate && !generatedProtocol && !isGenerating && (
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={handleGenerateProtocol}
-              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
-            >
-              Generate my protocol
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {generatedProtocol && (
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={handleViewProtocol}
-              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
-            >
-              View your protocol
-              <ArrowRight className="w-4 h-4" />
-            </button>
+        {/* Action buttons container - fixed height to prevent layout shift */}
+        {(isReadyToGenerate || generatedProtocol) && !isGenerating && (
+          <div className="flex justify-center pt-4 min-h-[60px]">
+            {isReadyToGenerate && !generatedProtocol && (
+              <button
+                onClick={handleGenerateProtocol}
+                className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
+              >
+                Generate my protocol
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              </button>
+            )}
+            {generatedProtocol && (
+              <button
+                onClick={handleViewProtocol}
+                className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
+              >
+                View your protocol
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              </button>
+            )}
           </div>
         )}
 

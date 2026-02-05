@@ -1,12 +1,44 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getConsultation } from '@/lib/supabase/database';
-import { Consultation } from '@/types';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { Consultation, Protocol } from '@/types';
+import { GeneratedProtocol, ProtocolRecommendation } from '@/lib/consultation/types';
 import { routes } from '@/lib/constants/routes';
+
+// Type guard for new protocol shape (GeneratedProtocol)
+function isNewProtocolShape(data: unknown): data is GeneratedProtocol {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'primaryConcern' in data &&
+    typeof (data as GeneratedProtocol).primaryConcern === 'string'
+  );
+}
+
+// Type guard for old protocol shape (Protocol)
+function isOldProtocolShape(data: unknown): data is Protocol {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'analysis' in data &&
+    typeof (data as Protocol).analysis === 'object'
+  );
+}
+
+// Normalized recommendation for display
+interface DisplayRecommendation {
+  herb: string;
+  botanicalName: string;
+  dosage: string;
+  timing: string;
+  reason: string;
+  duration?: string;
+}
 import {
   ArrowLeft,
   Leaf,
@@ -15,42 +47,88 @@ import {
   CheckCircle2,
   Lightbulb,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function ProtocolPage() {
   const params = useParams();
+  const { user } = useAuth();
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+
+  const loadProtocol = useCallback(async () => {
+    if (!params.id || typeof params.id !== 'string') {
+      setLoading(false);
+      return;
+    }
+    try {
+      setError(null);
+      // Pass userId to verify ownership (security)
+      const data = await getConsultation(params.id, user?.id);
+      setConsultation(data);
+    } catch (err) {
+      setError('Failed to load protocol. Please try again.');
+    } finally {
+      setLoading(false);
+      setRetrying(false);
+    }
+  }, [params.id, user?.id]);
 
   useEffect(() => {
-    async function load() {
-      if (!params.id || typeof params.id !== 'string') {
-        setLoading(false);
-        return;
-      }
-      try {
-        const data = await getConsultation(params.id);
-        setConsultation(data);
-      } catch (err) {
-        console.error('Error loading protocol:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [params.id]);
+    loadProtocol();
+  }, [loadProtocol]);
+
+  const handleRetry = () => {
+    setRetrying(true);
+    setLoading(true);
+    loadProtocol();
+  };
 
   if (loading) {
     return (
-      <div className="w-full max-w-3xl mx-auto flex items-center justify-center py-24">
+      <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center py-24 gap-2">
         <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <p className="text-sm text-muted-foreground">Loading protocol...</p>
       </div>
     );
   }
 
-  const protocol = consultation?.protocol_data as any;
+  // Show error with retry option
+  if (error) {
+    return (
+      <div className="w-full max-w-3xl mx-auto text-center py-12">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle className="w-8 h-8 text-red-600" />
+        </div>
+        <h1 className="text-2xl font-semibold text-foreground mb-2">Failed to Load Protocol</h1>
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <div className="flex gap-3 justify-center">
+          <Button onClick={handleRetry} disabled={retrying} className="bg-accent hover:bg-accent/90">
+            {retrying ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Retrying...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </>
+            )}
+          </Button>
+          <Link href={routes.dashboard}>
+            <Button variant="outline">Back to Dashboard</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  if (!consultation || !protocol) {
+  const protocolData = consultation?.protocol_data;
+
+  if (!consultation || !protocolData) {
     return (
       <div className="w-full max-w-3xl mx-auto text-center py-12">
         <h1 className="text-2xl font-semibold text-foreground mb-2">Protocol Not Found</h1>
@@ -62,32 +140,68 @@ export default function ProtocolPage() {
     );
   }
 
-  const isNewShape = !!protocol.primaryConcern;
-  const title = isNewShape
-    ? protocol.primaryConcern
-    : protocol.analysis?.patterns?.[0] || consultation.initial_input.slice(0, 60);
-  const summary = isNewShape
-    ? protocol.summary
-    : protocol.analysis?.explanation || '';
-  const recommendations = isNewShape ? (protocol.recommendations || []) : [];
-  const lifestyleTips = isNewShape ? (protocol.lifestyleTips || []) : [];
-  const warnings = isNewShape
-    ? (protocol.warnings || [])
-    : (protocol.red_flags || []);
+  // Determine protocol shape and extract data with proper type safety
+  const isNewShape = isNewProtocolShape(protocolData);
+  const isOldShape = isOldProtocolShape(protocolData);
+
+  // Safely extract title with fallbacks
+  let title: string;
+  if (isNewShape) {
+    title = protocolData.primaryConcern;
+  } else if (isOldShape && protocolData.analysis?.patterns?.[0]) {
+    title = protocolData.analysis.patterns[0];
+  } else {
+    title = consultation.initial_input?.slice(0, 60) ?? 'Health Protocol';
+  }
+
+  // Safely extract summary
+  let summary = '';
+  if (isNewShape) {
+    summary = protocolData.summary ?? '';
+  } else if (isOldShape) {
+    summary = protocolData.analysis?.explanation ?? '';
+  }
+
+  // Safely extract recommendations/tips/warnings
+  let recommendations: ProtocolRecommendation[] = [];
+  let lifestyleTips: string[] = [];
+  let warnings: string[] = [];
+
+  if (isNewShape) {
+    recommendations = protocolData.recommendations ?? [];
+    lifestyleTips = protocolData.lifestyleTips ?? [];
+    warnings = protocolData.warnings ?? [];
+  } else if (isOldShape) {
+    warnings = protocolData.red_flags ?? [];
+  }
+
+  // Determine size label
+  const sizeLabelMap: Record<string, string> = {
+    light: 'Quick Recommendation',
+    medium: 'Standard Protocol',
+    full: 'Comprehensive Protocol',
+  };
   const sizeLabel = isNewShape
-    ? ({ light: 'Quick Recommendation', medium: 'Standard Protocol', full: 'Comprehensive Protocol' }[protocol.size as string] || 'Protocol')
+    ? sizeLabelMap[protocolData.size] ?? 'Protocol'
     : 'Protocol';
-  const oldHerbs = !isNewShape && protocol.phase1?.herbs
-    ? protocol.phase1.herbs.map((h: any) => ({
-        herb: h.name,
-        botanicalName: h.botanical_name,
-        dosage: h.dosage,
-        timing: h.timing,
-        reason: h.why,
+
+  // Convert old herbs format to display format
+  const oldHerbs: DisplayRecommendation[] = [];
+  if (isOldShape && protocolData.phase1?.herbs) {
+    for (const herb of protocolData.phase1.herbs) {
+      oldHerbs.push({
+        herb: herb.name,
+        botanicalName: herb.botanical_name,
+        dosage: herb.dosage,
+        timing: herb.timing,
+        reason: herb.why,
         duration: '',
-      }))
-    : [];
-  const allRecs = isNewShape ? recommendations : oldHerbs;
+      });
+    }
+  }
+
+  // Unified recommendations for display
+  const allRecs: DisplayRecommendation[] = isNewShape ? recommendations : oldHerbs;
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -125,7 +239,7 @@ export default function ProtocolPage() {
             Recommendations
           </h2>
           <div className="space-y-4">
-            {allRecs.map((rec: any, index: number) => (
+            {allRecs.map((rec, index) => (
               <div key={index} className="bg-white border border-border/50 rounded-xl p-5 hover:border-accent/30 transition-colors">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -169,7 +283,7 @@ export default function ProtocolPage() {
           </h2>
           <div className="bg-accent/5 border border-accent/20 rounded-xl p-5">
             <ul className="space-y-3">
-              {lifestyleTips.map((tip: string, index: number) => (
+              {lifestyleTips.map((tip, index) => (
                 <li key={index} className="flex items-start gap-3 text-sm">
                   <CheckCircle2 className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
                   <span className="text-foreground/80">{tip}</span>
@@ -189,7 +303,7 @@ export default function ProtocolPage() {
           </h2>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
             <ul className="space-y-2">
-              {warnings.map((warning: string, index: number) => (
+              {warnings.map((warning, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm text-amber-800">
                   <span className="text-amber-500">&bull;</span>
                   {warning}

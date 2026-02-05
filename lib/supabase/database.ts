@@ -1,5 +1,7 @@
 import { createClient } from './client';
 import { Consultation, Message, Protocol } from '@/types';
+import { logger } from '@/lib/utils/logger';
+import { getLocalDateString } from '@/lib/utils/date';
 
 // ============================================
 // PROFILE FUNCTIONS
@@ -15,7 +17,7 @@ export async function getUserProfile(userId: string) {
     .single();
 
   if (error) {
-    console.error('Error fetching profile:', error);
+    logger.error('Error fetching profile:', error);
     return null;
   }
 
@@ -38,7 +40,7 @@ export async function updateUserProfile(userId: string, updates: {
     .single();
 
   if (error) {
-    console.error('Error updating profile:', error);
+    logger.error('Error updating profile:', error);
     return null;
   }
 
@@ -69,7 +71,7 @@ export async function createConsultation(
     .single();
 
   if (error) {
-    console.error('Error creating consultation:', error);
+    logger.error('Error creating consultation:', error);
     return null;
   }
 
@@ -94,43 +96,64 @@ export async function updateConsultation(
     .single();
 
   if (error) {
-    console.error('Error updating consultation:', error);
+    logger.error('Error updating consultation:', error);
     return null;
   }
 
   return data;
 }
 
-export async function getConsultation(consultationId: string) {
+export async function getConsultation(consultationId: string, userId?: string) {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('consultations')
     .select('*')
-    .eq('id', consultationId)
-    .single();
+    .eq('id', consultationId);
+
+  // If userId is provided, verify ownership (security: prevent unauthorized access)
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+
+  const { data, error } = await query.single();
 
   if (error) {
-    console.error('Error fetching consultation:', error);
+    logger.error('Error fetching consultation:', error);
     return null;
   }
 
   return data as Consultation;
 }
 
-export async function getUserConsultations(userId: string, limit = 10) {
+/**
+ * Fetch user consultations with pagination support.
+ * Only fetches completed consultations with protocol_data.
+ *
+ * @param userId - The user's ID
+ * @param limit - Maximum number of consultations to fetch (default: 50)
+ * @param offset - Number of records to skip for pagination (default: 0)
+ */
+export async function getUserConsultations(
+  userId: string,
+  limit = 50,
+  offset = 0
+) {
   const supabase = createClient();
 
+  // Only select fields needed for protocol list display to reduce payload size
+  // The full protocol_data is only needed when viewing a single protocol
   const { data, error } = await supabase
     .from('consultations')
-    .select('*')
+    .select('id, initial_input, protocol_data, tier_at_creation, status, created_at, updated_at, user_id')
     .eq('user_id', userId)
     .eq('status', 'completed')
+    .not('protocol_data', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (error) {
-    console.error('Error fetching consultations:', error);
+    logger.error('Error fetching consultations:', error);
     return [];
   }
 
@@ -150,7 +173,7 @@ export async function getActiveConsultation(userId: string) {
     .single();
 
   if (error && error.code !== 'PGRST116') {
-    console.error('Error fetching active consultation:', error);
+    logger.error('Error fetching active consultation:', error);
     return null;
   }
 
@@ -176,7 +199,7 @@ export async function checkCanConsult(userId: string): Promise<UsageStatus> {
     .rpc('check_can_consult', { p_user_id: userId });
 
   if (error) {
-    console.error('Error checking usage:', error);
+    logger.error('Error checking usage:', error);
     return { canConsult: true, currentCount: 0, dailyLimit: 3, tier: 'free' };
   }
 
@@ -199,7 +222,7 @@ export async function incrementDailyUsage(userId: string): Promise<{
     .rpc('increment_daily_usage', { p_user_id: userId });
 
   if (error) {
-    console.error('Error incrementing usage:', error);
+    logger.error('Error incrementing usage:', error);
     return { count: 0, canConsult: true };
   }
 
@@ -213,7 +236,8 @@ export async function incrementDailyUsage(userId: string): Promise<{
 export async function getDailyUsage(userId: string): Promise<number> {
   const supabase = createClient();
 
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date so daily limit resets at user's midnight, not UTC midnight
+  const today = getLocalDateString();
 
   const { data, error } = await supabase
     .from('daily_usage')
@@ -223,7 +247,7 @@ export async function getDailyUsage(userId: string): Promise<number> {
     .single();
 
   if (error && error.code !== 'PGRST116') {
-    console.error('Error fetching daily usage:', error);
+    logger.error('Error fetching daily usage:', error);
     return 0;
   }
 
@@ -239,7 +263,8 @@ export async function getDailyUsage(userId: string): Promise<number> {
 export async function resetDailyUsage(userId: string): Promise<boolean> {
   const supabase = createClient();
 
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date so reset applies to user's current day
+  const today = getLocalDateString();
 
   const { error } = await supabase
     .from('daily_usage')
@@ -248,7 +273,7 @@ export async function resetDailyUsage(userId: string): Promise<boolean> {
     .eq('date', today);
 
   if (error) {
-    console.error('Error resetting daily usage:', error);
+    logger.error('Error resetting daily usage:', error);
     return false;
   }
 
@@ -266,7 +291,7 @@ export async function clearAllConsultations(userId: string): Promise<boolean> {
     .eq('user_id', userId);
 
   if (error) {
-    console.error('Error clearing consultations:', error);
+    logger.error('Error clearing consultations:', error);
     return false;
   }
 
