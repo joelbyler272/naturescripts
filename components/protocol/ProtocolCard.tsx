@@ -1,25 +1,43 @@
+import { memo } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, ChevronRight } from 'lucide-react';
-import { Consultation } from '@/types';
+import { Consultation, Protocol } from '@/types';
+import { GeneratedProtocol } from '@/lib/consultation/types';
 import { format } from 'date-fns';
 
 interface ProtocolCardProps {
   consultation: Consultation;
 }
 
-export function ProtocolCard({ consultation }: ProtocolCardProps) {
+// Type guard for new GeneratedProtocol format
+function isGeneratedProtocol(data: unknown): data is GeneratedProtocol {
+  return typeof data === 'object' && data !== null && 'primaryConcern' in data;
+}
+
+// Type guard for old Protocol format
+function isOldProtocol(data: unknown): data is Protocol {
+  return typeof data === 'object' && data !== null && 'analysis' in data && 'phase1' in data;
+}
+
+export const ProtocolCard = memo(function ProtocolCard({ consultation }: ProtocolCardProps) {
   const date = format(new Date(consultation.created_at), 'MMM dd, yyyy');
-  const protocol = consultation.protocol_data as any;
+  const protocolData = consultation.protocol_data;
 
-  const label = protocol?.primaryConcern
-    || protocol?.analysis?.patterns?.[0]
-    || consultation.initial_input.slice(0, 60);
+  // Extract label based on protocol shape
+  let label: string;
+  let recCount = 0;
 
-  const recCount = protocol?.recommendations?.length
-    || protocol?.phase1?.herbs?.length
-    || 0;
+  if (isGeneratedProtocol(protocolData)) {
+    label = protocolData.primaryConcern;
+    recCount = protocolData.recommendations?.length ?? 0;
+  } else if (isOldProtocol(protocolData)) {
+    label = protocolData.analysis?.patterns?.[0] ?? consultation.initial_input.slice(0, 60);
+    recCount = protocolData.phase1?.herbs?.length ?? 0;
+  } else {
+    label = consultation.initial_input.slice(0, 60);
+  }
 
   return (
     <Link href={`/protocols/${consultation.id}`}>
@@ -44,4 +62,4 @@ export function ProtocolCard({ consultation }: ProtocolCardProps) {
       </div>
     </Link>
   );
-}
+});

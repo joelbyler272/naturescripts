@@ -1,10 +1,38 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Crown, Sparkles } from 'lucide-react';
+import { Check, Crown, Sparkles, Loader2 } from 'lucide-react';
 
 export function UpgradeContent() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUpgrade = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setIsLoading(false);
+    }
+  };
   const features = {
     free: [
       '3 consultations per day',
@@ -90,9 +118,23 @@ export function UpgradeContent() {
                 </li>
               ))}
             </ul>
-            <Button className="w-full bg-accent hover:bg-accent/90 text-base sm:text-lg py-5 sm:py-6">
-              Upgrade to Pro
+            <Button
+              className="w-full bg-accent hover:bg-accent/90 text-base sm:text-lg py-5 sm:py-6"
+              onClick={handleUpgrade}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Upgrade to Pro'
+              )}
             </Button>
+            {error && (
+              <p className="text-xs text-center text-red-600 mt-2">{error}</p>
+            )}
             <p className="text-xs text-center text-muted-foreground mt-3">
               Cancel anytime. No questions asked.
             </p>

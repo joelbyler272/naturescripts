@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/app/Navigation"
 import { Footer } from "@/components/shared/Footer"
 import { routes } from "@/lib/constants/routes"
 import { colors } from "@/lib/constants/colors"
 
 export default function LandingPage() {
+  const router = useRouter()
   const [query, setQuery] = useState("")
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [animatedStats, setAnimatedStats] = useState({ time: 0, parts: 0, herbs: 0 })
@@ -108,9 +110,12 @@ export default function LandingPage() {
                     type="button"
                     onClick={() => {
                       if (query.trim()) {
-                        console.log("Starting consultation with:", query)
+                        router.push(`/consultation?q=${encodeURIComponent(query.trim())}`)
+                      } else {
+                        router.push('/consultation')
                       }
                     }}
+                    aria-label="Start consultation"
                     className="h-14 shrink-0 rounded-full px-8 text-[15px] font-medium text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
                     style={{ backgroundColor: colors.sage.DEFAULT }}
                   >

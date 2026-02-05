@@ -64,11 +64,18 @@ export function generateMockResponse(state: ConsultationState): {
   };
 }
 
+// Simple ID generator for messages
+let messageIdCounter = 0;
+function generateMessageId(): string {
+  return `msg-${Date.now()}-${++messageIdCounter}`;
+}
+
 /**
  * Create a new message object
  */
 export function createMessage(role: 'user' | 'assistant', content: string): ConversationMessage {
   return {
+    id: generateMessageId(),
     role,
     content,
     timestamp: new Date().toISOString(),

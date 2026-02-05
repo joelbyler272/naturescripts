@@ -10,6 +10,7 @@ import { generateMockResponse, getFirstQuestion, createMessage, getResponseDelay
 import { generateProtocol } from '@/lib/consultation/generateProtocol';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { createConsultation, updateConsultation, incrementDailyUsage, checkCanConsult } from '@/lib/supabase/database';
+import { logger } from '@/lib/utils/logger';
 import { ArrowRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -177,7 +178,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
       try {
         const allMessages = [...state.messages, userMessage];
 
-        // Run both operations in parallel - if either fails, catch will handle it
+        // Run both operations in parallel - both must succeed
         const [updateResult, usageResult] = await Promise.all([
           updateConsultation(consultationId.current, {
             conversation_log: allMessages.map(m => ({
@@ -185,20 +186,23 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
               content: m.content,
               timestamp: m.timestamp,
             })),
-            protocol_data: protocol as any,
+            protocol_data: protocol as unknown as Record<string, unknown>,
             status: 'completed',
           }),
           incrementDailyUsage(user.id),
         ]);
 
+        // Check both results - if either failed, log a warning
+        // The protocol is still generated and shown, but we track the failure
         if (!updateResult) {
-          throw new Error('Failed to save consultation');
+          logger.error('Failed to save consultation to database');
+        }
+        if (!usageResult.success) {
+          logger.error('Failed to increment daily usage counter');
         }
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Error saving consultation:', error);
-        }
-        // Consider showing user-facing error here
+        // Log the error but don't block the user from seeing their protocol
+        logger.error('Error saving consultation:', error);
       }
     }
 
@@ -251,8 +255,8 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-xl border border-border/50 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {state.messages.map((message, index) => (
-          <ChatMessage key={index} role={message.role} content={message.content} />
+        {state.messages.map((message) => (
+          <ChatMessage key={message.id} role={message.role} content={message.content} />
         ))}
 
         {isTyping && <TypingIndicator />}

@@ -82,7 +82,7 @@ export async function updateConsultation(
   consultationId: string,
   updates: {
     conversation_log?: Message[];
-    protocol_data?: Protocol;
+    protocol_data?: Protocol | Record<string, unknown>;
     status?: 'in_progress' | 'completed' | 'abandoned';
   }
 ) {
@@ -200,21 +200,31 @@ export async function checkCanConsult(userId: string): Promise<UsageStatus> {
 
   if (error) {
     logger.error('Error checking usage:', error);
-    return { canConsult: true, currentCount: 0, dailyLimit: 3, tier: 'free' };
+    // SECURITY: On DB failure, deny access to prevent bypassing daily limits
+    // This is a fail-closed approach - users can retry when DB is back up
+    return { canConsult: false, currentCount: 0, dailyLimit: 3, tier: 'free' };
   }
 
+  // Validate that we got a valid response
   const result = data?.[0];
+  if (!result) {
+    logger.error('No data returned from check_can_consult RPC');
+    // SECURITY: On empty response, deny access
+    return { canConsult: false, currentCount: 0, dailyLimit: 3, tier: 'free' };
+  }
+
   return {
-    canConsult: result?.can_consult ?? true,
-    currentCount: result?.current_count ?? 0,
-    dailyLimit: result?.daily_limit ?? 3,
-    tier: result?.tier ?? 'free',
+    canConsult: result.can_consult ?? false,
+    currentCount: result.current_count ?? 0,
+    dailyLimit: result.daily_limit ?? 3,
+    tier: result.tier ?? 'free',
   };
 }
 
 export async function incrementDailyUsage(userId: string): Promise<{
   count: number;
   canConsult: boolean;
+  success: boolean;
 }> {
   const supabase = createClient();
 
@@ -223,13 +233,20 @@ export async function incrementDailyUsage(userId: string): Promise<{
 
   if (error) {
     logger.error('Error incrementing usage:', error);
-    return { count: 0, canConsult: true };
+    // Return failure state so caller knows to handle the error
+    return { count: 0, canConsult: false, success: false };
   }
 
   const result = data?.[0];
+  if (!result) {
+    logger.error('No data returned from increment_daily_usage RPC');
+    return { count: 0, canConsult: false, success: false };
+  }
+
   return {
-    count: result?.consultation_count ?? 1,
-    canConsult: result?.can_consult ?? true,
+    count: result.consultation_count ?? 1,
+    canConsult: result.can_consult ?? true,
+    success: true,
   };
 }
 
