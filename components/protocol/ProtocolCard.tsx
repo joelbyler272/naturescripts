@@ -3,41 +3,23 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, ChevronRight } from 'lucide-react';
-import { Consultation, Protocol } from '@/types';
-import { GeneratedProtocol } from '@/lib/consultation/types';
+import { Consultation } from '@/types';
+import { getProtocolLabel, getRecommendationCount } from '@/lib/utils/typeGuards';
 import { format } from 'date-fns';
 
 interface ProtocolCardProps {
   consultation: Consultation;
 }
 
-// Type guard for new GeneratedProtocol format
-function isGeneratedProtocol(data: unknown): data is GeneratedProtocol {
-  return typeof data === 'object' && data !== null && 'primaryConcern' in data;
-}
-
-// Type guard for old Protocol format
-function isOldProtocol(data: unknown): data is Protocol {
-  return typeof data === 'object' && data !== null && 'analysis' in data && 'phase1' in data;
-}
-
 export const ProtocolCard = memo(function ProtocolCard({ consultation }: ProtocolCardProps) {
   const date = format(new Date(consultation.created_at), 'MMM dd, yyyy');
-  const protocolData = consultation.protocol_data;
 
-  // Extract label based on protocol shape
-  let label: string;
-  let recCount = 0;
-
-  if (isGeneratedProtocol(protocolData)) {
-    label = protocolData.primaryConcern;
-    recCount = protocolData.recommendations?.length ?? 0;
-  } else if (isOldProtocol(protocolData)) {
-    label = protocolData.analysis?.patterns?.[0] ?? consultation.initial_input.slice(0, 60);
-    recCount = protocolData.phase1?.herbs?.length ?? 0;
-  } else {
-    label = consultation.initial_input.slice(0, 60);
-  }
+  // Use centralized type guards for protocol data extraction
+  const label = getProtocolLabel(
+    consultation.protocol_data,
+    consultation.initial_input.slice(0, 60)
+  );
+  const recCount = getRecommendationCount(consultation.protocol_data);
 
   return (
     <Link href={`/protocols/${consultation.id}`}>

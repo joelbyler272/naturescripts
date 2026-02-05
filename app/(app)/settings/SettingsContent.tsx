@@ -11,12 +11,16 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { getUserProfile, resetDailyUsage, clearAllConsultations, toggleUserTier } from '@/lib/supabase/database';
 import { isDevUser } from '@/lib/constants/devAccess';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/utils/logger';
 import {
   User, CreditCard, Shield, AlertTriangle, Loader2, Check,
   RotateCcw, Wrench, Trash2, ArrowUpDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
+
+// Common weak passwords to check against
+const COMMON_PASSWORDS = ['123456', 'password', 'qwerty', '123456789', 'abc123', 'password1'];
 
 export function SettingsContent() {
   const router = useRouter();
@@ -45,6 +49,10 @@ export function SettingsContent() {
   const [clearConsultationsDone, setClearConsultationsDone] = useState(false);
   const [togglingTier, setTogglingTier] = useState(false);
 
+  // Subscription management state
+  const [managingSubscription, setManagingSubscription] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+
   const isDev = isDevUser(user?.email);
 
   useEffect(() => {
@@ -54,9 +62,15 @@ export function SettingsContent() {
       setEmail(user.email || '');
       setEmailVerified(!!user.email_confirmed_at);
 
-      getUserProfile(user.id).then((profile) => {
-        if (profile) setUserTier(profile.tier as 'free' | 'pro');
-      });
+      // Fetch profile with error handling
+      getUserProfile(user.id)
+        .then((profile) => {
+          if (profile) setUserTier(profile.tier as 'free' | 'pro');
+        })
+        .catch((err) => {
+          logger.error('Failed to fetch user profile:', err);
+          // Keep default 'free' tier on error
+        });
     }
   }, [user]);
 
@@ -72,15 +86,24 @@ export function SettingsContent() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      console.error('Failed to save profile:', err);
+      logger.error('Failed to save profile:', err);
     } finally {
       setSaving(false);
     }
   };
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 6) {
-      setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+    // Enhanced password validation
+    if (newPassword.length < 8) {
+      setPasswordMessage({ type: 'error', text: 'Password must be at least 8 characters.' });
+      return;
+    }
+    if (COMMON_PASSWORDS.includes(newPassword.toLowerCase())) {
+      setPasswordMessage({ type: 'error', text: 'This password is too common. Please choose a stronger password.' });
+      return;
+    }
+    if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setPasswordMessage({ type: 'error', text: 'Password must contain both letters and numbers.' });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -96,10 +119,34 @@ export function SettingsContent() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to update password.';
+      // Handle Supabase-specific error structure
+      const supabaseError = err as { message?: string; error_description?: string };
+      const message = supabaseError.message || supabaseError.error_description || 'Failed to update password.';
       setPasswordMessage({ type: 'error', text: message });
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  // Subscription management handlers
+  const handleManageSubscription = async () => {
+    setManagingSubscription(true);
+    setSubscriptionError(null);
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to open subscription portal');
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      setSubscriptionError(err instanceof Error ? err.message : 'Something went wrong');
+      setManagingSubscription(false);
     }
   };
 
@@ -113,7 +160,7 @@ export function SettingsContent() {
       setResetUsageDone(true);
       setTimeout(() => setResetUsageDone(false), 3000);
     } catch (err) {
-      console.error('Failed to reset usage:', err);
+      logger.error('Failed to reset usage:', err);
     } finally {
       setResettingUsage(false);
     }
@@ -128,7 +175,7 @@ export function SettingsContent() {
       setClearConsultationsDone(true);
       setTimeout(() => setClearConsultationsDone(false), 3000);
     } catch (err) {
-      console.error('Failed to clear consultations:', err);
+      logger.error('Failed to clear consultations:', err);
     } finally {
       setClearingConsultations(false);
     }
@@ -141,7 +188,7 @@ export function SettingsContent() {
       const newTier = await toggleUserTier(user.id, userTier);
       if (newTier) setUserTier(newTier);
     } catch (err) {
-      console.error('Failed to toggle tier:', err);
+      logger.error('Failed to toggle tier:', err);
     } finally {
       setTogglingTier(false);
     }
@@ -249,11 +296,34 @@ export function SettingsContent() {
                   <Button className="w-full bg-accent hover:bg-accent/90">Upgrade to Pro</Button>
                 </Link>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button variant="outline">Manage Subscription</Button>
-                  <Button variant="outline" className="text-destructive">
-                    Cancel Subscription
-                  </Button>
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleManageSubscription}
+                      disabled={managingSubscription}
+                    >
+                      {managingSubscription ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Opening...</>
+                      ) : (
+                        'Manage Subscription'
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="text-destructive"
+                      onClick={handleManageSubscription}
+                      disabled={managingSubscription}
+                    >
+                      Cancel Subscription
+                    </Button>
+                  </div>
+                  {subscriptionError && (
+                    <p className="text-xs text-destructive">{subscriptionError}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Both options open Stripe&apos;s secure portal to manage your subscription.
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -290,7 +360,7 @@ export function SettingsContent() {
                       type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="At least 6 characters"
+                      placeholder="At least 8 characters with letters and numbers"
                     />
                   </div>
                   <div className="space-y-2">

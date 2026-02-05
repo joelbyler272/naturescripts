@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
+import { logger } from '@/lib/utils/logger';
+import { apiRateLimiters } from '@/lib/utils/rateLimit';
 
 // Lazy initialization to avoid build-time errors when env vars aren't set
 function getStripe() {
@@ -12,6 +14,15 @@ function getStripe() {
   });
 }
 
+// Validate STRIPE_PRO_PRICE_ID at runtime
+function getPriceId(): string {
+  const priceId = process.env.STRIPE_PRO_PRICE_ID;
+  if (!priceId) {
+    throw new Error('STRIPE_PRO_PRICE_ID is not configured');
+  }
+  return priceId;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe();
@@ -20,6 +31,20 @@ export async function POST(req: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limiting: 5 requests per minute per user
+    const rateLimitResult = apiRateLimiters.stripeCheckout.check(user.id);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil(rateLimitResult.resetIn / 1000)),
+          },
+        }
+      );
     }
 
     // Check if user already has a Stripe customer ID
@@ -49,14 +74,15 @@ export async function POST(req: NextRequest) {
         .eq('id', user.id);
     }
 
-    // Create checkout session
+    // Create checkout session with validated price ID
+    const priceId = getPriceId();
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
         {
-          price: process.env.STRIPE_PRO_PRICE_ID!,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -69,7 +95,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
-    console.error('Stripe checkout error:', err);
+    // Use dev-only logger to prevent data leakage in production
+    logger.error('Stripe checkout error:', err);
     return NextResponse.json(
       { error: 'Failed to create checkout session' },
       { status: 500 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
+import { logger } from '@/lib/utils/logger';
+import { apiRateLimiters } from '@/lib/utils/rateLimit';
 
 // Lazy initialization to avoid build-time errors when env vars aren't set
 function getStripe() {
@@ -22,6 +24,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Rate limiting: 10 requests per minute per user
+    const rateLimitResult = apiRateLimiters.stripePortal.check(user.id);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil(rateLimitResult.resetIn / 1000)),
+          },
+        }
+      );
+    }
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('stripe_customer_id')
@@ -39,7 +55,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
-    console.error('Stripe portal error:', err);
+    // Use dev-only logger to prevent data leakage in production
+    logger.error('Stripe portal error:', err);
     return NextResponse.json(
       { error: 'Failed to create portal session' },
       { status: 500 }
