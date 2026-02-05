@@ -38,6 +38,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -172,11 +173,24 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     const protocol = generateProtocol(state);
     setGeneratedProtocol(protocol);
 
-    // Save protocol AND increment usage atomically
-    // Both must succeed or the operation should be considered failed
+    // Save protocol AND increment usage
+    // We show a warning to user if save fails, but still show protocol
+    let savedSuccessfully = false;
     if (consultationId.current && user?.id) {
       try {
         const allMessages = [...state.messages, userMessage];
+
+        // Convert protocol to storage format safely
+        const protocolForStorage = {
+          id: protocol.id,
+          size: protocol.size,
+          summary: protocol.summary,
+          primaryConcern: protocol.primaryConcern,
+          recommendations: protocol.recommendations,
+          lifestyleTips: protocol.lifestyleTips,
+          warnings: protocol.warnings,
+          createdAt: protocol.createdAt,
+        };
 
         // Run both operations in parallel - both must succeed
         const [updateResult, usageResult] = await Promise.all([
@@ -186,24 +200,29 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
               content: m.content,
               timestamp: m.timestamp,
             })),
-            protocol_data: protocol as unknown as Record<string, unknown>,
+            protocol_data: protocolForStorage as unknown as Record<string, unknown>,
             status: 'completed',
           }),
           incrementDailyUsage(user.id),
         ]);
 
-        // Check both results - if either failed, log a warning
-        // The protocol is still generated and shown, but we track the failure
+        // Check both results - if either failed, show warning to user
         if (!updateResult) {
           logger.error('Failed to save consultation to database');
-        }
-        if (!usageResult.success) {
+          setSaveError('Your protocol was generated but could not be saved. Please take a screenshot.');
+        } else if (!usageResult.success) {
           logger.error('Failed to increment daily usage counter');
+          // This is a backend issue, don't bother user
+        } else {
+          savedSuccessfully = true;
         }
       } catch (error) {
-        // Log the error but don't block the user from seeing their protocol
         logger.error('Error saving consultation:', error);
+        setSaveError('Your protocol was generated but could not be saved. Please take a screenshot.');
       }
+    } else {
+      // No consultation ID means we couldn't create the record
+      setSaveError('Protocol generated but session was not saved. Please take a screenshot.');
     }
 
     const successMessage = createMessage(
@@ -223,6 +242,9 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const handleViewProtocol = () => {
     if (consultationId.current) {
       router.push(`/protocols/${consultationId.current}`);
+    } else {
+      // Fallback: show protocols list if no specific ID
+      router.push('/protocols');
     }
   };
 
@@ -274,13 +296,18 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
               </button>
             )}
             {generatedProtocol && (
-              <button
-                onClick={handleViewProtocol}
-                className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
-              >
-                View your protocol
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
-              </button>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={handleViewProtocol}
+                  className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
+                >
+                  View your protocol
+                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                </button>
+                {saveError && (
+                  <p className="text-xs text-amber-600 text-center max-w-xs">{saveError}</p>
+                )}
+              </div>
             )}
           </div>
         )}
