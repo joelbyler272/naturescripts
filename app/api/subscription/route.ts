@@ -7,15 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId } = body;
-
-    // TODO: Implement Stripe checkout session creation
-    console.log('Create subscription request:', { userId });
-
+    // This endpoint is deprecated - use /api/stripe/checkout instead
     return NextResponse.json(
-      { message: 'Subscription creation endpoint - implementation pending' },
-      { status: 501 }
+      { error: 'This endpoint is deprecated. Please use /api/stripe/checkout instead.' },
+      { status: 410 }  // 410 Gone - resource no longer available
     );
   } catch (error) {
     return NextResponse.json(
@@ -26,18 +21,10 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/subscription/cancel
-// TODO: Implement subscription cancellation
+// Deprecated - use Stripe Customer Portal instead
 export async function DELETE(request: NextRequest) {
-  try {
-    // TODO: Implement Stripe subscription cancellation
-    return NextResponse.json(
-      { message: 'Subscription cancellation endpoint - implementation pending' },
-      { status: 501 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { error: 'This endpoint is deprecated. Please use /api/stripe/portal to access the Stripe Customer Portal for subscription management.' },
+    { status: 410 }  // 410 Gone - resource no longer available
+  );
 }

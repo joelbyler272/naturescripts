@@ -30,16 +30,15 @@ export function ConsultationChat({ initialMessages }: ConsultationChatProps) {
     setInput('');
 
     // TODO: Send to API in Phase 2
-    console.log('Message sent:', input);
   };
 
   return (
     <div className="flex flex-col h-[600px] bg-white rounded-xl border border-primary/10">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((message, index) => (
+        {messages.map((message) => (
           <div
-            key={index}
+            key={message.timestamp}
             className={`flex items-start space-x-3 ${
               message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
             }`}

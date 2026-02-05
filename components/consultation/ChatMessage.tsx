@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Leaf, User } from 'lucide-react';
 
@@ -7,7 +8,7 @@ export interface ChatMessageProps {
   timestamp?: string;
 }
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ role, content }: ChatMessageProps) {
   const isAssistant = role === 'assistant';
 
   return (
@@ -44,4 +45,4 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       </div>
     </div>
   );
-}
+});
