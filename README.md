@@ -1,237 +1,185 @@
-# NatureScripts - AI-Powered Naturopathic Consultation Platform
+# NatureScripts
 
-## Phase 1: Skeleton Build (COMPLETE)
+AI-powered naturopathic consultation platform that creates personalized herbal wellness protocols.
 
-This is a fully navigable Next.js skeleton app with all pages, components, and UI elements built out. No backend logic has been implemented yet - this phase focuses on the complete user experience with hardcoded data.
+## Features
+
+- **AI Consultations** — Chat-based consultation that asks smart follow-up questions
+- **Personalized Protocols** — Herbal recommendations with dosages, timing, and safety info
+- **Remedy Database** — Evidence-rated database of natural remedies
+- **Usage Limits** — Free tier (3/day) with Pro subscription for unlimited access
+- **Stripe Payments** — Subscription billing with customer portal
 
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **UI Components:** shadcn/ui
-- **Charts:** Recharts
-- **Icons:** Lucide React
-- **Font:** Inter (Google Fonts)
-
-## Design System
-
-### Colors
-- **Primary (Sage):** `#6B8E7F` - Main brand color
-- **Secondary (Earth):** `#C9A66B` - Accent earth tones
-- **Accent (Forest):** `#2F4F4F` - Deep forest green
-- **Background (Cream):** `#FAFAF8` - Off-white background
-- **Text (Charcoal):** `#2C2C2C` - Dark gray text
-
-### Typography
-- **Font Family:** Inter
-- **Headings:** Bold
-- **Body:** Normal weight
-
-## Project Structure
-
-```
-naturescripts/
-├── app/
-│   ├── (auth)/              # Auth pages (sign-up, sign-in, verify-email)
-│   ├── (dashboard)/         # Authenticated pages
-│   │   ├── dashboard/       # Main dashboard
-│   │   ├── consultation/    # AI consultation chat
-│   │   ├── protocol/[id]/   # Protocol display
-│   │   ├── herbs/           # Herbal database
-│   │   ├── tracking/        # Progress tracking (Pro)
-│   │   ├── upgrade/         # Pricing page
-│   │   └── settings/        # User settings
-│   ├── terms/               # Legal pages
-│   ├── privacy/
-│   ├── disclaimer/
-│   ├── api/                 # Placeholder API routes
-│   └── page.tsx             # Landing page
-├── components/
-│   ├── ui/                  # shadcn/ui components
-│   ├── landing/             # Landing page sections
-│   ├── consultation/        # Consultation components
-│   ├── protocol/            # Protocol display components
-│   ├── tracking/            # Tracking components
-│   └── shared/              # Reusable components
-├── lib/
-│   ├── data/               # Hardcoded data
-│   ├── supabase/           # Supabase client (placeholder)
-│   ├── stripe/             # Stripe client (placeholder)
-│   ├── anthropic/          # Anthropic API client (placeholder)
-│   └── utils/              # Utility functions
-├── types/
-│   └── index.ts            # TypeScript type definitions
-└── .env.local.example      # Environment variable template
-```
+| Category | Technology |
+|----------|------------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| UI Components | shadcn/ui |
+| Database | Supabase (PostgreSQL) |
+| Auth | Supabase Auth |
+| Payments | Stripe |
+| Icons | Lucide React |
 
 ## Getting Started
 
-### 1. Install Dependencies
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Supabase account
+- Stripe account (for payments)
+
+### Installation
 
 ```bash
+# Clone the repo
+git clone https://github.com/joelbyler272/naturescripts.git
+cd naturescripts
+
+# Install dependencies
 npm install
+
+# Copy environment template
+cp .env.local.example .env.local
 ```
 
-### 2. Run Development Server
+### Environment Variables
+
+Add these to your `.env.local`:
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Stripe
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PRO_PRICE_ID=price_xxx
+
+# Optional
+NEXT_PUBLIC_DEV_EMAILS=dev@example.com
+```
+
+### Database Setup
+
+Run the SQL migration in your Supabase SQL Editor:
+
+```bash
+# The schema is in supabase/schema.sql
+```
+
+This creates:
+- `profiles` — User profiles with tier info
+- `consultations` — Consultation history and protocols
+- `daily_usage` — Usage tracking for rate limiting
+
+### Development
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000)
 
-### 3. Explore the App
-
-#### Public Pages (No Auth Required)
-- `/` - Landing page with hero, features, testimonials, FAQ
-- `/sign-up` - Sign up form (non-functional)
-- `/sign-in` - Sign in form (non-functional)
-- `/verify-email` - Email verification waiting page
-- `/terms` - Terms of Service
-- `/privacy` - Privacy Policy
-- `/disclaimer` - Medical Disclaimer
-
-#### Authenticated Pages (Skeleton assumes logged in)
-- `/dashboard` - Main dashboard with past consultations
-- `/consultation` - AI consultation chat interface (hardcoded messages)
-- `/protocol/[id]` - Detailed protocol display
-- `/herbs` - Herbal database with search
-- `/herbs/[slug]` - Individual herb detail page (e.g., `/herbs/ashwagandha`)
-- `/tracking` - Progress tracking dashboard (Pro feature)
-- `/upgrade` - Pro tier upgrade page
-- `/settings` - User settings (profile, billing, account)
-
-## Hardcoded Data
-
-All data is currently hardcoded in `lib/data/hardcoded.ts`:
-
-- **User:** Free tier user named "Jordan"
-- **Consultations:** 2 past consultations with full protocols
-- **Herbs:** 5 herbs (Ashwagandha, Rhodiola, Turmeric, Ginger, Milk Thistle)
-- **Chat Messages:** Example consultation conversation
-- **Symptom Data:** 7 days of tracking data for charts
-- **Testimonials:** 3 user testimonials
-- **FAQ:** 5 common questions
-
-## Key Features Built
-
-### Landing Page
-- Hero section with search bar
-- How It Works (4 steps)
-- Testimonials (3 cards)
-- FAQ (accordion)
-- CTA section
-
-### Dashboard
-- Daily limit banner (Free tier)
-- Quick actions (Start consultation, Browse herbs)
-- Past consultations list
-- Protocol cards
-
-### Consultation
-- Chat interface with user/AI messages
-- Message input and send
-- Privacy notice
-
-### Protocol Display
-- Pattern analysis
-- Herbal recommendations with dosages
-- Dietary shifts (add/remove)
-- Lifestyle practices
-- Testing recommendations
-- Safety warnings and disclaimers
-
-### Herbal Database
-- Search functionality
-- Herb cards with evidence levels
-- Detailed herb pages with:
-  - Benefits
-  - Dosage
-  - Contraindications
-  - Drug interactions
-  - Side effects
-
-### Tracking (Pro Feature)
-- Tabbed interface (Symptoms, Supplements, Habits)
-- Line chart with symptom trends
-- Progress insights
-- Adherence tracking
-
-### Settings
-- Profile management
-- Subscription/billing
-- Account security
-- Delete account
-
-## What's NOT Implemented (Phase 2)
-
-- Authentication (Supabase)
-- API routes logic
-- Database operations
-- AI consultation with Anthropic
-- Stripe checkout
-- Email sending
-- PDF generation
-- User session management
-- Data validation
-- Error handling
-- Loading states
-
-## Environment Setup (For Phase 2)
-
-Copy `.env.local.example` to `.env.local` and fill in your credentials:
+### Stripe Webhook (Local Testing)
 
 ```bash
-cp .env.local.example .env.local
+# Install Stripe CLI
+brew install stripe/stripe-cli/stripe
+
+# Login and forward webhooks
+stripe login
+stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
-You'll need:
-- Supabase project credentials
-- Anthropic API key
-- Stripe API keys and webhook secret
-- Resend API key for emails
+## Project Structure
 
-## Database Schema (For Phase 2)
+```
+├── app/
+│   ├── (app)/           # Authenticated app routes
+│   │   ├── dashboard/   # Main dashboard
+│   │   ├── consultation/# AI chat interface
+│   │   ├── protocols/   # Protocol history & detail
+│   │   ├── settings/    # User settings
+│   │   └── upgrade/     # Pro upgrade page
+│   ├── (auth)/          # Login/signup pages
+│   ├── (marketing)/     # Landing page
+│   ├── (public)/        # Public pages (remedies, library)
+│   └── api/             # API routes
+│       └── stripe/      # Stripe checkout, portal, webhook
+├── components/
+│   ├── app/             # App shell, navigation, sidebar
+│   ├── consultation/    # Chat interface components
+│   ├── protocol/        # Protocol display components
+│   └── ui/              # shadcn/ui components
+├── lib/
+│   ├── auth/            # Auth context
+│   ├── constants/       # Routes, limits, error codes
+│   ├── hooks/           # React hooks
+│   ├── supabase/        # Database client & queries
+│   └── utils/           # Utilities (logger, rate limit, etc.)
+└── types/               # TypeScript definitions
+```
 
-See `types/index.ts` for the complete type definitions. Key tables to create in Supabase:
+## Key Routes
 
-- `users`
-- `consultations`
-- `daily_usage`
-- `subscriptions`
-- `symptom_tracking`
-- `supplement_tracking`
-- `habit_tracking`
-- `herb_database`
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page |
+| `/dashboard` | User dashboard with protocols |
+| `/consultation` | Start a new consultation |
+| `/protocols` | View past protocols |
+| `/protocols/[id]` | Protocol detail page |
+| `/remedies` | Remedy database |
+| `/settings` | User settings & billing |
+| `/upgrade` | Pro subscription page |
 
-## Design Principles
+## Development History
 
-- **Health-focused:** Calming sage green color palette
-- **Trustworthy:** Clear disclaimers and safety information
-- **Professional:** Clean, modern UI with proper medical disclaimers
-- **Accessible:** Good contrast, clear typography, responsive design
+All features were developed through the following PRs (all merged to main):
 
-## Next Steps (Phase 2)
+| PR | Description |
+|----|-------------|
+| #1 | Folder structure reorganization |
+| #2 | Landing page redesign |
+| #3 | Dashboard & app shell |
+| #4 | Consultation flow with smart questions |
+| #5 | Remedy database with evidence ratings |
+| #6 | Supabase authentication |
+| #7 | Database for consultations & usage limits |
+| #8 | Performance fixes (fonts, null handling) |
+| #9 | Polish, Stripe, mobile responsiveness |
+| #10 | Production readiness audit (security, a11y) |
+| #11 | Audit round 2 (fail-closed, React.memo) |
+| #12 | Audit round 3 (rate limiting, type guards) |
 
-1. Set up Supabase database and tables
-2. Implement authentication flows
-3. Connect Anthropic API for AI consultations
-4. Add Stripe payment integration
-5. Implement email sending with Resend
-6. Add PDF generation for protocols
-7. Implement progress tracking data persistence
-8. Add error handling and loading states
-9. Set up middleware for protected routes
-10. Deploy to production
+## Architecture Decisions
 
-## Notes
+- **Server/Client Split** — Pages are server components for metadata, with client `*Content.tsx` components for interactivity
+- **Fail-Closed Security** — Database errors deny access rather than allow bypass
+- **Rate Limiting** — In-memory rate limiter (upgradeable to Redis)
+- **Type Guards** — Centralized protocol type detection for backward compatibility
+- **Dev-Only Logging** — Production logs don't leak sensitive data
 
-- All forms currently just console.log() on submit
-- Navigation assumes user is logged in for dashboard routes
-- API routes return 501 (Not Implemented) status
-- No actual data persistence
-- Pro features are visible to all users in skeleton
+## Deployment
+
+The app is designed for Vercel deployment:
+
+```bash
+# Build
+npm run build
+
+# The app uses Edge Runtime for middleware
+```
+
+Required Vercel environment variables:
+- All variables from `.env.local.example`
+- Set up Stripe webhook endpoint: `https://your-domain.com/api/stripe/webhook`
 
 ## License
 
@@ -239,4 +187,4 @@ Proprietary - All rights reserved
 
 ---
 
-Built with Next.js 14, TypeScript, and Tailwind CSS
+Built with Next.js 14, TypeScript, Tailwind CSS, Supabase, and Stripe
