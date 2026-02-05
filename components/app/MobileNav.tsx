@@ -23,8 +23,7 @@ export function MobileNav() {
     >
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href ||
-            (href !== '/' && pathname.startsWith(href));
+          const isActive = pathname === href || pathname.startsWith(href);
           return (
             <Link
               key={href}

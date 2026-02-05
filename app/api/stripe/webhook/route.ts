@@ -2,19 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import Stripe from 'stripe';
 
-// Validate required environment variables at startup
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is required');
-}
-if (!process.env.STRIPE_WEBHOOK_SECRET) {
-  throw new Error('STRIPE_WEBHOOK_SECRET is required');
+// Lazy initialization to avoid build-time errors when env vars aren't set
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is not configured');
+  }
+  return new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2025-02-24.acacia',
+  });
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
-});
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+function getWebhookSecret() {
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
+  }
+  return process.env.STRIPE_WEBHOOK_SECRET;
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -23,6 +26,9 @@ export async function POST(req: NextRequest) {
   if (!sig) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
   }
+
+  const stripe = getStripe();
+  const webhookSecret = getWebhookSecret();
 
   let event: Stripe.Event;
   try {

@@ -53,7 +53,9 @@ export const MOCK_CONSULTATIONS: Consultation[] = [
     },
     protocol_version: 1,
     tier_at_creation: 'free',
+    status: 'completed',
     created_at: '2025-01-16T10:00:00Z',
+    updated_at: '2025-01-16T10:30:00Z',
   },
   {
     id: 'consult-2',
@@ -86,7 +88,9 @@ export const MOCK_CONSULTATIONS: Consultation[] = [
     },
     protocol_version: 1,
     tier_at_creation: 'free',
+    status: 'completed',
     created_at: '2025-01-10T14:30:00Z',
+    updated_at: '2025-01-10T15:00:00Z',
   },
 ];
 
