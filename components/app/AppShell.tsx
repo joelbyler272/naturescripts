@@ -1,6 +1,7 @@
 'use client';
 
 import { AppSidebar } from '@/components/app/AppSidebar';
+import { MobileNav } from '@/components/app/MobileNav';
 import { UserAvatar } from '@/components/app/UserAvatar';
 import { SidebarProvider, useSidebar } from '@/components/app/SidebarContext';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -17,8 +18,10 @@ function AppShellContent({ children, maxWidth = 'max-w-4xl' }: AppShellContentPr
   
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Left Sidebar */}
-      <AppSidebar />
+      {/* Desktop Sidebar - hidden on mobile */}
+      <div className="hidden md:block">
+        <AppSidebar />
+      </div>
       
       {/* Main Content Area */}
       <div 
@@ -29,25 +32,28 @@ function AppShellContent({ children, maxWidth = 'max-w-4xl' }: AppShellContentPr
       >
         {/* User Avatar - Fixed to top right */}
         {user && !loading && (
-          <div className="absolute top-4 right-6 z-10">
+          <div className="absolute top-3 right-4 sm:top-4 sm:right-6 z-10">
             <UserAvatar />
           </div>
         )}
         
         {/* Page Content - Centered */}
-        <main className="flex-1 overflow-y-auto bg-secondary/20">
+        <main className="flex-1 overflow-y-auto bg-secondary/20 pb-20 md:pb-0">
           <div 
             className={cn(
               "min-h-full flex justify-center",
               "transition-all duration-300 ease-out"
             )}
           >
-            <div className={cn("w-full px-6 py-6", maxWidth)}>
+            <div className={cn("w-full px-4 sm:px-6 py-4 sm:py-6", maxWidth)}>
               {children}
             </div>
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Nav - visible only on mobile */}
+      <MobileNav />
     </div>
   );
 }

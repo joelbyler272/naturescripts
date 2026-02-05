@@ -22,12 +22,10 @@ export function AppSidebar() {
   const { collapsed, toggleCollapsed, mounted } = useSidebar();
   const pathname = usePathname();
 
-  // Determine which section should be expanded by default based on current route
-  const isHomeSection = pathname === routes.dashboard || 
-    pathname.startsWith('/consultations') || 
+  const isHomeSection = pathname === routes.dashboard ||
+    pathname.startsWith('/consultations') ||
     pathname.startsWith('/protocols');
 
-  // Prevent hydration mismatch - show expanded state initially
   if (!mounted) {
     return (
       <aside
@@ -68,7 +66,7 @@ export function AppSidebar() {
             <Search className="w-4 h-4" />
             <span className="flex-1 text-left">Search...</span>
             <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border/50">
-              ⌘K
+              &#8984;K
             </kbd>
           </button>
         </div>
@@ -83,7 +81,7 @@ export function AppSidebar() {
               'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
               'transition-colors'
             )}
-            title="Search (⌘K)"
+            title="Search"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -93,7 +91,6 @@ export function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 py-2 overflow-y-auto">
         <div className="space-y-1 px-2">
-          {/* Home Section */}
           <SidebarSection
             icon={Home}
             label="Home"
@@ -106,7 +103,6 @@ export function AppSidebar() {
             ]}
           />
 
-          {/* Remedy Database - standalone item */}
           <SidebarItem
             href={routes.remedies}
             label="Remedy Database"
@@ -114,7 +110,6 @@ export function AppSidebar() {
             collapsed={collapsed}
           />
 
-          {/* Library - standalone item */}
           <SidebarItem
             href={routes.library}
             label="Library"
@@ -124,7 +119,7 @@ export function AppSidebar() {
         </div>
       </nav>
 
-      {/* Bottom Section - Help/Support */}
+      {/* Bottom Section */}
       <div className="border-t border-border/30 p-2 shrink-0">
         <SidebarItem
           href="/help"
