@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, MessageSquare, DollarSign, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, DollarSign, Zap, BarChart3, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/consultations', label: 'Consultations', icon: MessageSquare },
+  { href: '/admin/costs', label: 'API Costs', icon: Zap },
+  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/admin/revenue', label: 'Revenue', icon: DollarSign },
 ];
 
@@ -55,6 +57,11 @@ export function AdminSidebar() {
           );
         })}
       </nav>
+
+      {/* Admin Email */}
+      <div className="mt-8 px-3 pt-6 border-t border-gray-200">
+        <p className="text-xs text-gray-400">Logged in as admin</p>
+      </div>
     </aside>
   );
 }
