@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { generateProtocolWithClaude } from '@/lib/anthropic/client';
 import { buildProtocolSystemPrompt } from '@/lib/consultation/prompts';
 import { logConsultationCall, printUsageSummary } from '@/lib/consultation/debugLogger';
+import { recordApiUsage } from '@/lib/admin/apiUsage';
 import {
   HealthContext,
   GeneratedProtocol,
@@ -120,7 +121,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       maxTokens: 2048
     });
 
-    // Log the full consultation call with cost tracking
+    // Record API usage to database for admin dashboard
+    await recordApiUsage({
+      userId: user.id,
+      consultationId: consultationId || undefined,
+      endpoint: 'protocol',
+      model: claudeResponse.usage.model,
+      inputTokens: claudeResponse.usage.inputTokens,
+      outputTokens: claudeResponse.usage.outputTokens,
+    });
+
+    // Log the full consultation call with cost tracking (dev only)
     logConsultationCall({
       endpoint: 'protocol',
       userId: user.id,

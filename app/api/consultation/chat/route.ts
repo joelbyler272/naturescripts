@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildChatSystemPrompt } from '@/lib/consultation/prompts';
 import { logConsultationCall, printUsageSummary } from '@/lib/consultation/debugLogger';
+import { recordApiUsage } from '@/lib/admin/apiUsage';
 import {
   HealthContext,
   ConsultationHistory,
@@ -116,7 +117,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       messages: messagesForClaude
     });
 
-    // Log the full consultation call with cost tracking
+    // Record API usage to database for admin dashboard
+    await recordApiUsage({
+      userId: user.id,
+      consultationId: consultationId || undefined,
+      endpoint: 'chat',
+      model: claudeResponse.usage.model,
+      inputTokens: claudeResponse.usage.inputTokens,
+      outputTokens: claudeResponse.usage.outputTokens,
+    });
+
+    // Log the full consultation call with cost tracking (dev only)
     logConsultationCall({
       endpoint: 'chat',
       userId: user.id,
