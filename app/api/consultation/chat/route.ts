@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildChatSystemPrompt } from '@/lib/consultation/prompts';
+import { logConsultation, calculateCost } from '@/lib/consultation/logger';
 import { 
   HealthContext, 
   ConsultationHistory, 
@@ -11,24 +12,9 @@ import {
 } from '@/lib/consultation/types';
 import { applyRateLimit, RateLimitResult } from '@/lib/utils/rateLimit';
 
-// Development logging helper
-const DEV_MODE = process.env.NODE_ENV === 'development';
-
-function devLog(label: string, data: unknown) {
-  if (DEV_MODE) {
-    console.log('\n' + '='.repeat(60));
-    console.log(`[CONSULTATION CHAT] ${label}`);
-    console.log('='.repeat(60));
-    if (typeof data === 'string') {
-      console.log(data);
-    } else {
-      console.log(JSON.stringify(data, null, 2));
-    }
-    console.log('='.repeat(60) + '\n');
-  }
-}
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+  
   // Rate limiting
   const rateLimitResult: RateLimitResult = applyRateLimit('consultation-chat', 20, 60000);
   if (!rateLimitResult.allowed) {
@@ -54,13 +40,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body: ChatRequest = await request.json();
     const { message, conversationHistory, consultationId } = body;
 
-    devLog('INCOMING REQUEST', {
-      userId: user.id,
-      consultationId,
-      userMessage: message,
-      conversationHistoryLength: conversationHistory.length
-    });
-
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
@@ -81,8 +60,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       tier: 'free'
     };
 
-    devLog('HEALTH CONTEXT FROM DATABASE', healthContext);
-
     const tier = healthContext.tier || 'free';
 
     // For Pro users, get consultation history
@@ -95,7 +72,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         console.error('[CONSULTATION CHAT] Failed to get consultation history:', historyError);
       } else if (historyData) {
         consultationHistoryData = historyData;
-        devLog('PRO USER CONSULTATION HISTORY', consultationHistoryData);
       }
     }
 
@@ -110,24 +86,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     ];
 
-    // Count exchanges (user messages only, not including the greeting)
+    // Count exchanges (user messages only)
     const exchangeCount = updatedHistory.filter(m => m.role === 'user').length;
-
-    devLog('EXCHANGE COUNT', { 
-      exchangeCount, 
-      tier,
-      maxExchangesForTier: tier === 'free' ? 2 : 4
-    });
 
     // Build system prompt
     const systemPrompt = buildChatSystemPrompt(tier, healthContext, consultationHistoryData);
 
-    devLog('SYSTEM PROMPT SENT TO CLAUDE', systemPrompt);
-
     // Build messages for Claude
     const messagesForClaude = updatedHistory.map(m => ({ role: m.role, content: m.content }));
-    
-    devLog('CONVERSATION HISTORY SENT TO CLAUDE', messagesForClaude);
 
     // Call Claude
     const claudeResponse = await chatWithClaude({
@@ -135,32 +101,40 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       messages: messagesForClaude
     });
 
-    devLog('CLAUDE RAW RESPONSE', claudeResponse);
+    const duration = Date.now() - startTime;
 
-    // Determine if ready to generate protocol
-    // FIXED: Only trigger when Claude explicitly says the ready phrase
-    // Don't auto-trigger based on exchange count alone
-    const isReadyIndicator = claudeResponse.toLowerCase().includes('i have what i need') ||
-                            claudeResponse.toLowerCase().includes('ready to put together') ||
-                            claudeResponse.toLowerCase().includes('i have enough information');
-    
-    // Only set ready if Claude explicitly indicates readiness
-    const isReadyToGenerate = isReadyIndicator;
-
-    devLog('READY TO GENERATE CHECK', {
-      isReadyIndicator,
-      isReadyToGenerate,
-      exchangeCount,
-      claudeResponsePreview: claudeResponse.substring(0, 100) + '...'
+    // Log the consultation with usage data
+    logConsultation({
+      timestamp: new Date().toISOString(),
+      type: 'chat',
+      userId: user.id,
+      consultationId: consultationId || undefined,
+      tier,
+      request: {
+        systemPrompt,
+        messages: messagesForClaude,
+        healthContext
+      },
+      response: {
+        content: claudeResponse.content,
+        usage: claudeResponse.usage,
+        cost: calculateCost(claudeResponse.usage)
+      },
+      duration
     });
 
+    // Determine if ready to generate protocol
+    const isReadyIndicator = claudeResponse.content.toLowerCase().includes('i have what i need') ||
+                            claudeResponse.content.toLowerCase().includes('ready to put together') ||
+                            claudeResponse.content.toLowerCase().includes('i have enough information');
+    
+    const isReadyToGenerate = isReadyIndicator;
+
     const response: ChatResponse = {
-      message: claudeResponse,
+      message: claudeResponse.content,
       isReadyToGenerate,
       exchangeCount
     };
-
-    devLog('RESPONSE SENT TO FRONTEND', response);
 
     return NextResponse.json(response);
 
