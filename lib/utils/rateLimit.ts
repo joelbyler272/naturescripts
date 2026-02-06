@@ -25,6 +25,12 @@ interface RateLimitResult {
   resetIn: number;  // Milliseconds until reset
 }
 
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  retryAfter: number;  // Milliseconds until reset
+}
+
 const stores = new Map<string, Map<string, RateLimitEntry>>();
 
 export function createRateLimiter(config: RateLimitConfig) {
@@ -58,27 +64,27 @@ export function createRateLimiter(config: RateLimitConfig) {
           resetTime: now + config.windowMs,
         });
         return {
-          success: true,
+          allowed: true,
           remaining: config.maxRequests - 1,
-          resetIn: config.windowMs,
+          retryAfter: 0,
         };
       }
 
       // Check if over limit
       if (entry.count >= config.maxRequests) {
         return {
-          success: false,
+          allowed: false,
           remaining: 0,
-          resetIn: entry.resetTime - now,
+          retryAfter: entry.resetTime - now,
         };
       }
 
       // Increment count
       entry.count++;
       return {
-        success: true,
+        allowed: true,
         remaining: config.maxRequests - entry.count,
-        resetIn: entry.resetTime - now,
+        retryAfter: 0,
       };
     },
 
@@ -99,9 +105,57 @@ export const apiRateLimiters = {
   // Auth endpoints: 10 requests per minute per IP
   auth: createRateLimiter({ windowMs: 60000, maxRequests: 10 }),
 
-  // Consultation API: 20 requests per minute per user
-  consultation: createRateLimiter({ windowMs: 60000, maxRequests: 20 }),
+  // Consultation chat: 20 requests per minute per user
+  consultationChat: createRateLimiter({ windowMs: 60000, maxRequests: 20 }),
+
+  // Consultation protocol: 10 requests per minute per user
+  consultationProtocol: createRateLimiter({ windowMs: 60000, maxRequests: 10 }),
 };
+
+/**
+ * Simple rate limit function for API routes
+ * Uses a global store keyed by endpoint + identifier
+ */
+const globalStore = new Map<string, RateLimitEntry>();
+
+export function applyRateLimit(
+  key: string,
+  maxRequests: number = 10,
+  windowMs: number = 60000
+): RateLimitResult {
+  const now = Date.now();
+  const entry = globalStore.get(key);
+
+  // If no entry or expired, create new one
+  if (!entry || entry.resetTime <= now) {
+    globalStore.set(key, {
+      count: 1,
+      resetTime: now + windowMs,
+    });
+    return {
+      allowed: true,
+      remaining: maxRequests - 1,
+      retryAfter: 0,
+    };
+  }
+
+  // Check if over limit
+  if (entry.count >= maxRequests) {
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfter: entry.resetTime - now,
+    };
+  }
+
+  // Increment count
+  entry.count++;
+  return {
+    allowed: true,
+    remaining: maxRequests - entry.count,
+    retryAfter: 0,
+  };
+}
 
 /**
  * Helper to get client IP from request headers
