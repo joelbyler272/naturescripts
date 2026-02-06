@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/utils/logger';
 
 // Claude API Pricing (as of 2024)
@@ -31,11 +32,11 @@ export interface ApiUsageEntry {
 }
 
 /**
- * Record API usage to the database
+ * Record API usage to the database using service role client
  */
 export async function recordApiUsage(entry: ApiUsageEntry): Promise<boolean> {
   try {
-    const supabase = await createClient();
+    const supabase = getAdminClient();
     
     const pricing = CLAUDE_PRICING[entry.model] || CLAUDE_PRICING['claude-sonnet-4-20250514'];
     const inputCost = entry.inputTokens * pricing.input;
@@ -102,14 +103,14 @@ export interface UsageSummary {
  * Get API usage statistics for admin dashboard
  */
 export async function getApiUsageStats(): Promise<UsageSummary> {
-  const supabase = await createClient();
-  
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).toISOString();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
   try {
+    const supabase = getAdminClient();
+    
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).toISOString();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
     // Today's stats
     const { data: todayData } = await supabase
       .from('api_usage')
@@ -167,18 +168,37 @@ export async function getApiUsageStats(): Promise<UsageSummary> {
       { requests: 0, cost: 0 }
     );
 
-    // Daily usage for charts (last 30 days)
-    const { data: dailyData } = await supabase.rpc('get_daily_api_usage', { days_back: 30 });
+    // Daily usage for charts (last 30 days) - manual aggregation
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: dailyRawData } = await supabase
+      .from('api_usage')
+      .select('created_at, input_tokens, output_tokens, total_cost, endpoint')
+      .gte('created_at', thirtyDaysAgo)
+      .order('created_at', { ascending: false });
 
-    const dailyUsage: DailyUsage[] = (dailyData || []).map((row: Record<string, unknown>) => ({
-      date: String(row.date),
-      totalRequests: Number(row.total_requests) || 0,
-      totalInputTokens: Number(row.total_input_tokens) || 0,
-      totalOutputTokens: Number(row.total_output_tokens) || 0,
-      totalCost: Number(row.total_cost) || 0,
-      chatRequests: Number(row.chat_requests) || 0,
-      protocolRequests: Number(row.protocol_requests) || 0,
-    }));
+    // Group by date
+    const dailyMap = new Map<string, DailyUsage>();
+    (dailyRawData || []).forEach(row => {
+      const date = row.created_at.split('T')[0];
+      const existing = dailyMap.get(date) || {
+        date,
+        totalRequests: 0,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+        chatRequests: 0,
+        protocolRequests: 0,
+      };
+      existing.totalRequests++;
+      existing.totalInputTokens += row.input_tokens;
+      existing.totalOutputTokens += row.output_tokens;
+      existing.totalCost += Number(row.total_cost);
+      if (row.endpoint === 'chat') existing.chatRequests++;
+      if (row.endpoint === 'protocol') existing.protocolRequests++;
+      dailyMap.set(date, existing);
+    });
+
+    const dailyUsage = Array.from(dailyMap.values());
 
     return {
       today: todayStats,
@@ -209,9 +229,9 @@ export interface UserGrowthData {
  * Get user growth data for charts
  */
 export async function getUserGrowthData(daysBack: number = 30): Promise<UserGrowthData[]> {
-  const supabase = await createClient();
-
   try {
+    const supabase = getAdminClient();
+
     // Get all users with their creation dates
     const { data: users } = await supabase
       .from('profiles')
@@ -278,9 +298,9 @@ export interface ConsultationTrendData {
  * Get consultation trends for charts
  */
 export async function getConsultationTrends(daysBack: number = 30): Promise<ConsultationTrendData[]> {
-  const supabase = await createClient();
-
   try {
+    const supabase = getAdminClient();
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysBack);
 

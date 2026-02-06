@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/utils/logger';
 
 // ============================================
 // ADMIN STATISTICS QUERIES
-// These use service role or admin-specific queries
+// These use service role to bypass RLS
 // ============================================
 
 export interface AdminStats {
@@ -20,14 +20,14 @@ export interface AdminStats {
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
-  const supabase = await createClient();
-  
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).toISOString();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
   try {
+    const supabase = getAdminClient();
+    
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).toISOString();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
     // Total users
     const { count: totalUsers } = await supabase
       .from('profiles')
@@ -126,10 +126,10 @@ export interface UserListItem {
 }
 
 export async function getUsers(limit = 50, offset = 0): Promise<UserListItem[]> {
-  const supabase = await createClient();
-
   try {
-    // Get profiles with user email from auth.users
+    const supabase = getAdminClient();
+
+    // Get profiles
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select('id, first_name, last_name, tier, created_at')
@@ -139,6 +139,13 @@ export async function getUsers(limit = 50, offset = 0): Promise<UserListItem[]> 
     if (error) {
       logger.error('Error fetching users:', error);
       return [];
+    }
+
+    // Get emails from auth.users
+    const { data: authUsers } = await supabase.auth.admin.listUsers();
+    const emailMap = new Map<string, string>();
+    if (authUsers?.users) {
+      authUsers.users.forEach(u => emailMap.set(u.id, u.email || ''));
     }
 
     // Get consultation counts for each user
@@ -151,7 +158,7 @@ export async function getUsers(limit = 50, offset = 0): Promise<UserListItem[]> 
 
         return {
           ...profile,
-          email: '', // We'll need to get this from auth admin API or store in profiles
+          email: emailMap.get(profile.id) || '',
           consultation_count: count ?? 0,
         } as UserListItem;
       })
@@ -167,6 +174,7 @@ export async function getUsers(limit = 50, offset = 0): Promise<UserListItem[]> 
 export interface ConsultationListItem {
   id: string;
   user_id: string;
+  user_email?: string;
   initial_input: string;
   status: 'in_progress' | 'completed' | 'abandoned';
   tier_at_creation: 'free' | 'pro';
@@ -175,9 +183,9 @@ export interface ConsultationListItem {
 }
 
 export async function getConsultations(limit = 50, offset = 0): Promise<ConsultationListItem[]> {
-  const supabase = await createClient();
-
   try {
+    const supabase = getAdminClient();
+
     const { data, error } = await supabase
       .from('consultations')
       .select('id, user_id, initial_input, status, tier_at_creation, created_at, protocol_data')
