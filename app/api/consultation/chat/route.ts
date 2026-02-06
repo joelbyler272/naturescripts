@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildChatSystemPrompt } from '@/lib/consultation/prompts';
-import { logConsultation, calculateCost } from '@/lib/consultation/logger';
+import { logConsultationCall, printUsageSummary } from '@/lib/consultation/debugLogger';
 import { 
   HealthContext, 
   ConsultationHistory, 
@@ -13,8 +13,6 @@ import {
 import { applyRateLimit, RateLimitResult } from '@/lib/utils/rateLimit';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const startTime = Date.now();
-  
   // Rate limiting
   const rateLimitResult: RateLimitResult = applyRateLimit('consultation-chat', 20, 60000);
   if (!rateLimitResult.allowed) {
@@ -101,27 +99,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       messages: messagesForClaude
     });
 
-    const duration = Date.now() - startTime;
-
-    // Log the consultation with usage data
-    logConsultation({
-      timestamp: new Date().toISOString(),
-      type: 'chat',
+    // Log the full consultation call with cost tracking
+    logConsultationCall({
+      endpoint: 'chat',
       userId: user.id,
       consultationId: consultationId || undefined,
-      tier,
       request: {
         systemPrompt,
         messages: messagesForClaude,
-        healthContext
+        userMessage: message,
       },
       response: {
         content: claudeResponse.content,
-        usage: claudeResponse.usage,
-        cost: calculateCost(claudeResponse.usage)
+        model: claudeResponse.usage.model,
       },
-      duration
+      healthContext,
+      metadata: {
+        tier,
+        exchangeCount,
+        consultationHistoryCount: consultationHistoryData.length,
+      },
     });
+
+    // Print usage summary after each call
+    printUsageSummary();
 
     // Determine if ready to generate protocol
     const isReadyIndicator = claudeResponse.content.toLowerCase().includes('i have what i need') ||
