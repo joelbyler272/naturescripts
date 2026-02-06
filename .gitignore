@@ -46,3 +46,6 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# Consultation logs (local dev only)
+/logs/
