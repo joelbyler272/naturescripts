@@ -5,8 +5,14 @@ import { ChatMessage } from '@/components/consultation/ChatMessage';
 import { ChatInput } from '@/components/consultation/ChatInput';
 import { TypingIndicator } from '@/components/consultation/TypingIndicator';
 import { ConversationMessage, GeneratedProtocol } from '@/lib/consultation/types';
+import { 
+  OnboardingState, 
+  createInitialState, 
+  processOnboardingMessage,
+  isReadyForProtocol,
+  getProfileData
+} from '@/lib/onboarding/stateMachine';
 import { logger } from '@/lib/utils/logger';
-import { CHAT_LIMITS } from '@/lib/utils/validation';
 import { ArrowRight, Mail, CheckCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -14,7 +20,6 @@ interface OnboardingChatProps {
   initialQuery?: string;
 }
 
-// Helper to create message objects
 function createMessage(role: 'user' | 'assistant', content: string): ConversationMessage {
   return {
     id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -27,43 +32,34 @@ function createMessage(role: 'user' | 'assistant', content: string): Conversatio
 export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>(createInitialState());
   const [isTyping, setIsTyping] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
-  const [collectedEmail, setCollectedEmail] = useState<string | null>(null);
   const [completionState, setCompletionState] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
-  const [firstName, setFirstName] = useState<string>('Friend');
   const [existingUserError, setExistingUserError] = useState<boolean>(false);
 
-  // Auto-scroll to bottom
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Abort in-flight requests on unmount
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, []);
-
-  // Initialize chat
+  // Initialize
   const initializeChat = useCallback(async () => {
+    const greeting = createMessage(
+      'assistant',
+      "Hi there! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?"
+    );
+    setMessages([greeting]);
+
+    // If there's an initial query, process it immediately
     if (initialQuery) {
-      // If there's an initial query, send it immediately
-      const userMessage = createMessage('user', initialQuery);
-      setMessages([userMessage]);
-      await sendToAPI([userMessage]);
-    } else {
-      // Show initial greeting
-      const greeting = createMessage(
-        'assistant',
-        "Hi there! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?"
-      );
-      setMessages([greeting]);
+      // Small delay to show greeting first
+      setTimeout(() => {
+        handleUserMessage(initialQuery);
+      }, 100);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
@@ -74,107 +70,82 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     initializeChat();
   }, [initializeChat]);
 
-  // Send message to onboarding API
-  const sendToAPI = async (conversationHistory: ConversationMessage[]) => {
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
+  // Handle user message with state machine
+  const handleUserMessage = async (content: string) => {
+    const userMessage = createMessage('user', content);
+    setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    try {
-      const response = await fetch('/api/onboarding/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: conversationHistory[conversationHistory.length - 1].content,
-          conversationHistory: conversationHistory.slice(0, -1),
-        }),
-        signal: controller.signal
-      });
+    // Process through state machine
+    const result = processOnboardingMessage({
+      message: content,
+      state: onboardingState,
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to get response');
+    // Small delay to feel natural
+    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
+
+    if (result.needsApiCall && result.apiCallType === 'clarifying') {
+      // Make the ONE clarifying question API call
+      try {
+        const response = await fetch('/api/onboarding/clarify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            state: result.newState,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const assistantMessage = createMessage('assistant', data.question);
+          setMessages(prev => [...prev, assistantMessage]);
+        } else {
+          // Fallback to a generic question
+          const fallbackQuestion = `That's helpful context, ${result.newState.firstName}. Is there anything that seems to make it better or worse?`;
+          const assistantMessage = createMessage('assistant', fallbackQuestion);
+          setMessages(prev => [...prev, assistantMessage]);
+        }
+      } catch (error) {
+        logger.error('Clarifying question API error:', error);
+        const fallbackQuestion = `Thanks for sharing that, ${result.newState.firstName}. Is there anything that seems to trigger it or make it worse?`;
+        const assistantMessage = createMessage('assistant', fallbackQuestion);
+        setMessages(prev => [...prev, assistantMessage]);
       }
-
-      const data = await response.json();
-
-      const assistantMessage = createMessage('assistant', data.message);
+    } else if (result.reply) {
+      // Use hardcoded response
+      const assistantMessage = createMessage('assistant', result.reply);
       setMessages(prev => [...prev, assistantMessage]);
-
-      // Check if email was collected in this response
-      if (data.collectedEmail) {
-        setCollectedEmail(data.collectedEmail);
-      }
-
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      logger.error('Onboarding chat API error:', error);
-      const errorMessage = createMessage(
-        'assistant',
-        "I'm having trouble connecting right now. Please try again in a moment."
-      );
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
     }
+
+    setOnboardingState(result.newState);
+    setIsTyping(false);
   };
 
-  // Handle user sending a message
-  const handleUserMessage = async (content: string) => {
-    if (content.length > CHAT_LIMITS.MAX_MESSAGE_LENGTH) {
-      const errorMessage = createMessage(
-        'assistant',
-        `Your message is too long. Please keep messages under ${CHAT_LIMITS.MAX_MESSAGE_LENGTH} characters.`
-      );
-      setMessages(prev => [...prev, errorMessage]);
-      return;
-    }
-
-    const userMessage = createMessage('user', content);
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-
-    // Check if this message contains an email
-    const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i;
-    const emailMatch = content.match(emailPattern);
-    if (emailMatch) {
-      setCollectedEmail(emailMatch[0].toLowerCase());
-    }
-
-    await sendToAPI(updatedMessages);
-  };
-
-  // Complete onboarding - create account and generate protocol
-  const handleCompleteOnboarding = async () => {
-    if (!collectedEmail) {
-      return;
-    }
+  // Generate protocol
+  const handleGenerateProtocol = async () => {
+    if (!isReadyForProtocol(onboardingState)) return;
 
     setIsGenerating(true);
     setCompletionState('creating');
 
     try {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
+      const profileData = getProfileData(onboardingState);
+      
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: collectedEmail,
-          conversationHistory: messages,
+          email: profileData.email,
+          state: onboardingState,
+          conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
         }),
-        signal: controller.signal
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         if (data.existingUser) {
-          // User already exists - show sign in prompt
           setExistingUserError(true);
           setCompletionState('error');
           return;
@@ -182,41 +153,22 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
         throw new Error(data.error || 'Failed to complete onboarding');
       }
 
-      // Success!
       setGeneratedProtocol(data.protocol);
-      setFirstName(data.firstName || 'Friend');
+      setOnboardingState(prev => ({ ...prev, step: 'complete' }));
       setCompletionState('done');
 
     } catch (error) {
-      logger.error('Onboarding completion error:', error);
+      logger.error('Protocol generation error:', error);
       setCompletionState('error');
-      const errorMessage = createMessage(
-        'assistant',
-        "I had trouble creating your account. Please try again."
-      );
+      const errorMessage = createMessage('assistant', "I had trouble creating your protocol. Please try again.");
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Determine if chat input should be disabled
-  // Disable after email is collected (user should click button, not type more)
-  const isChatDisabled = isTyping || isGenerating || completionState === 'done' || completionState === 'creating' || (collectedEmail !== null);
-
-  // Determine placeholder text
-  const getPlaceholderText = () => {
-    if (completionState === 'done') {
-      return "Check your email to access your protocol";
-    }
-    if (completionState === 'creating' || isGenerating) {
-      return "Creating your protocol...";
-    }
-    if (collectedEmail) {
-      return "Click the button above to generate your protocol";
-    }
-    return "Share more details...";
-  };
+  const isReady = isReadyForProtocol(onboardingState);
+  const isChatDisabled = isTyping || isGenerating || completionState === 'done' || isReady;
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] bg-white rounded-xl border border-border/50 overflow-hidden">
@@ -227,38 +179,33 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
 
         {isTyping && <TypingIndicator />}
 
-        {/* Existing user error - show sign in prompt */}
+        {/* Existing user error */}
         {existingUserError && (
           <div className="flex flex-col items-center pt-6 pb-4">
             <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
               <Mail className="w-8 h-8 text-amber-600" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Account Already Exists
-            </h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Account Already Exists</h3>
             <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-              It looks like you already have an account with <span className="font-medium text-foreground">{collectedEmail}</span>. Please sign in to continue your consultation.
+              It looks like you already have an account with <span className="font-medium text-foreground">{onboardingState.email}</span>. Please sign in to continue.
             </p>
-            <Link
-              href="/sign-in"
-              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors"
-            >
+            <Link href="/sign-in" className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors">
               Sign In
             </Link>
           </div>
         )}
 
-        {/* Completion state - protocol ready */}
+        {/* Protocol ready */}
         {completionState === 'done' && generatedProtocol && (
           <div className="flex flex-col items-center pt-6 pb-4">
             <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4">
               <CheckCircle className="w-8 h-8 text-accent" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              Your protocol is ready, {firstName}!
+              Your protocol is ready, {onboardingState.firstName}!
             </h3>
             <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-              We've sent an email to <span className="font-medium text-foreground">{collectedEmail}</span> with a link to set your password and access your full protocol.
+              We've sent an email to <span className="font-medium text-foreground">{onboardingState.email}</span> with a link to set your password and access your full protocol.
             </p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-4 py-2 rounded-lg">
               <Mail className="w-4 h-4" />
@@ -267,15 +214,15 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
           </div>
         )}
 
-        {/* Generate button - only show when email is collected AND not done yet AND no error */}
-        {collectedEmail && !generatedProtocol && !existingUserError && completionState !== 'done' && (
+        {/* Generate button */}
+        {isReady && !generatedProtocol && !existingUserError && completionState !== 'done' && (
           <div className="flex justify-center pt-4">
             <button
-              onClick={handleCompleteOnboarding}
-              disabled={isGenerating || completionState === 'creating'}
-              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 disabled:opacity-50"
+              onClick={handleGenerateProtocol}
+              disabled={isGenerating}
+              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
             >
-              {completionState === 'creating' || isGenerating ? (
+              {isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Creating your protocol...
@@ -296,7 +243,11 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
       <ChatInput
         onSend={handleUserMessage}
         disabled={isChatDisabled}
-        placeholder={getPlaceholderText()}
+        placeholder={
+          completionState === 'done' ? "Check your email to access your protocol" :
+          isReady ? "Click the button above to generate your protocol" :
+          "Share more details..."
+        }
       />
     </div>
   );
