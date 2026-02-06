@@ -29,12 +29,13 @@ const statusConfig = {
   },
 };
 
-export default async function ConsultationDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const consultation = await getAnonymizedConsultation(params.id);
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function ConsultationDetailPage({ params }: PageProps) {
+  const { id } = await params;
+  const consultation = await getAnonymizedConsultation(id);
 
   if (!consultation) {
     notFound();

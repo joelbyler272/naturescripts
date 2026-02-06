@@ -33,8 +33,8 @@ interface TrackingSuggestion {
 }
 
 interface Protocol {
-  id: string;
-  summary: string;
+  id?: string;
+  summary?: string;
   recommendations?: Recommendation[];
   dietary_shifts?: DietaryShift[];
   lifestyle_practices?: LifestylePractice[];
@@ -43,27 +43,31 @@ interface Protocol {
 }
 
 interface ProtocolViewerProps {
-  protocol: Protocol;
+  protocol: Protocol | Record<string, unknown>;
 }
 
 export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
+  const p = protocol as Protocol;
+  
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="bg-sage-50 rounded-lg p-4">
-        <p className="text-gray-800">{protocol.summary}</p>
-      </div>
+      {p.summary && (
+        <div className="bg-sage-50 rounded-lg p-4">
+          <p className="text-gray-800">{p.summary}</p>
+        </div>
+      )}
 
       {/* Recommendations */}
-      {protocol.recommendations && protocol.recommendations.length > 0 && (
+      {p.recommendations && p.recommendations.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
             <Pill className="w-4 h-4 text-sage-600" />
-            Recommendations ({protocol.recommendations.length})
+            Recommendations ({p.recommendations.length})
           </h3>
           <div className="space-y-3">
-            {protocol.recommendations.map((rec) => (
-              <div key={rec.id} className="bg-gray-50 rounded-lg p-3">
+            {p.recommendations.map((rec, index) => (
+              <div key={rec.id || index} className="bg-gray-50 rounded-lg p-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium text-gray-900">{rec.name}</p>
@@ -85,15 +89,15 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
       )}
 
       {/* Dietary Shifts */}
-      {protocol.dietary_shifts && protocol.dietary_shifts.length > 0 && (
+      {p.dietary_shifts && p.dietary_shifts.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
             <Utensils className="w-4 h-4 text-sage-600" />
-            Dietary Shifts ({protocol.dietary_shifts.length})
+            Dietary Shifts ({p.dietary_shifts.length})
           </h3>
           <div className="space-y-2">
-            {protocol.dietary_shifts.map((ds) => (
-              <div key={ds.id} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+            {p.dietary_shifts.map((ds, index) => (
+              <div key={ds.id || index} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
                 <span
                   className={`text-xs font-medium px-2 py-1 rounded ${
                     ds.action === 'add'
@@ -113,15 +117,15 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
       )}
 
       {/* Lifestyle Practices */}
-      {protocol.lifestyle_practices && protocol.lifestyle_practices.length > 0 && (
+      {p.lifestyle_practices && p.lifestyle_practices.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
             <Heart className="w-4 h-4 text-sage-600" />
-            Lifestyle Practices ({protocol.lifestyle_practices.length})
+            Lifestyle Practices ({p.lifestyle_practices.length})
           </h3>
           <div className="space-y-2">
-            {protocol.lifestyle_practices.map((lp) => (
-              <div key={lp.id} className="bg-gray-50 rounded-lg p-3">
+            {p.lifestyle_practices.map((lp, index) => (
+              <div key={lp.id || index} className="bg-gray-50 rounded-lg p-3">
                 <p className="text-gray-900">{lp.practice}</p>
                 {lp.timing && (
                   <p className="text-sm text-gray-500 mt-1">{lp.timing}</p>
@@ -133,15 +137,15 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
       )}
 
       {/* Tracking Suggestions */}
-      {protocol.tracking_suggestions && protocol.tracking_suggestions.length > 0 && (
+      {p.tracking_suggestions && p.tracking_suggestions.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-sage-600" />
-            Tracking Suggestions ({protocol.tracking_suggestions.length})
+            Tracking Suggestions ({p.tracking_suggestions.length})
           </h3>
           <div className="space-y-2">
-            {protocol.tracking_suggestions.map((ts) => (
-              <div key={ts.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+            {p.tracking_suggestions.map((ts, index) => (
+              <div key={ts.id || index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
                 <span className="text-gray-900">{ts.metric}</span>
                 <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded capitalize">
                   {ts.frequency}
@@ -153,9 +157,18 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
       )}
 
       {/* Disclaimer */}
-      {protocol.disclaimer && (
+      {p.disclaimer && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-sm text-amber-800">{protocol.disclaimer}</p>
+          <p className="text-sm text-amber-800">{p.disclaimer}</p>
+        </div>
+      )}
+
+      {/* Fallback for unknown structure */}
+      {!p.summary && !p.recommendations && (
+        <div className="bg-gray-50 rounded-lg p-4">
+          <pre className="text-xs text-gray-600 overflow-auto">
+            {JSON.stringify(protocol, null, 2)}
+          </pre>
         </div>
       )}
     </div>
