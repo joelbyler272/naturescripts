@@ -7,16 +7,17 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/dashboard';
   const type = searchParams.get('type'); // 'magiclink', 'recovery', 'invite', etc.
 
+  // Handle PKCE flow (code in query params)
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (!error) {
-      // For magic links from onboarding, redirect to set-password
+      // For magic links/invites from onboarding, redirect to set-password
       if (type === 'magiclink' || type === 'invite') {
         return NextResponse.redirect(`${origin}/auth/set-password`);
       }
-      // For password recovery, also go to set-password
+      // For password recovery
       if (type === 'recovery') {
         return NextResponse.redirect(`${origin}/auth/set-password`);
       }
@@ -27,7 +28,15 @@ export async function GET(request: Request) {
     console.error('[AUTH CALLBACK] Code exchange error:', error);
   }
 
-  // Check for token_hash (alternative auth flow used by some Supabase links)
+  // If no code, Supabase might be using hash fragment flow
+  // We need to redirect to a client-side page that can read the hash
+  // and extract the tokens
+  if (type === 'magiclink' || type === 'invite') {
+    // Redirect to set-password page which will handle hash tokens client-side
+    return NextResponse.redirect(`${origin}/auth/set-password`);
+  }
+
+  // Check for token_hash (alternative auth flow)
   const tokenHash = searchParams.get('token_hash');
   const tokenType = searchParams.get('type') as 'magiclink' | 'recovery' | 'invite' | 'email' | null;
   

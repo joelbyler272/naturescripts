@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Check, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 const supabase = createClient();
@@ -15,7 +15,6 @@ const COMMON_PASSWORDS = ['123456', 'password', 'qwerty', '123456789', 'abc123',
 
 function SetPasswordContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,36 +23,37 @@ function SetPasswordContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [resendingEmail, setResendingEmail] = useState(false);
-  const [emailResent, setEmailResent] = useState(false);
 
-  // Verify the magic link token on mount
+  // Verify the session on mount - handle both hash tokens and existing sessions
   useEffect(() => {
     async function verifySession() {
       try {
-        // First, check if there are auth params in the URL hash (from magic link redirect)
-        // Supabase magic links redirect with hash params like #access_token=...&type=magiclink
+        // Check if there are auth params in the URL hash (from Supabase redirect)
+        // Hash looks like: #access_token=xxx&refresh_token=xxx&type=invite
         if (typeof window !== 'undefined' && window.location.hash) {
           const hashParams = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
           const type = hashParams.get('type');
           
-          if (accessToken && (type === 'magiclink' || type === 'recovery')) {
+          console.log('[SET PASSWORD] Hash params detected, type:', type);
+          
+          if (accessToken && refreshToken) {
             // Set the session from the hash params
             const { data, error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
-              refresh_token: refreshToken || '',
+              refresh_token: refreshToken,
             });
             
             if (sessionError) {
-              console.error('Failed to set session from hash:', sessionError);
+              console.error('[SET PASSWORD] Failed to set session from hash:', sessionError);
               setError('Your verification link has expired or is invalid. Please request a new one.');
               setIsVerifying(false);
               return;
             }
             
             if (data.session) {
+              console.log('[SET PASSWORD] Session set successfully from hash');
               setUserEmail(data.session.user.email || null);
               setIsVerifying(false);
               // Clear the hash from URL for cleaner look
@@ -63,33 +63,35 @@ function SetPasswordContent() {
           }
         }
 
-        // Check for existing session (in case user refreshed the page)
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Check for existing session (in case user refreshed the page or came from callback)
+        const { data: { session }, error: getSessionError } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('Session error:', error);
+        if (getSessionError) {
+          console.error('[SET PASSWORD] Get session error:', getSessionError);
           setError('Your verification link has expired or is invalid. Please request a new one.');
           setIsVerifying(false);
           return;
         }
 
         if (!session) {
+          console.log('[SET PASSWORD] No session found');
           setError('Your verification link has expired or is invalid. Please request a new one.');
           setIsVerifying(false);
           return;
         }
 
+        console.log('[SET PASSWORD] Existing session found');
         setUserEmail(session.user.email || null);
         setIsVerifying(false);
       } catch (err) {
-        console.error('Session verification error:', err);
+        console.error('[SET PASSWORD] Unexpected error:', err);
         setError('Failed to verify your account. Please try again.');
         setIsVerifying(false);
       }
     }
 
     verifySession();
-  }, [searchParams]);
+  }, []);
 
   const validatePassword = (): string | null => {
     if (password.length < 8) {
@@ -154,17 +156,11 @@ function SetPasswordContent() {
       }, 2000);
 
     } catch (err) {
-      console.error('Password update error:', err);
+      console.error('[SET PASSWORD] Password update error:', err);
       setError('Failed to set password. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleResendEmail = async () => {
-    // We don't have the user's email in this case, so redirect to sign in
-    // where they can request a password reset
-    router.push('/sign-in?message=Please sign in or request a password reset');
   };
 
   if (isVerifying) {
