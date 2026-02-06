@@ -211,3 +211,103 @@ export async function getConsultations(limit = 50, offset = 0): Promise<Consulta
     return [];
   }
 }
+
+// ============================================
+// ANONYMIZED CONSULTATION VIEWER
+// Returns consultation data WITHOUT user identifying info
+// ============================================
+
+export interface AnonymizedConsultation {
+  id: string;
+  initial_input: string;
+  conversation_log: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    id?: string;
+    timestamp?: string;
+  }>;
+  protocol_data: Record<string, unknown> | null;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  tier_at_creation: 'free' | 'pro';
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getAnonymizedConsultation(consultationId: string): Promise<AnonymizedConsultation | null> {
+  try {
+    const supabase = createServiceClient();
+
+    const { data, error } = await supabase
+      .from('consultations')
+      .select('id, initial_input, conversation_log, protocol_data, status, tier_at_creation, created_at, updated_at')
+      .eq('id', consultationId)
+      .single();
+
+    if (error || !data) {
+      logger.error('Error fetching consultation:', error);
+      return null;
+    }
+
+    // Return without user_id - completely anonymized
+    return {
+      id: data.id,
+      initial_input: data.initial_input,
+      conversation_log: data.conversation_log || [],
+      protocol_data: data.protocol_data,
+      status: data.status,
+      tier_at_creation: data.tier_at_creation,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  } catch (error) {
+    logger.error('Error fetching anonymized consultation:', error);
+    return null;
+  }
+}
+
+// ============================================
+// EXPORT CONSULTATIONS FOR AI TRAINING
+// Returns anonymized data in training-friendly format
+// ============================================
+
+export interface TrainingDataEntry {
+  conversation: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+  protocol: Record<string, unknown> | null;
+  tier: 'free' | 'pro';
+  completed: boolean;
+}
+
+export async function getTrainingData(limit = 1000): Promise<TrainingDataEntry[]> {
+  try {
+    const supabase = createServiceClient();
+
+    const { data, error } = await supabase
+      .from('consultations')
+      .select('conversation_log, protocol_data, tier_at_creation, status')
+      .eq('status', 'completed')
+      .not('protocol_data', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      logger.error('Error fetching training data:', error);
+      return [];
+    }
+
+    return (data || []).map(c => ({
+      conversation: (c.conversation_log || []).map((msg: { role: string; content: string }) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      })),
+      protocol: c.protocol_data,
+      tier: c.tier_at_creation,
+      completed: c.status === 'completed',
+    }));
+  } catch (error) {
+    logger.error('Error fetching training data:', error);
+    return [];
+  }
+}

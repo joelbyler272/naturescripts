@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { ConsultationListItem } from '@/lib/admin/queries';
-import { Search, CheckCircle, Clock, XCircle, FileText } from 'lucide-react';
+import { Search, CheckCircle, Clock, XCircle, FileText, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ConsultationsTableProps {
@@ -34,8 +35,7 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
   const filteredConsultations = consultations.filter(c => {
     const matchesSearch = 
       c.initial_input.toLowerCase().includes(search.toLowerCase()) ||
-      c.id.toLowerCase().includes(search.toLowerCase()) ||
-      c.user_id.toLowerCase().includes(search.toLowerCase());
+      c.id.toLowerCase().includes(search.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     
@@ -50,7 +50,7 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search consultations..."
+            placeholder="Search by concern or ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent"
@@ -74,7 +74,7 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
-                Initial Input
+                Initial Concern
               </th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
                 Status
@@ -87,6 +87,9 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
               </th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
                 Created
+              </th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
+                Actions
               </th>
             </tr>
           </thead>
@@ -133,6 +136,15 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(consultation.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4">
+                    <Link
+                      href={`/admin/consultations/${consultation.id}`}
+                      className="inline-flex items-center gap-1 text-sm text-sage-600 hover:text-sage-700 font-medium"
+                    >
+                      <Eye className="w-4 h-4" />
+                      View
+                    </Link>
                   </td>
                 </tr>
               );
