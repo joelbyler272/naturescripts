@@ -5,18 +5,25 @@ import { useRouter } from 'next/navigation';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
-import { ConsultationState, ConversationMessage, GeneratedProtocol } from '@/lib/consultation/types';
-import { generateMockResponse, getFirstQuestion, createMessage, getResponseDelay } from '@/lib/consultation/mockAI';
-import { generateProtocol } from '@/lib/consultation/generateProtocol';
+import { ConversationMessage, GeneratedProtocol, ChatResponse } from '@/lib/consultation/types';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { createConsultation, updateConsultation, incrementDailyUsage, checkCanConsult } from '@/lib/supabase/database';
+import { createConsultation, checkCanConsult } from '@/lib/supabase/database';
 import { logger } from '@/lib/utils/logger';
 import { ArrowRight, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 interface ChatInterfaceProps {
   initialQuery?: string;
+}
+
+// Helper to create message objects
+function createMessage(role: 'user' | 'assistant', content: string): ConversationMessage {
+  return {
+    id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    role,
+    content,
+    timestamp: new Date().toISOString()
+  };
 }
 
 export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
@@ -26,25 +33,21 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const hasInitialized = useRef(false);
   const consultationId = useRef<string | null>(null);
 
-  const [state, setState] = useState<ConsultationState>({
-    messages: [],
-    questionCount: 0,
-    isComplete: false,
-    collectedInfo: {},
-  });
-
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isReadyToGenerate, setIsReadyToGenerate] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [exchangeCount, setExchangeCount] = useState(0);
 
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [state.messages, isTyping]);
+  }, [messages, isTyping]);
 
-  // Initialize chat — check limit but do NOT increment yet
+  // Initialize chat
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
@@ -52,7 +55,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     const initializeChat = async () => {
       if (user?.id) {
         try {
-          // Only CHECK if they can consult — don't increment yet
           const usageStatus = await checkCanConsult(user.id);
 
           if (!usageStatus.canConsult) {
@@ -60,8 +62,6 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
             return;
           }
 
-          // Create consultation record (in_progress, no usage counted yet)
-          // Use actual user tier from metadata, not hardcoded 'free'
           const userTier = (user.user_metadata?.tier as 'free' | 'pro') || 'free';
           const consultation = await createConsultation(
             user.id,
@@ -73,181 +73,129 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
             consultationId.current = consultation.id;
           }
         } catch (error) {
-          // Error logged via logger in database.ts
+          logger.error('Failed to initialize consultation:', error);
         }
       }
 
-      const messages: ConversationMessage[] = [];
-
+      // If there's an initial query, send it immediately
       if (initialQuery) {
         const userMessage = createMessage('user', initialQuery);
-        messages.push(userMessage);
-
-        setState({
-          messages,
-          questionCount: 1,
-          isComplete: false,
-          collectedInfo: {},
-        });
-
-        setIsTyping(true);
-        await new Promise(resolve => setTimeout(resolve, getResponseDelay()));
-
-        const firstQuestion = getFirstQuestion(initialQuery);
-        const assistantMessage = createMessage('assistant', firstQuestion);
-
-        setState(prev => ({
-          ...prev,
-          messages: [...prev.messages, assistantMessage],
-        }));
-
-        setIsTyping(false);
+        setMessages([userMessage]);
+        await sendToClaudeAPI([userMessage]);
       } else {
-        setIsTyping(true);
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const greeting = "Hello! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?";
-        const assistantMessage = createMessage('assistant', greeting);
-
-        setState({
-          messages: [assistantMessage],
-          questionCount: 0,
-          isComplete: false,
-          collectedInfo: {},
-        });
-
-        setIsTyping(false);
+        // Show initial greeting
+        const greeting = createMessage(
+          'assistant',
+          "Hello! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?"
+        );
+        setMessages([greeting]);
       }
     };
 
     initializeChat();
   }, [initialQuery, user?.id]);
 
-  const handleUserMessage = async (content: string) => {
-    const userMessage = createMessage('user', content);
-    const newQuestionCount = state.questionCount + 1;
-    const updatedMessages = [...state.messages, userMessage];
-
-    setState(prev => ({
-      ...prev,
-      messages: updatedMessages,
-      questionCount: newQuestionCount,
-    }));
-
+  // Send message to Claude API
+  const sendToClaudeAPI = async (conversationHistory: ConversationMessage[]) => {
     setIsTyping(true);
-    await new Promise(resolve => setTimeout(resolve, getResponseDelay()));
 
-    const updatedState: ConsultationState = {
-      messages: updatedMessages,
-      questionCount: newQuestionCount,
-      isComplete: false,
-      collectedInfo: state.collectedInfo,
-    };
+    try {
+      const response = await fetch('/api/consultation/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: conversationHistory[conversationHistory.length - 1].content,
+          conversationHistory: conversationHistory.slice(0, -1),
+          consultationId: consultationId.current
+        })
+      });
 
-    const { message, isReadyToGenerate: ready } = generateMockResponse(updatedState);
-    const assistantMessage = createMessage('assistant', message);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get response');
+      }
 
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, assistantMessage],
-      isComplete: ready,
-    }));
+      const data: ChatResponse = await response.json();
 
-    setIsTyping(false);
-    setIsReadyToGenerate(ready);
+      const assistantMessage = createMessage('assistant', data.message);
+      setMessages(prev => [...prev, assistantMessage]);
+      setExchangeCount(data.exchangeCount);
+      setIsReadyToGenerate(data.isReadyToGenerate);
+
+    } catch (error) {
+      logger.error('Chat API error:', error);
+      const errorMessage = createMessage(
+        'assistant',
+        "I'm having trouble connecting right now. Please try again in a moment."
+      );
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
-  const handleGenerateProtocol = async () => {
-    const userMessage = createMessage('user', 'Generate my protocol');
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, userMessage],
-    }));
+  // Handle user sending a message
+  const handleUserMessage = async (content: string) => {
+    const userMessage = createMessage('user', content);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    await sendToClaudeAPI(updatedMessages);
+  };
 
+  // Generate protocol
+  const handleGenerateProtocol = async () => {
     setIsGenerating(true);
     setIsReadyToGenerate(false);
     setIsTyping(true);
 
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    try {
+      const response = await fetch('/api/consultation/protocol', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationHistory: messages,
+          consultationId: consultationId.current
+        })
+      });
 
-    const protocol = generateProtocol(state);
-    setGeneratedProtocol(protocol);
-
-    // Save protocol AND increment usage
-    // We show a warning to user if save fails, but still show protocol
-    let savedSuccessfully = false;
-    if (consultationId.current && user?.id) {
-      try {
-        const allMessages = [...state.messages, userMessage];
-
-        // Convert protocol to storage format safely
-        const protocolForStorage = {
-          id: protocol.id,
-          size: protocol.size,
-          summary: protocol.summary,
-          primaryConcern: protocol.primaryConcern,
-          recommendations: protocol.recommendations,
-          lifestyleTips: protocol.lifestyleTips,
-          warnings: protocol.warnings,
-          createdAt: protocol.createdAt,
-        };
-
-        // Run both operations in parallel - both must succeed
-        const [updateResult, usageResult] = await Promise.all([
-          updateConsultation(consultationId.current, {
-            conversation_log: allMessages.map(m => ({
-              role: m.role,
-              content: m.content,
-              timestamp: m.timestamp,
-            })),
-            protocol_data: protocolForStorage as unknown as Record<string, unknown>,
-            status: 'completed',
-          }),
-          incrementDailyUsage(user.id),
-        ]);
-
-        // Check both results - if either failed, show warning to user
-        if (!updateResult) {
-          logger.error('Failed to save consultation to database');
-          setSaveError('Your protocol was generated but could not be saved. Please take a screenshot.');
-        } else if (!usageResult.success) {
-          logger.error('Failed to increment daily usage counter');
-          // This is a backend issue, don't bother user
-        } else {
-          savedSuccessfully = true;
-        }
-      } catch (error) {
-        logger.error('Error saving consultation:', error);
-        setSaveError('Your protocol was generated but could not be saved. Please take a screenshot.');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate protocol');
       }
-    } else {
-      // No consultation ID means we couldn't create the record
-      setSaveError('Protocol generated but session was not saved. Please take a screenshot.');
+
+      const data = await response.json();
+      setGeneratedProtocol(data.protocol);
+
+      const successMessage = createMessage(
+        'assistant',
+        `Your protocol is ready! I've created ${data.protocol.recommendations.length} personalized recommendation${data.protocol.recommendations.length > 1 ? 's' : ''} based on our conversation.`
+      );
+      setMessages(prev => [...prev, successMessage]);
+
+    } catch (error) {
+      logger.error('Protocol generation error:', error);
+      setSaveError('Failed to generate protocol. Please try again.');
+      const errorMessage = createMessage(
+        'assistant',
+        "I had trouble generating your protocol. Please try again."
+      );
+      setMessages(prev => [...prev, errorMessage]);
+      setIsReadyToGenerate(true); // Allow retry
+    } finally {
+      setIsTyping(false);
+      setIsGenerating(false);
     }
-
-    const successMessage = createMessage(
-      'assistant',
-      `Your ${protocol.primaryConcern} protocol is ready! I've created ${protocol.recommendations.length} personalized recommendation${protocol.recommendations.length > 1 ? 's' : ''} based on our conversation.`
-    );
-
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, successMessage],
-    }));
-
-    setIsTyping(false);
-    setIsGenerating(false);
   };
 
   const handleViewProtocol = () => {
     if (consultationId.current) {
       router.push(`/protocols/${consultationId.current}`);
     } else {
-      // Fallback: show protocols list if no specific ID
       router.push('/protocols');
     }
   };
 
+  // Usage limit reached
   if (usageError) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-12rem)] bg-white rounded-xl border border-border/50 p-8 text-center">
@@ -277,13 +225,13 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-xl border border-border/50 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {state.messages.map((message) => (
+        {messages.map((message) => (
           <ChatMessage key={message.id} role={message.role} content={message.content} />
         ))}
 
         {isTyping && <TypingIndicator />}
 
-        {/* Action buttons container - fixed height to prevent layout shift */}
+        {/* Action buttons */}
         {(isReadyToGenerate || generatedProtocol) && !isGenerating && (
           <div className="flex justify-center pt-4 min-h-[60px]">
             {isReadyToGenerate && !generatedProtocol && (
