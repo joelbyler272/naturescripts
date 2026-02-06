@@ -233,11 +233,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // ==========================================
     // STEP 6: Generate magic link and send email
     // ==========================================
+    // Use the auth callback route which will handle the code exchange and redirect to set-password
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    
     const { data: magicLinkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: email.toLowerCase(),
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/set-password`,
+        // Redirect to our callback route which will handle the session and redirect to set-password
+        redirectTo: `${appUrl}/auth/callback?type=magiclink`,
       },
     });
 
@@ -270,7 +274,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       consultationId: consultation?.id,
       protocol,
       firstName: profileData.firstName,
-      message: `Thanks ${profileData.firstName}! Check your email at ${email} to save your protocol and set up your account.`,
+      message: `Thanks ${profileData.firstName}! Check your email at ${email} to set your password and access your protocol.`,
     });
 
   } catch (error) {
