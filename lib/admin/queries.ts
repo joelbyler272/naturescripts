@@ -1,4 +1,4 @@
-import { getAdminClient } from '@/lib/supabase/admin';
+import { createServiceClient } from '@/lib/supabase/service';
 import { logger } from '@/lib/utils/logger';
 
 // ============================================
@@ -21,7 +21,7 @@ export interface AdminStats {
 
 export async function getAdminStats(): Promise<AdminStats> {
   try {
-    const supabase = getAdminClient();
+    const supabase = createServiceClient();
     
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
@@ -127,7 +127,7 @@ export interface UserListItem {
 
 export async function getUsers(limit = 50, offset = 0): Promise<UserListItem[]> {
   try {
-    const supabase = getAdminClient();
+    const supabase = createServiceClient();
 
     // Get profiles
     const { data: profiles, error } = await supabase
@@ -142,10 +142,10 @@ export async function getUsers(limit = 50, offset = 0): Promise<UserListItem[]> 
     }
 
     // Get emails from auth.users
-    const { data: authUsers } = await supabase.auth.admin.listUsers();
+    const { data: authData } = await supabase.auth.admin.listUsers();
     const emailMap = new Map<string, string>();
-    if (authUsers?.users) {
-      authUsers.users.forEach(u => emailMap.set(u.id, u.email || ''));
+    if (authData?.users) {
+      authData.users.forEach(u => emailMap.set(u.id, u.email || ''));
     }
 
     // Get consultation counts for each user
@@ -184,7 +184,7 @@ export interface ConsultationListItem {
 
 export async function getConsultations(limit = 50, offset = 0): Promise<ConsultationListItem[]> {
   try {
-    const supabase = getAdminClient();
+    const supabase = createServiceClient();
 
     const { data, error } = await supabase
       .from('consultations')

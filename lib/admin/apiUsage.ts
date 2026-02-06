@@ -1,5 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { createServiceClient } from '@/lib/supabase/service';
 import { logger } from '@/lib/utils/logger';
 
 // Claude API Pricing (as of 2024)
@@ -36,7 +35,7 @@ export interface ApiUsageEntry {
  */
 export async function recordApiUsage(entry: ApiUsageEntry): Promise<boolean> {
   try {
-    const supabase = getAdminClient();
+    const supabase = createServiceClient();
     
     const pricing = CLAUDE_PRICING[entry.model] || CLAUDE_PRICING['claude-sonnet-4-20250514'];
     const inputCost = entry.inputTokens * pricing.input;
@@ -104,7 +103,7 @@ export interface UsageSummary {
  */
 export async function getApiUsageStats(): Promise<UsageSummary> {
   try {
-    const supabase = getAdminClient();
+    const supabase = createServiceClient();
     
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
@@ -230,7 +229,7 @@ export interface UserGrowthData {
  */
 export async function getUserGrowthData(daysBack: number = 30): Promise<UserGrowthData[]> {
   try {
-    const supabase = getAdminClient();
+    const supabase = createServiceClient();
 
     // Get all users with their creation dates
     const { data: users } = await supabase
@@ -299,7 +298,7 @@ export interface ConsultationTrendData {
  */
 export async function getConsultationTrends(daysBack: number = 30): Promise<ConsultationTrendData[]> {
   try {
-    const supabase = getAdminClient();
+    const supabase = createServiceClient();
 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysBack);
