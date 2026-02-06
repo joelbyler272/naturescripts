@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, MessageSquare, DollarSign, Zap, BarChart3, ArrowLeft, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, DollarSign, Zap, BarChart3, Download, ArrowLeft, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/admin/costs', label: 'API Costs', icon: Zap },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/admin/revenue', label: 'Revenue', icon: DollarSign },
+  { href: '/admin/export', label: 'Export Data', icon: Download },
 ];
 
 export function AdminSidebar() {
