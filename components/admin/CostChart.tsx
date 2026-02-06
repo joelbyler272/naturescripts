@@ -55,9 +55,10 @@ export function CostChart({ data }: CostChartProps) {
               borderRadius: '8px',
               fontSize: '14px'
             }}
-            formatter={(value: number, name: string) => {
-              if (name === 'cost') return [`$${value.toFixed(4)}`, 'Cost'];
-              return [value, 'Requests'];
+            formatter={(value, name) => {
+              const numValue = typeof value === 'number' ? value : 0;
+              if (name === 'cost') return [`$${numValue.toFixed(4)}`, 'Cost'];
+              return [numValue, 'Requests'];
             }}
           />
           <Legend />
