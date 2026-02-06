@@ -11,6 +11,7 @@ import { getUserProfile, resetDailyUsage, clearAllConsultations, toggleUserTier,
 import { isDevUser } from '@/lib/constants/devAccess';
 import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/utils/logger';
+import { DeleteAccountModal } from '@/components/settings/DeleteAccountModal';
 import {
   User, CreditCard, Shield, AlertTriangle, Loader2, Check,
   RotateCcw, Wrench, Trash2, ArrowUpDown, Heart, Plus, X
@@ -80,6 +81,9 @@ export function SettingsContent() {
   // Subscription management state
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+
+  // Delete account modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const isDev = isDevUser(user?.email);
 
@@ -340,7 +344,7 @@ export function SettingsContent() {
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="lastName" className="text-sm font-medium text-foreground">
-                    Last Name
+                    Last Name <span className="text-muted-foreground text-xs">(optional)</span>
                   </label>
                   <Input
                     id="lastName"
@@ -782,17 +786,26 @@ export function SettingsContent() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-3">
-                Permanently delete your account and all associated data.
+                Permanently delete your account and all associated data. This action cannot be undone.
               </p>
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => alert('Account deletion is not yet available. Please contact support.')}
-              >Delete My Account</Button>
+                onClick={() => setShowDeleteModal(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete My Account
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Account Modal */}
+      <DeleteAccountModal 
+        isOpen={showDeleteModal} 
+        onClose={() => setShowDeleteModal(false)} 
+      />
     </div>
   );
 }
