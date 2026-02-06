@@ -29,9 +29,10 @@ const COMMON_CONDITIONS = [
   'High blood pressure', 'Diabetes', 'Thyroid issues', 'Arthritis'
 ];
 
+const supabase = createClient();
+
 export function HealthProfileCard() {
   const { user } = useAuth();
-  const supabase = createClient();
 
   // Health profile state
   const [healthConditions, setHealthConditions] = useState<string[]>([]);
@@ -44,6 +45,7 @@ export function HealthProfileCard() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // New medication/supplement forms
   const [newMed, setNewMed] = useState<Medication>({ name: '', dosage: '', frequency: '' });
@@ -71,13 +73,15 @@ export function HealthProfileCard() {
         }
       } catch (err) {
         logger.error('Failed to load health profile:', err);
+        setError('Failed to load health profile.');
       } finally {
         setLoading(false);
       }
     };
 
     loadHealthProfile();
-  }, [user?.id, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Save health profile
   const handleSave = async () => {
@@ -85,6 +89,7 @@ export function HealthProfileCard() {
 
     setSaving(true);
     setSaved(false);
+    setError(null);
 
     try {
       const { error } = await supabase
@@ -104,6 +109,7 @@ export function HealthProfileCard() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       logger.error('Failed to save health profile:', err);
+      setError('Failed to save health profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -363,6 +369,11 @@ export function HealthProfileCard() {
             className="w-full min-h-[100px] px-3 py-2 text-sm border border-input rounded-md bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
 
         {/* Save Button */}
         <Button

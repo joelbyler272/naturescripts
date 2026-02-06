@@ -27,6 +27,11 @@ RETURNS JSONB AS $$
 DECLARE
   v_context JSONB;
 BEGIN
+  -- Security: verify caller is requesting their own data
+  IF auth.uid() != p_user_id THEN
+    RETURN NULL;
+  END IF;
+
   SELECT jsonb_build_object(
     'health_conditions', COALESCE(health_conditions, '{}'),
     'medications', COALESCE(medications, '[]'),
@@ -50,6 +55,14 @@ RETURNS JSONB AS $$
 DECLARE
   v_history JSONB;
 BEGIN
+  -- Security: verify caller is requesting their own data
+  IF auth.uid() != p_user_id THEN
+    RETURN NULL;
+  END IF;
+
+  -- Cap limit to prevent excessive queries
+  p_limit := LEAST(p_limit, 50);
+
   SELECT jsonb_agg(
     jsonb_build_object(
       'id', id,

@@ -2,9 +2,16 @@
 
 import { ProductLink } from './types';
 
-// Affiliate IDs (replace with your actual affiliate IDs)
-const AMAZON_AFFILIATE_TAG = process.env.AMAZON_AFFILIATE_TAG || 'naturescripts-20';
-const IHERB_AFFILIATE_CODE = process.env.IHERB_AFFILIATE_CODE || 'NSC1234';
+// Affiliate IDs from environment variables
+const AMAZON_AFFILIATE_TAG = process.env.AMAZON_AFFILIATE_TAG || '';
+const IHERB_AFFILIATE_CODE = process.env.IHERB_AFFILIATE_CODE || '';
+
+if (!process.env.AMAZON_AFFILIATE_TAG) {
+  console.warn('[AffiliateLinks] AMAZON_AFFILIATE_TAG env var not set. Affiliate links will not include a tag.');
+}
+if (!process.env.IHERB_AFFILIATE_CODE) {
+  console.warn('[AffiliateLinks] IHERB_AFFILIATE_CODE env var not set. Affiliate links will not include a code.');
+}
 
 /**
  * Generate Amazon search URL with affiliate tag

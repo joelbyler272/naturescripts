@@ -81,6 +81,8 @@ export function calculateCost(usage: TokenUsage): { input: number; output: numbe
 }
 
 export function logConsultation(entry: LogEntry): void {
+  if (process.env.NODE_ENV !== 'development') return;
+
   const logPath = getLogFilePath();
   
   // Format the log entry

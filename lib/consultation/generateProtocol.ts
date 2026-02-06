@@ -1,4 +1,4 @@
-import { ConsultationState, GeneratedProtocol, ProtocolRecommendation, ProtocolSize } from './types';
+import { ConsultationState, LegacyGeneratedProtocol, ProtocolRecommendation, ProtocolSize } from './types';
 import { detectSymptomCategory } from './questionFlow';
 
 // Protocol templates by symptom category
@@ -229,7 +229,7 @@ function generateProtocolId(): string {
 /**
  * Generate a protocol based on the consultation conversation
  */
-export function generateProtocol(state: ConsultationState): GeneratedProtocol {
+export function generateProtocol(state: ConsultationState): LegacyGeneratedProtocol {
   const firstUserMessage = state.messages.find(m => m.role === 'user');
   const category = firstUserMessage ? detectSymptomCategory(firstUserMessage.content) : null;
   

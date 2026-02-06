@@ -1,6 +1,7 @@
 'use client';
 
 import { Recommendation, ProductLink } from '@/lib/consultation/types';
+import { sanitizeProductUrl } from '@/lib/utils/urlValidation';
 import { ExternalLink, Clock, AlertCircle, Leaf, Pill, Droplets } from 'lucide-react';
 
 interface RecommendationCardProps {
@@ -29,7 +30,7 @@ function ProductButton({ product }: { product: ProductLink }) {
 
   return (
     <a
-      href={product.url}
+      href={sanitizeProductUrl(product.url)}
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${source.color}`}

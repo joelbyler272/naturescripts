@@ -6,7 +6,7 @@
  *
  * Usage:
  *   const limiter = createRateLimiter({ windowMs: 60000, maxRequests: 10 });
- *   const { success, remaining } = limiter.check(userId);
+ *   const { allowed, remaining } = limiter.check(userId);
  */
 
 interface RateLimitConfig {
@@ -17,12 +17,6 @@ interface RateLimitConfig {
 interface RateLimitEntry {
   count: number;
   resetTime: number;
-}
-
-interface RateLimitResult {
-  success: boolean;
-  remaining: number;
-  resetIn: number;  // Milliseconds until reset
 }
 
 export interface RateLimitResult {
@@ -43,7 +37,7 @@ export function createRateLimiter(config: RateLimitConfig) {
   const store = stores.get(storeKey)!;
 
   // Clean up expired entries periodically
-  setInterval(() => {
+  const interval = setInterval(() => {
     const now = Date.now();
     store.forEach((entry, key) => {
       if (entry.resetTime <= now) {
@@ -51,6 +45,11 @@ export function createRateLimiter(config: RateLimitConfig) {
       }
     });
   }, config.windowMs);
+
+  // Allow Node.js to exit even if this interval is still running
+  if (typeof interval === 'object' && 'unref' in interval) {
+    interval.unref();
+  }
 
   return {
     check(identifier: string): RateLimitResult {
@@ -114,21 +113,33 @@ export const apiRateLimiters = {
 
 /**
  * Simple rate limit function for API routes
- * Uses a global store keyed by endpoint + identifier
+ * Uses a global store keyed by endpoint + userId
  */
 const globalStore = new Map<string, RateLimitEntry>();
+let lastGlobalCleanup = 0;
 
 export function applyRateLimit(
   key: string,
+  userId: string,
   maxRequests: number = 10,
   windowMs: number = 60000
 ): RateLimitResult {
   const now = Date.now();
-  const entry = globalStore.get(key);
+
+  // Lazy cleanup: run at most once per minute
+  if (now - lastGlobalCleanup > 60000) {
+    lastGlobalCleanup = now;
+    globalStore.forEach((v, k) => {
+      if (v.resetTime <= now) globalStore.delete(k);
+    });
+  }
+
+  const storeKey = `${key}:${userId}`;
+  const entry = globalStore.get(storeKey);
 
   // If no entry or expired, create new one
   if (!entry || entry.resetTime <= now) {
-    globalStore.set(key, {
+    globalStore.set(storeKey, {
       count: 1,
       resetTime: now + windowMs,
     });

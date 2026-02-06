@@ -14,8 +14,8 @@ export function isGeneratedProtocol(data: unknown): data is GeneratedProtocol {
 
   const obj = data as Record<string, unknown>;
   return (
-    'primaryConcern' in obj &&
-    typeof obj.primaryConcern === 'string' &&
+    'summary' in obj &&
+    typeof obj.summary === 'string' &&
     'recommendations' in obj &&
     Array.isArray(obj.recommendations)
   );
@@ -44,7 +44,7 @@ export function getProtocolLabel(
   fallback: string
 ): string {
   if (isGeneratedProtocol(protocolData)) {
-    return protocolData.primaryConcern;
+    return protocolData.summary;
   }
   if (isOldProtocol(protocolData)) {
     return protocolData.analysis?.patterns?.[0] ?? fallback;

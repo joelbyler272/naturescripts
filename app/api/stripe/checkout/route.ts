@@ -35,13 +35,13 @@ export async function POST(req: NextRequest) {
 
     // Rate limiting: 5 requests per minute per user
     const rateLimitResult = apiRateLimiters.stripeCheckout.check(user.id);
-    if (!rateLimitResult.success) {
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
         {
           status: 429,
           headers: {
-            'Retry-After': String(Math.ceil(rateLimitResult.resetIn / 1000)),
+            'Retry-After': String(Math.ceil(rateLimitResult.retryAfter / 1000)),
           },
         }
       );

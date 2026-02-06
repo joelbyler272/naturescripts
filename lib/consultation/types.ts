@@ -43,8 +43,34 @@ export interface ConversationMessage {
 export interface ConsultationState {
   messages: ConversationMessage[];
   exchangeCount: number;
+  questionCount: number;
   isReadyToGenerate: boolean;
   category?: string;
+}
+
+// Legacy template-based protocol types (used by generateProtocol.ts fallback)
+
+export type ProtocolSize = 'light' | 'medium' | 'full';
+
+export interface ProtocolRecommendation {
+  herb: string;
+  botanicalName: string;
+  dosage: string;
+  timing: string;
+  reason: string;
+  duration: string;
+}
+
+// Legacy protocol shape (returned by template-based generateProtocol fallback)
+export interface LegacyGeneratedProtocol {
+  id: string;
+  size: ProtocolSize;
+  summary: string;
+  primaryConcern: string;
+  recommendations: ProtocolRecommendation[];
+  lifestyleTips: string[];
+  warnings: string[];
+  createdAt: string;
 }
 
 // Protocol Types
