@@ -51,9 +51,10 @@ export function UserGrowthChart({ data }: UserGrowthChartProps) {
               borderRadius: '8px',
               fontSize: '14px'
             }}
-            formatter={(value: number, name: string) => {
-              if (name === 'total') return [value, 'Total Users'];
-              return [value, 'New Users'];
+            formatter={(value, name) => {
+              const numValue = typeof value === 'number' ? value : 0;
+              if (name === 'total') return [numValue, 'Total Users'];
+              return [numValue, 'New Users'];
             }}
           />
           <Area
