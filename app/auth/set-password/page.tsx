@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Check, AlertCircle } from 'lucide-react';
+import { Loader2, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 const supabase = createClient();
@@ -24,15 +24,56 @@ function SetPasswordContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [emailResent, setEmailResent] = useState(false);
 
   // Verify the magic link token on mount
   useEffect(() => {
     async function verifySession() {
       try {
-        // The magic link should have set up a session
+        // First, check if there are auth params in the URL hash (from magic link redirect)
+        // Supabase magic links redirect with hash params like #access_token=...&type=magiclink
+        if (typeof window !== 'undefined' && window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          const type = hashParams.get('type');
+          
+          if (accessToken && (type === 'magiclink' || type === 'recovery')) {
+            // Set the session from the hash params
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+            
+            if (sessionError) {
+              console.error('Failed to set session from hash:', sessionError);
+              setError('Your verification link has expired or is invalid. Please request a new one.');
+              setIsVerifying(false);
+              return;
+            }
+            
+            if (data.session) {
+              setUserEmail(data.session.user.email || null);
+              setIsVerifying(false);
+              // Clear the hash from URL for cleaner look
+              window.history.replaceState(null, '', window.location.pathname);
+              return;
+            }
+          }
+        }
+
+        // Check for existing session (in case user refreshed the page)
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error || !session) {
+        if (error) {
+          console.error('Session error:', error);
+          setError('Your verification link has expired or is invalid. Please request a new one.');
+          setIsVerifying(false);
+          return;
+        }
+
+        if (!session) {
           setError('Your verification link has expired or is invalid. Please request a new one.');
           setIsVerifying(false);
           return;
@@ -88,7 +129,7 @@ function SetPasswordContent() {
         throw updateError;
       }
 
-      // Update profile to mark email as verified and onboarding as complete
+      // Update profile to mark onboarding as complete
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase
@@ -118,6 +159,12 @@ function SetPasswordContent() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResendEmail = async () => {
+    // We don't have the user's email in this case, so redirect to sign in
+    // where they can request a password reset
+    router.push('/sign-in?message=Please sign in or request a password reset');
   };
 
   if (isVerifying) {
@@ -163,11 +210,16 @@ function SetPasswordContent() {
           <p className="text-muted-foreground mb-6">
             {error}
           </p>
-          <Link href="/sign-in">
-            <Button className="bg-accent hover:bg-accent/90">
-              Go to Sign In
-            </Button>
-          </Link>
+          <div className="flex flex-col gap-3">
+            <Link href="/sign-in">
+              <Button className="w-full bg-accent hover:bg-accent/90">
+                Go to Sign In
+              </Button>
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              You can request a password reset from the sign in page
+            </p>
+          </div>
         </div>
       </div>
     );
