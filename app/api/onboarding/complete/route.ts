@@ -231,32 +231,52 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // ==========================================
-    // STEP 6: Generate magic link and send email
+    // STEP 6: Generate invite link and send email
     // ==========================================
-    // Use the auth callback route which will handle the code exchange and redirect to set-password
+    // Use 'invite' type which is designed for new users and handles the flow better
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     
-    const { data: magicLinkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
+    const { data: inviteLinkData, error: inviteLinkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'invite',
       email: email.toLowerCase(),
       options: {
-        // Redirect to our callback route which will handle the session and redirect to set-password
-        redirectTo: `${appUrl}/auth/callback?type=magiclink`,
+        redirectTo: `${appUrl}/auth/callback?type=invite`,
       },
     });
 
-    if (magicLinkError || !magicLinkData) {
-      console.error('[ONBOARDING COMPLETE] Failed to generate magic link:', magicLinkError);
-    }
-
-    const verificationUrl = magicLinkData?.properties?.action_link;
-
-    // Send verification email
-    if (verificationUrl) {
+    if (inviteLinkError) {
+      console.error('[ONBOARDING COMPLETE] Failed to generate invite link:', inviteLinkError);
+      
+      // Fallback: try magic link
+      const { data: magicLinkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: email.toLowerCase(),
+        options: {
+          redirectTo: `${appUrl}/auth/callback?type=magiclink`,
+        },
+      });
+      
+      if (magicLinkError) {
+        console.error('[ONBOARDING COMPLETE] Magic link fallback also failed:', magicLinkError);
+      } else if (magicLinkData?.properties?.action_link) {
+        // Send with magic link
+        const emailResult = await sendVerificationEmail({
+          to: email,
+          firstName: profileData.firstName,
+          verificationUrl: magicLinkData.properties.action_link,
+          protocolSummary: protocol?.summary,
+        });
+        
+        if (!emailResult.success) {
+          console.error('[ONBOARDING COMPLETE] Failed to send email:', emailResult.error);
+        }
+      }
+    } else if (inviteLinkData?.properties?.action_link) {
+      // Send with invite link
       const emailResult = await sendVerificationEmail({
         to: email,
         firstName: profileData.firstName,
-        verificationUrl,
+        verificationUrl: inviteLinkData.properties.action_link,
         protocolSummary: protocol?.summary,
       });
 
