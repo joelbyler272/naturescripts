@@ -8,19 +8,37 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { getUserProfile, resetDailyUsage, clearAllConsultations, toggleUserTier } from '@/lib/supabase/database';
+import { getUserProfile, resetDailyUsage, clearAllConsultations, toggleUserTier, updateHealthProfile } from '@/lib/supabase/database';
 import { isDevUser } from '@/lib/constants/devAccess';
 import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/utils/logger';
 import {
   User, CreditCard, Shield, AlertTriangle, Loader2, Check,
-  RotateCcw, Wrench, Trash2, ArrowUpDown,
+  RotateCcw, Wrench, Trash2, ArrowUpDown, Heart, Plus, X
 } from 'lucide-react';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
 
 // Common weak passwords to check against
 const COMMON_PASSWORDS = ['123456', 'password', 'qwerty', '123456789', 'abc123', 'password1'];
+
+// Common health conditions for suggestions
+const SUGGESTED_CONDITIONS = [
+  'Anxiety', 'Insomnia', 'Digestive Issues', 'Fatigue', 'Headaches',
+  'Joint Pain', 'Allergies', 'High Blood Pressure', 'Diabetes', 'Thyroid Issues'
+];
+
+interface MedicationEntry {
+  name: string;
+  dosage: string;
+  frequency: string;
+}
+
+interface SupplementEntry {
+  name: string;
+  dosage: string;
+  frequency: string;
+}
 
 export function SettingsContent() {
   const router = useRouter();
@@ -35,6 +53,15 @@ export function SettingsContent() {
   const [userTier, setUserTier] = useState<'free' | 'pro'>('free');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Health profile state
+  const [healthConditions, setHealthConditions] = useState<string[]>([]);
+  const [newCondition, setNewCondition] = useState('');
+  const [medications, setMedications] = useState<MedicationEntry[]>([]);
+  const [supplements, setSupplements] = useState<SupplementEntry[]>([]);
+  const [healthNotes, setHealthNotes] = useState('');
+  const [healthSaving, setHealthSaving] = useState(false);
+  const [healthSaved, setHealthSaved] = useState(false);
 
   // Password state
   const [newPassword, setNewPassword] = useState('');
@@ -62,14 +89,19 @@ export function SettingsContent() {
       setEmail(user.email || '');
       setEmailVerified(!!user.email_confirmed_at);
 
-      // Fetch profile with error handling
+      // Fetch profile with health data
       getUserProfile(user.id)
         .then((profile) => {
-          if (profile) setUserTier(profile.tier as 'free' | 'pro');
+          if (profile) {
+            setUserTier(profile.tier as 'free' | 'pro');
+            setHealthConditions(profile.health_conditions || []);
+            setMedications(profile.medications || []);
+            setSupplements(profile.supplements || []);
+            setHealthNotes(profile.health_notes || '');
+          }
         })
         .catch((err) => {
           logger.error('Failed to fetch user profile:', err);
-          // Keep default 'free' tier on error
         });
     }
   }, [user]);
@@ -92,8 +124,78 @@ export function SettingsContent() {
     }
   };
 
+  // Health profile handlers
+  const handleAddCondition = () => {
+    if (newCondition.trim() && !healthConditions.includes(newCondition.trim())) {
+      setHealthConditions([...healthConditions, newCondition.trim()]);
+      setNewCondition('');
+    }
+  };
+
+  const handleRemoveCondition = (condition: string) => {
+    setHealthConditions(healthConditions.filter(c => c !== condition));
+  };
+
+  const handleAddSuggestedCondition = (condition: string) => {
+    if (!healthConditions.includes(condition)) {
+      setHealthConditions([...healthConditions, condition]);
+    }
+  };
+
+  const handleAddMedication = () => {
+    setMedications([...medications, { name: '', dosage: '', frequency: '' }]);
+  };
+
+  const handleUpdateMedication = (index: number, field: keyof MedicationEntry, value: string) => {
+    const updated = [...medications];
+    updated[index][field] = value;
+    setMedications(updated);
+  };
+
+  const handleRemoveMedication = (index: number) => {
+    setMedications(medications.filter((_, i) => i !== index));
+  };
+
+  const handleAddSupplement = () => {
+    setSupplements([...supplements, { name: '', dosage: '', frequency: '' }]);
+  };
+
+  const handleUpdateSupplement = (index: number, field: keyof SupplementEntry, value: string) => {
+    const updated = [...supplements];
+    updated[index][field] = value;
+    setSupplements(updated);
+  };
+
+  const handleRemoveSupplement = (index: number) => {
+    setSupplements(supplements.filter((_, i) => i !== index));
+  };
+
+  const handleSaveHealthProfile = async () => {
+    if (!user) return;
+    setHealthSaving(true);
+    setHealthSaved(false);
+    try {
+      // Filter out empty entries
+      const filteredMeds = medications.filter(m => m.name.trim());
+      const filteredSupps = supplements.filter(s => s.name.trim());
+
+      await updateHealthProfile(user.id, {
+        health_conditions: healthConditions,
+        medications: filteredMeds,
+        supplements: filteredSupps,
+        health_notes: healthNotes
+      });
+
+      setHealthSaved(true);
+      setTimeout(() => setHealthSaved(false), 3000);
+    } catch (err) {
+      logger.error('Failed to save health profile:', err);
+    } finally {
+      setHealthSaving(false);
+    }
+  };
+
   const handleChangePassword = async () => {
-    // Enhanced password validation
     if (newPassword.length < 8) {
       setPasswordMessage({ type: 'error', text: 'Password must be at least 8 characters.' });
       return;
@@ -119,7 +221,6 @@ export function SettingsContent() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: unknown) {
-      // Handle Supabase-specific error structure
       const supabaseError = err as { message?: string; error_description?: string };
       const message = supabaseError.message || supabaseError.error_description || 'Failed to update password.';
       setPasswordMessage({ type: 'error', text: message });
@@ -128,7 +229,6 @@ export function SettingsContent() {
     }
   };
 
-  // Subscription management handlers
   const handleManageSubscription = async () => {
     setManagingSubscription(true);
     setSubscriptionError(null);
@@ -204,8 +304,9 @@ export function SettingsContent() {
 
       {/* Tabs */}
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-4 max-w-lg">
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="health">Health</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
@@ -263,6 +364,186 @@ export function SettingsContent() {
                   <><Check className="w-4 h-4 mr-2" /> Saved</>
                 ) : (
                   'Save Changes'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Health Profile Tab */}
+        <TabsContent value="health" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Heart className="w-5 h-5 text-accent mr-2" />
+                Health Profile
+              </CardTitle>
+              <CardDescription>
+                This information helps personalize your consultation recommendations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Health Conditions */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-foreground">
+                  Health Conditions & Concerns
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {healthConditions.map((condition) => (
+                    <Badge key={condition} variant="secondary" className="gap-1 pr-1">
+                      {condition}
+                      <button
+                        onClick={() => handleRemoveCondition(condition)}
+                        className="ml-1 hover:bg-muted rounded-full p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newCondition}
+                    onChange={(e) => setNewCondition(e.target.value)}
+                    placeholder="Add a condition..."
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddCondition()}
+                  />
+                  <Button variant="outline" onClick={handleAddCondition}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-muted-foreground mr-1">Suggestions:</span>
+                  {SUGGESTED_CONDITIONS.filter(c => !healthConditions.includes(c)).slice(0, 5).map((condition) => (
+                    <button
+                      key={condition}
+                      onClick={() => handleAddSuggestedCondition(condition)}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      +{condition}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Current Medications */}
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">
+                    Current Medications
+                  </label>
+                  <Button variant="outline" size="sm" onClick={handleAddMedication}>
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                </div>
+                {medications.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No medications added</p>
+                ) : (
+                  <div className="space-y-3">
+                    {medications.map((med, index) => (
+                      <div key={index} className="flex gap-2 items-start">
+                        <Input
+                          placeholder="Medication name"
+                          value={med.name}
+                          onChange={(e) => handleUpdateMedication(index, 'name', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input
+                          placeholder="Dosage"
+                          value={med.dosage}
+                          onChange={(e) => handleUpdateMedication(index, 'dosage', e.target.value)}
+                          className="w-24"
+                        />
+                        <Input
+                          placeholder="Frequency"
+                          value={med.frequency}
+                          onChange={(e) => handleUpdateMedication(index, 'frequency', e.target.value)}
+                          className="w-28"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveMedication(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Current Supplements */}
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">
+                    Current Supplements
+                  </label>
+                  <Button variant="outline" size="sm" onClick={handleAddSupplement}>
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                </div>
+                {supplements.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No supplements added</p>
+                ) : (
+                  <div className="space-y-3">
+                    {supplements.map((supp, index) => (
+                      <div key={index} className="flex gap-2 items-start">
+                        <Input
+                          placeholder="Supplement name"
+                          value={supp.name}
+                          onChange={(e) => handleUpdateSupplement(index, 'name', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input
+                          placeholder="Dosage"
+                          value={supp.dosage}
+                          onChange={(e) => handleUpdateSupplement(index, 'dosage', e.target.value)}
+                          className="w-24"
+                        />
+                        <Input
+                          placeholder="Frequency"
+                          value={supp.frequency}
+                          onChange={(e) => handleUpdateSupplement(index, 'frequency', e.target.value)}
+                          className="w-28"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveSupplement(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Health Notes */}
+              <div className="space-y-3 border-t pt-4">
+                <label className="text-sm font-medium text-foreground">
+                  Additional Notes
+                </label>
+                <textarea
+                  value={healthNotes}
+                  onChange={(e) => setHealthNotes(e.target.value)}
+                  placeholder="Any allergies, sensitivities, or other health information..."
+                  className="w-full min-h-[100px] px-3 py-2 border border-input rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+
+              <Button
+                onClick={handleSaveHealthProfile}
+                disabled={healthSaving}
+                className="bg-accent hover:bg-accent/90"
+              >
+                {healthSaving ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                ) : healthSaved ? (
+                  <><Check className="w-4 h-4 mr-2" /> Saved</>
+                ) : (
+                  'Save Health Profile'
                 )}
               </Button>
             </CardContent>
@@ -409,7 +690,6 @@ export function SettingsContent() {
                 <CardDescription>Testing utilities — only visible to dev accounts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Reset Daily Usage */}
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">Reset Daily Usage</p>
@@ -432,7 +712,6 @@ export function SettingsContent() {
                   </Button>
                 </div>
 
-                {/* Clear All Consultations */}
                 <div className="flex items-center justify-between border-t border-amber-200/50 pt-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">Clear All Consultations</p>
@@ -455,7 +734,6 @@ export function SettingsContent() {
                   </Button>
                 </div>
 
-                {/* Toggle Tier */}
                 <div className="flex items-center justify-between border-t border-amber-200/50 pt-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">
