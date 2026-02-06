@@ -47,6 +47,73 @@ export async function updateUserProfile(userId: string, updates: {
   return data;
 }
 
+// ============================================
+// HEALTH PROFILE FUNCTIONS
+// ============================================
+
+interface MedicationEntry {
+  name: string;
+  dosage: string;
+  frequency: string;
+}
+
+interface SupplementEntry {
+  name: string;
+  dosage: string;
+  frequency: string;
+}
+
+export async function updateHealthProfile(userId: string, updates: {
+  health_conditions?: string[];
+  medications?: MedicationEntry[];
+  supplements?: SupplementEntry[];
+  health_notes?: string;
+}) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    logger.error('Error updating health profile:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getHealthContext(userId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .rpc('get_user_health_context', { p_user_id: userId });
+
+  if (error) {
+    logger.error('Error fetching health context:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getConsultationHistory(userId: string, limit: number = 5) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .rpc('get_consultation_history', { p_user_id: userId, p_limit: limit });
+
+  if (error) {
+    logger.error('Error fetching consultation history:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
 
 // ============================================
 // CONSULTATION FUNCTIONS
