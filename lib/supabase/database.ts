@@ -10,6 +10,8 @@ import { getLocalDateString } from '@/lib/utils/date';
 export async function getUserProfile(userId: string) {
   const supabase = createClient();
 
+  console.log('[getUserProfile] Fetching profile for user:', userId);
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -17,10 +19,12 @@ export async function getUserProfile(userId: string) {
     .single();
 
   if (error) {
+    console.error('[getUserProfile] Error:', error);
     logger.error('Error fetching profile:', error);
     return null;
   }
 
+  console.log('[getUserProfile] Success, data:', data);
   return data;
 }
 
@@ -71,6 +75,9 @@ export async function updateHealthProfile(userId: string, updates: {
 }) {
   const supabase = createClient();
 
+  console.log('[updateHealthProfile] Attempting to save for user:', userId);
+  console.log('[updateHealthProfile] Updates:', JSON.stringify(updates, null, 2));
+
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
@@ -79,10 +86,12 @@ export async function updateHealthProfile(userId: string, updates: {
     .single();
 
   if (error) {
+    console.error('[updateHealthProfile] ERROR:', error);
     logger.error('Error updating health profile:', error);
     return null;
   }
 
+  console.log('[updateHealthProfile] SUCCESS! Saved data:', data);
   return data;
 }
 
