@@ -145,7 +145,7 @@ export function Navigation({
               Sign In
             </Link>
             <Link
-              href={routes.consultation}
+              href={routes.onboarding}
               className="text-sm px-4 py-2 rounded-full bg-foreground text-background hover:bg-foreground/90 transition-colors"
             >
               Start Consultation
