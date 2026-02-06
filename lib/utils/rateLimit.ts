@@ -6,7 +6,7 @@
  *
  * Usage:
  *   const limiter = createRateLimiter({ windowMs: 60000, maxRequests: 10 });
- *   const { success, remaining } = limiter.check(userId);
+ *   const { allowed, remaining } = limiter.check(userId);
  */
 
 interface RateLimitConfig {
@@ -19,10 +19,10 @@ interface RateLimitEntry {
   resetTime: number;
 }
 
-interface RateLimitResult {
-  success: boolean;
+export interface RateLimitResult {
+  allowed: boolean;
   remaining: number;
-  resetIn: number;  // Milliseconds until reset
+  retryAfter: number;  // Milliseconds until reset
 }
 
 const stores = new Map<string, Map<string, RateLimitEntry>>();
@@ -37,7 +37,7 @@ export function createRateLimiter(config: RateLimitConfig) {
   const store = stores.get(storeKey)!;
 
   // Clean up expired entries periodically
-  setInterval(() => {
+  const interval = setInterval(() => {
     const now = Date.now();
     store.forEach((entry, key) => {
       if (entry.resetTime <= now) {
@@ -45,6 +45,11 @@ export function createRateLimiter(config: RateLimitConfig) {
       }
     });
   }, config.windowMs);
+
+  // Allow Node.js to exit even if this interval is still running
+  if (typeof interval === 'object' && 'unref' in interval) {
+    interval.unref();
+  }
 
   return {
     check(identifier: string): RateLimitResult {
@@ -58,27 +63,27 @@ export function createRateLimiter(config: RateLimitConfig) {
           resetTime: now + config.windowMs,
         });
         return {
-          success: true,
+          allowed: true,
           remaining: config.maxRequests - 1,
-          resetIn: config.windowMs,
+          retryAfter: 0,
         };
       }
 
       // Check if over limit
       if (entry.count >= config.maxRequests) {
         return {
-          success: false,
+          allowed: false,
           remaining: 0,
-          resetIn: entry.resetTime - now,
+          retryAfter: entry.resetTime - now,
         };
       }
 
       // Increment count
       entry.count++;
       return {
-        success: true,
+        allowed: true,
         remaining: config.maxRequests - entry.count,
-        resetIn: entry.resetTime - now,
+        retryAfter: 0,
       };
     },
 
@@ -99,9 +104,69 @@ export const apiRateLimiters = {
   // Auth endpoints: 10 requests per minute per IP
   auth: createRateLimiter({ windowMs: 60000, maxRequests: 10 }),
 
-  // Consultation API: 20 requests per minute per user
-  consultation: createRateLimiter({ windowMs: 60000, maxRequests: 20 }),
+  // Consultation chat: 20 requests per minute per user
+  consultationChat: createRateLimiter({ windowMs: 60000, maxRequests: 20 }),
+
+  // Consultation protocol: 10 requests per minute per user
+  consultationProtocol: createRateLimiter({ windowMs: 60000, maxRequests: 10 }),
 };
+
+/**
+ * Simple rate limit function for API routes
+ * Uses a global store keyed by endpoint + userId
+ */
+const globalStore = new Map<string, RateLimitEntry>();
+let lastGlobalCleanup = 0;
+
+export function applyRateLimit(
+  key: string,
+  userId: string,
+  maxRequests: number = 10,
+  windowMs: number = 60000
+): RateLimitResult {
+  const now = Date.now();
+
+  // Lazy cleanup: run at most once per minute
+  if (now - lastGlobalCleanup > 60000) {
+    lastGlobalCleanup = now;
+    globalStore.forEach((v, k) => {
+      if (v.resetTime <= now) globalStore.delete(k);
+    });
+  }
+
+  const storeKey = `${key}:${userId}`;
+  const entry = globalStore.get(storeKey);
+
+  // If no entry or expired, create new one
+  if (!entry || entry.resetTime <= now) {
+    globalStore.set(storeKey, {
+      count: 1,
+      resetTime: now + windowMs,
+    });
+    return {
+      allowed: true,
+      remaining: maxRequests - 1,
+      retryAfter: 0,
+    };
+  }
+
+  // Check if over limit
+  if (entry.count >= maxRequests) {
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfter: entry.resetTime - now,
+    };
+  }
+
+  // Increment count
+  entry.count++;
+  return {
+    allowed: true,
+    remaining: maxRequests - entry.count,
+    retryAfter: 0,
+  };
+}
 
 /**
  * Helper to get client IP from request headers

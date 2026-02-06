@@ -47,6 +47,73 @@ export async function updateUserProfile(userId: string, updates: {
   return data;
 }
 
+// ============================================
+// HEALTH PROFILE FUNCTIONS
+// ============================================
+
+interface MedicationEntry {
+  name: string;
+  dosage: string;
+  frequency: string;
+}
+
+interface SupplementEntry {
+  name: string;
+  dosage: string;
+  frequency: string;
+}
+
+export async function updateHealthProfile(userId: string, updates: {
+  health_conditions?: string[];
+  medications?: MedicationEntry[];
+  supplements?: SupplementEntry[];
+  health_notes?: string;
+}) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    logger.error('Error updating health profile:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getHealthContext(userId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .rpc('get_user_health_context', { p_user_id: userId });
+
+  if (error) {
+    logger.error('Error fetching health context:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getConsultationHistory(userId: string, limit: number = 5) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .rpc('get_consultation_history', { p_user_id: userId, p_limit: limit });
+
+  if (error) {
+    logger.error('Error fetching consultation history:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
 
 // ============================================
 // CONSULTATION FUNCTIONS
@@ -103,18 +170,14 @@ export async function updateConsultation(
   return data;
 }
 
-export async function getConsultation(consultationId: string, userId?: string) {
+export async function getConsultation(consultationId: string, userId: string) {
   const supabase = createClient();
 
-  let query = supabase
+  const query = supabase
     .from('consultations')
     .select('*')
-    .eq('id', consultationId);
-
-  // If userId is provided, verify ownership (security: prevent unauthorized access)
-  if (userId) {
-    query = query.eq('user_id', userId);
-  }
+    .eq('id', consultationId)
+    .eq('user_id', userId);
 
   const { data, error } = await query.single();
 
@@ -278,6 +341,9 @@ export async function getDailyUsage(userId: string): Promise<number> {
 
 // Reset uses UPDATE (not DELETE) because daily_usage has no DELETE RLS policy.
 export async function resetDailyUsage(userId: string): Promise<boolean> {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Dev tools are only available in development mode');
+  }
   const supabase = createClient();
 
   // Use local date so reset applies to user's current day
@@ -300,6 +366,9 @@ export async function resetDailyUsage(userId: string): Promise<boolean> {
 // Delete all consultations for a user (for testing fresh flows).
 // Uses UPDATE to mark as abandoned since there may not be a DELETE policy.
 export async function clearAllConsultations(userId: string): Promise<boolean> {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Dev tools are only available in development mode');
+  }
   const supabase = createClient();
 
   const { error } = await supabase
@@ -317,6 +386,9 @@ export async function clearAllConsultations(userId: string): Promise<boolean> {
 
 // Toggle tier between free and pro.
 export async function toggleUserTier(userId: string, currentTier: 'free' | 'pro'): Promise<'free' | 'pro' | null> {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Dev tools are only available in development mode');
+  }
   const newTier = currentTier === 'free' ? 'pro' : 'free';
   const result = await updateUserProfile(userId, { tier: newTier });
   return result ? newTier : null;
