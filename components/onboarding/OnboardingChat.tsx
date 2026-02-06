@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { ChatMessage } from '@/components/consultation/ChatMessage';
 import { ChatInput } from '@/components/consultation/ChatInput';
 import { TypingIndicator } from '@/components/consultation/TypingIndicator';
@@ -9,6 +8,7 @@ import { ConversationMessage, GeneratedProtocol } from '@/lib/consultation/types
 import { logger } from '@/lib/utils/logger';
 import { CHAT_LIMITS } from '@/lib/utils/validation';
 import { ArrowRight, Mail, CheckCircle, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 interface OnboardingChatProps {
   initialQuery?: string;
@@ -25,20 +25,18 @@ function createMessage(role: 'user' | 'assistant', content: string): Conversatio
 }
 
 export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
-  const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [isReadyToGenerate, setIsReadyToGenerate] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [collectedEmail, setCollectedEmail] = useState<string | null>(null);
   const [completionState, setCompletionState] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
   const [firstName, setFirstName] = useState<string>('Friend');
-  const [consultationId, setConsultationId] = useState<string | null>(null);
+  const [existingUserError, setExistingUserError] = useState<boolean>(false);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -67,6 +65,7 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
       );
       setMessages([greeting]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
   useEffect(() => {
@@ -103,9 +102,8 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
 
       const assistantMessage = createMessage('assistant', data.message);
       setMessages(prev => [...prev, assistantMessage]);
-      setIsReadyToGenerate(data.isReadyToGenerate);
 
-      // Check if email was collected
+      // Check if email was collected in this response
       if (data.collectedEmail) {
         setCollectedEmail(data.collectedEmail);
       }
@@ -151,12 +149,6 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
   // Complete onboarding - create account and generate protocol
   const handleCompleteOnboarding = async () => {
     if (!collectedEmail) {
-      // Ask for email if not collected yet
-      const emailPrompt = createMessage(
-        'assistant',
-        "Before I create your protocol, what's your email so I can send it to you?"
-      );
-      setMessages(prev => [...prev, emailPrompt]);
       return;
     }
 
@@ -182,13 +174,9 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
 
       if (!response.ok) {
         if (data.existingUser) {
-          // User already exists - prompt to sign in
+          // User already exists - show sign in prompt
+          setExistingUserError(true);
           setCompletionState('error');
-          const existingMessage = createMessage(
-            'assistant',
-            `It looks like you already have an account with ${collectedEmail}. Please sign in to continue your consultation.`
-          );
-          setMessages(prev => [...prev, existingMessage]);
           return;
         }
         throw new Error(data.error || 'Failed to complete onboarding');
@@ -197,14 +185,7 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
       // Success!
       setGeneratedProtocol(data.protocol);
       setFirstName(data.firstName || 'Friend');
-      setConsultationId(data.consultationId);
       setCompletionState('done');
-
-      const successMessage = createMessage(
-        'assistant',
-        data.message || `Your protocol is ready! Check your email at ${collectedEmail} to save it.`
-      );
-      setMessages(prev => [...prev, successMessage]);
 
     } catch (error) {
       logger.error('Onboarding completion error:', error);
@@ -219,9 +200,22 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     }
   };
 
-  const handleViewProtocol = () => {
-    // For new users without a session, show a message to check email
-    // In the future, we could show a preview
+  // Determine if chat input should be disabled
+  // Disable after email is collected (user should click button, not type more)
+  const isChatDisabled = isTyping || isGenerating || completionState === 'done' || completionState === 'creating' || (collectedEmail !== null);
+
+  // Determine placeholder text
+  const getPlaceholderText = () => {
+    if (completionState === 'done') {
+      return "Check your email to access your protocol";
+    }
+    if (completionState === 'creating' || isGenerating) {
+      return "Creating your protocol...";
+    }
+    if (collectedEmail) {
+      return "Click the button above to generate your protocol";
+    }
+    return "Share more details...";
   };
 
   return (
@@ -233,7 +227,28 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
 
         {isTyping && <TypingIndicator />}
 
-        {/* Completion states */}
+        {/* Existing user error - show sign in prompt */}
+        {existingUserError && (
+          <div className="flex flex-col items-center pt-6 pb-4">
+            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
+              <Mail className="w-8 h-8 text-amber-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Account Already Exists
+            </h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+              It looks like you already have an account with <span className="font-medium text-foreground">{collectedEmail}</span>. Please sign in to continue your consultation.
+            </p>
+            <Link
+              href="/sign-in"
+              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors"
+            >
+              Sign In
+            </Link>
+          </div>
+        )}
+
+        {/* Completion state - protocol ready */}
         {completionState === 'done' && generatedProtocol && (
           <div className="flex flex-col items-center pt-6 pb-4">
             <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4">
@@ -252,15 +267,15 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
           </div>
         )}
 
-        {/* Action buttons */}
-        {isReadyToGenerate && !generatedProtocol && !isGenerating && completionState !== 'done' && (
+        {/* Generate button - only show when email is collected AND not done yet AND no error */}
+        {collectedEmail && !generatedProtocol && !existingUserError && completionState !== 'done' && (
           <div className="flex justify-center pt-4">
             <button
               onClick={handleCompleteOnboarding}
-              disabled={isGenerating}
+              disabled={isGenerating || completionState === 'creating'}
               className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 disabled:opacity-50"
             >
-              {completionState === 'creating' ? (
+              {completionState === 'creating' || isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Creating your protocol...
@@ -280,14 +295,8 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
 
       <ChatInput
         onSend={handleUserMessage}
-        disabled={isTyping || isGenerating || completionState === 'done'}
-        placeholder={
-          completionState === 'done'
-            ? "Check your email to access your protocol"
-            : isReadyToGenerate
-            ? "Click the button above to generate your protocol"
-            : "Share more details..."
-        }
+        disabled={isChatDisabled}
+        placeholder={getPlaceholderText()}
       />
     </div>
   );
