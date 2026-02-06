@@ -145,10 +145,10 @@ export function Navigation({
               Sign In
             </Link>
             <Link
-              href={routes.signUp}
+              href={routes.consultation}
               className="text-sm px-4 py-2 rounded-full bg-foreground text-background hover:bg-foreground/90 transition-colors"
             >
-              Get Started
+              Start Consultation
             </Link>
           </div>
         </div>
