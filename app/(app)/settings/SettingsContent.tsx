@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -40,10 +39,10 @@ interface SupplementEntry {
   frequency: string;
 }
 
+const supabase = createClient();
+
 export function SettingsContent() {
-  const router = useRouter();
   const { user } = useAuth();
-  const supabase = createClient();
 
   // Profile state
   const [firstName, setFirstName] = useState('');
@@ -53,6 +52,7 @@ export function SettingsContent() {
   const [userTier, setUserTier] = useState<'free' | 'pro'>('free');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Health profile state
   const [healthConditions, setHealthConditions] = useState<string[]>([]);
@@ -62,6 +62,7 @@ export function SettingsContent() {
   const [healthNotes, setHealthNotes] = useState('');
   const [healthSaving, setHealthSaving] = useState(false);
   const [healthSaved, setHealthSaved] = useState(false);
+  const [healthError, setHealthError] = useState<string | null>(null);
 
   // Password state
   const [newPassword, setNewPassword] = useState('');
@@ -110,6 +111,7 @@ export function SettingsContent() {
     if (!user) return;
     setSaving(true);
     setSaved(false);
+    setProfileError(null);
     try {
       const { error } = await supabase.auth.updateUser({
         data: { first_name: firstName, last_name: lastName },
@@ -119,6 +121,7 @@ export function SettingsContent() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       logger.error('Failed to save profile:', err);
+      setProfileError('Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -147,9 +150,9 @@ export function SettingsContent() {
   };
 
   const handleUpdateMedication = (index: number, field: keyof MedicationEntry, value: string) => {
-    const updated = [...medications];
-    updated[index][field] = value;
-    setMedications(updated);
+    setMedications(medications.map((med, i) =>
+      i === index ? { ...med, [field]: value } : med
+    ));
   };
 
   const handleRemoveMedication = (index: number) => {
@@ -161,9 +164,9 @@ export function SettingsContent() {
   };
 
   const handleUpdateSupplement = (index: number, field: keyof SupplementEntry, value: string) => {
-    const updated = [...supplements];
-    updated[index][field] = value;
-    setSupplements(updated);
+    setSupplements(supplements.map((supp, i) =>
+      i === index ? { ...supp, [field]: value } : supp
+    ));
   };
 
   const handleRemoveSupplement = (index: number) => {
@@ -174,6 +177,7 @@ export function SettingsContent() {
     if (!user) return;
     setHealthSaving(true);
     setHealthSaved(false);
+    setHealthError(null);
     try {
       // Filter out empty entries
       const filteredMeds = medications.filter(m => m.name.trim());
@@ -190,6 +194,7 @@ export function SettingsContent() {
       setTimeout(() => setHealthSaved(false), 3000);
     } catch (err) {
       logger.error('Failed to save health profile:', err);
+      setHealthError('Failed to save health profile. Please try again.');
     } finally {
       setHealthSaving(false);
     }
@@ -353,6 +358,9 @@ export function SettingsContent() {
                   Email cannot be changed. Contact support if you need to update it.
                 </p>
               </div>
+              {profileError && (
+                <p className="text-sm text-destructive">{profileError}</p>
+              )}
               <Button
                 onClick={handleSaveProfile}
                 disabled={saving}
@@ -533,6 +541,9 @@ export function SettingsContent() {
                 />
               </div>
 
+              {healthError && (
+                <p className="text-sm text-destructive">{healthError}</p>
+              )}
               <Button
                 onClick={handleSaveHealthProfile}
                 disabled={healthSaving}
@@ -773,7 +784,11 @@ export function SettingsContent() {
               <p className="text-sm text-muted-foreground mb-3">
                 Permanently delete your account and all associated data.
               </p>
-              <Button variant="destructive" size="sm">Delete My Account</Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => alert('Account deletion is not yet available. Please contact support.')}
+              >Delete My Account</Button>
             </CardContent>
           </Card>
         </TabsContent>

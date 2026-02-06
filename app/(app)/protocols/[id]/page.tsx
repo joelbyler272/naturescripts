@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { Consultation, Protocol } from '@/types';
 import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice } from '@/lib/consultation/types';
 import { routes } from '@/lib/constants/routes';
+import { sanitizeProductUrl } from '@/lib/utils/urlValidation';
 import {
   ArrowLeft,
   Leaf,
@@ -26,15 +27,12 @@ import {
 
 // Type guard for Claude-generated protocol (new format)
 function isClaudeProtocol(data: unknown): data is NewGeneratedProtocol {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'summary' in data &&
-    'recommendations' in data &&
-    Array.isArray((data as NewGeneratedProtocol).recommendations) &&
-    (data as NewGeneratedProtocol).recommendations.length > 0 &&
-    'products' in (data as NewGeneratedProtocol).recommendations[0]
-  );
+  if (typeof data !== 'object' || data === null) return false;
+  if (!('summary' in data) || !('recommendations' in data)) return false;
+  const recs = (data as { recommendations: unknown }).recommendations;
+  if (!Array.isArray(recs) || recs.length === 0) return false;
+  const first = recs[0];
+  return typeof first === 'object' && first !== null && 'products' in first;
 }
 
 // Type guard for old template-based protocol
@@ -69,9 +67,13 @@ export default function ProtocolPage() {
       setLoading(false);
       return;
     }
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
-      const data = await getConsultation(params.id, user?.id);
+      const data = await getConsultation(params.id, user.id);
       setConsultation(data);
     } catch (err) {
       setError('Failed to load protocol. Please try again.');
@@ -338,7 +340,7 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
             {recommendation.products.map((product: ProductLink, pIndex: number) => (
               <a
                 key={pIndex}
-                href={product.url}
+                href={sanitizeProductUrl(product.url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors group"

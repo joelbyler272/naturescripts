@@ -10,8 +10,6 @@ import { getLocalDateString } from '@/lib/utils/date';
 export async function getUserProfile(userId: string) {
   const supabase = createClient();
 
-  console.log('[getUserProfile] Fetching profile for user:', userId);
-
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -19,12 +17,10 @@ export async function getUserProfile(userId: string) {
     .single();
 
   if (error) {
-    console.error('[getUserProfile] Error:', error);
     logger.error('Error fetching profile:', error);
     return null;
   }
 
-  console.log('[getUserProfile] Success, data:', data);
   return data;
 }
 
@@ -75,9 +71,6 @@ export async function updateHealthProfile(userId: string, updates: {
 }) {
   const supabase = createClient();
 
-  console.log('[updateHealthProfile] Attempting to save for user:', userId);
-  console.log('[updateHealthProfile] Updates:', JSON.stringify(updates, null, 2));
-
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
@@ -86,12 +79,10 @@ export async function updateHealthProfile(userId: string, updates: {
     .single();
 
   if (error) {
-    console.error('[updateHealthProfile] ERROR:', error);
     logger.error('Error updating health profile:', error);
     return null;
   }
 
-  console.log('[updateHealthProfile] SUCCESS! Saved data:', data);
   return data;
 }
 
@@ -179,18 +170,14 @@ export async function updateConsultation(
   return data;
 }
 
-export async function getConsultation(consultationId: string, userId?: string) {
+export async function getConsultation(consultationId: string, userId: string) {
   const supabase = createClient();
 
-  let query = supabase
+  const query = supabase
     .from('consultations')
     .select('*')
-    .eq('id', consultationId);
-
-  // If userId is provided, verify ownership (security: prevent unauthorized access)
-  if (userId) {
-    query = query.eq('user_id', userId);
-  }
+    .eq('id', consultationId)
+    .eq('user_id', userId);
 
   const { data, error } = await query.single();
 
@@ -354,6 +341,9 @@ export async function getDailyUsage(userId: string): Promise<number> {
 
 // Reset uses UPDATE (not DELETE) because daily_usage has no DELETE RLS policy.
 export async function resetDailyUsage(userId: string): Promise<boolean> {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Dev tools are only available in development mode');
+  }
   const supabase = createClient();
 
   // Use local date so reset applies to user's current day
@@ -376,6 +366,9 @@ export async function resetDailyUsage(userId: string): Promise<boolean> {
 // Delete all consultations for a user (for testing fresh flows).
 // Uses UPDATE to mark as abandoned since there may not be a DELETE policy.
 export async function clearAllConsultations(userId: string): Promise<boolean> {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Dev tools are only available in development mode');
+  }
   const supabase = createClient();
 
   const { error } = await supabase
@@ -393,6 +386,9 @@ export async function clearAllConsultations(userId: string): Promise<boolean> {
 
 // Toggle tier between free and pro.
 export async function toggleUserTier(userId: string, currentTier: 'free' | 'pro'): Promise<'free' | 'pro' | null> {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Dev tools are only available in development mode');
+  }
   const newTier = currentTier === 'free' ? 'pro' : 'free';
   const result = await updateUserProfile(userId, { tier: newTier });
   return result ? newTier : null;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -9,6 +9,7 @@ import { ConversationMessage, GeneratedProtocol, ChatResponse } from '@/lib/cons
 import { useAuth } from '@/lib/auth/AuthContext';
 import { createConsultation, checkCanConsult } from '@/lib/supabase/database';
 import { logger } from '@/lib/utils/logger';
+import { CHAT_LIMITS } from '@/lib/utils/validation';
 import { ArrowRight, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
@@ -32,6 +33,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
   const consultationId = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -40,63 +42,73 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [exchangeCount, setExchangeCount] = useState(0);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  // Abort in-flight requests on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   // Initialize chat
+  const initializeChat = useCallback(async () => {
+    if (user?.id) {
+      try {
+        const usageStatus = await checkCanConsult(user.id);
+
+        if (!usageStatus.canConsult) {
+          setUsageError('You have reached your daily limit of 3 consultations. Upgrade to Pro for unlimited access.');
+          return;
+        }
+
+        const userTier = (user.user_metadata?.tier as 'free' | 'pro') || 'free';
+        const consultation = await createConsultation(
+          user.id,
+          initialQuery || 'New consultation',
+          userTier
+        );
+
+        if (consultation) {
+          consultationId.current = consultation.id;
+        }
+      } catch (error) {
+        logger.error('Failed to initialize consultation:', error);
+      }
+    }
+
+    // If there's an initial query, send it immediately
+    if (initialQuery) {
+      const userMessage = createMessage('user', initialQuery);
+      setMessages([userMessage]);
+      await sendToClaudeAPI([userMessage]);
+    } else {
+      // Show initial greeting
+      const greeting = createMessage(
+        'assistant',
+        "Hello! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?"
+      );
+      setMessages([greeting]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery, user?.id]);
+
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
-
-    const initializeChat = async () => {
-      if (user?.id) {
-        try {
-          const usageStatus = await checkCanConsult(user.id);
-
-          if (!usageStatus.canConsult) {
-            setUsageError('You have reached your daily limit of 3 consultations. Upgrade to Pro for unlimited access.');
-            return;
-          }
-
-          const userTier = (user.user_metadata?.tier as 'free' | 'pro') || 'free';
-          const consultation = await createConsultation(
-            user.id,
-            initialQuery || 'New consultation',
-            userTier
-          );
-
-          if (consultation) {
-            consultationId.current = consultation.id;
-          }
-        } catch (error) {
-          logger.error('Failed to initialize consultation:', error);
-        }
-      }
-
-      // If there's an initial query, send it immediately
-      if (initialQuery) {
-        const userMessage = createMessage('user', initialQuery);
-        setMessages([userMessage]);
-        await sendToClaudeAPI([userMessage]);
-      } else {
-        // Show initial greeting
-        const greeting = createMessage(
-          'assistant',
-          "Hello! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?"
-        );
-        setMessages([greeting]);
-      }
-    };
-
     initializeChat();
-  }, [initialQuery, user?.id]);
+  }, [initializeChat]);
 
   // Send message to Claude API
   const sendToClaudeAPI = async (conversationHistory: ConversationMessage[]) => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsTyping(true);
 
     try {
@@ -107,7 +119,8 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
           message: conversationHistory[conversationHistory.length - 1].content,
           conversationHistory: conversationHistory.slice(0, -1),
           consultationId: consultationId.current
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -119,10 +132,10 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
 
       const assistantMessage = createMessage('assistant', data.message);
       setMessages(prev => [...prev, assistantMessage]);
-      setExchangeCount(data.exchangeCount);
       setIsReadyToGenerate(data.isReadyToGenerate);
 
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       logger.error('Chat API error:', error);
       const errorMessage = createMessage(
         'assistant',
@@ -136,6 +149,15 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
 
   // Handle user sending a message
   const handleUserMessage = async (content: string) => {
+    if (content.length > CHAT_LIMITS.MAX_MESSAGE_LENGTH) {
+      const errorMessage = createMessage(
+        'assistant',
+        `Your message is too long. Please keep messages under ${CHAT_LIMITS.MAX_MESSAGE_LENGTH} characters.`
+      );
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
+
     const userMessage = createMessage('user', content);
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
@@ -149,13 +171,18 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
     setIsTyping(true);
 
     try {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const response = await fetch('/api/consultation/protocol', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationHistory: messages,
           consultationId: consultationId.current
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.ok) {

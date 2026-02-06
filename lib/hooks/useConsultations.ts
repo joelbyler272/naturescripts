@@ -59,14 +59,14 @@ export function useConsultation(consultationId?: string) {
   const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
-    if (!consultationId) {
+    if (!consultationId || !user?.id) {
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      const data = await getConsultation(consultationId);
+      const data = await getConsultation(consultationId, user.id);
       setConsultation(data);
       setError(null);
     } catch (err) {
@@ -75,7 +75,7 @@ export function useConsultation(consultationId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [consultationId]);
+  }, [consultationId, user?.id]);
 
   useEffect(() => {
     fetch();
