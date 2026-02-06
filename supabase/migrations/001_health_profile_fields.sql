@@ -19,6 +19,52 @@ COMMENT ON COLUMN public.profiles.supplements IS 'Current supplements with dosag
 COMMENT ON COLUMN public.profiles.health_notes IS 'Free-form notes about health history, allergies, etc.';
 
 -- ============================================
+-- RLS POLICIES FOR PROFILES
+-- ============================================
+
+-- Allow users to read their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+CREATE POLICY "Users can view own profile" 
+ON public.profiles 
+FOR SELECT 
+USING (auth.uid() = id);
+
+-- Allow users to update their own profile
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can update own profile" 
+ON public.profiles 
+FOR UPDATE 
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+-- ============================================
+-- AUTO-CREATE PROFILE ON USER SIGNUP
+-- ============================================
+
+-- Create a function to handle new user signups
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, tier, health_conditions, medications, supplements)
+  VALUES (
+    NEW.id,
+    'free',
+    '{}',
+    '[]'::jsonb,
+    '[]'::jsonb
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a trigger that fires when a new user is created in auth.users
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================
 -- HELPER FUNCTION: GET USER HEALTH CONTEXT
 -- Returns all health context for a user (used in consultations)
 -- ============================================
@@ -85,5 +131,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
 -- DONE!
--- Run this migration after the initial schema
+-- This migration adds:
+-- 1. Health profile columns to profiles table
+-- 2. RLS policies for SELECT and UPDATE
+-- 3. Trigger to auto-create profile on signup
+-- 4. Helper functions for consultations
 -- ============================================
