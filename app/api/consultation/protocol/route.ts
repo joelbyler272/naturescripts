@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateProtocolWithClaude } from '@/lib/anthropic/client';
 import { buildProtocolSystemPrompt } from '@/lib/consultation/prompts';
+import { logConsultation, calculateCost } from '@/lib/consultation/logger';
 import { 
   HealthContext, 
-  ConversationMessage,
   GeneratedProtocol,
   GenerateProtocolRequest,
   Recommendation
@@ -12,24 +12,9 @@ import {
 import { applyRateLimit, RateLimitResult } from '@/lib/utils/rateLimit';
 import { addAffiliateLinks } from '@/lib/consultation/affiliateLinks';
 
-// Development logging helper
-const DEV_MODE = process.env.NODE_ENV === 'development';
-
-function devLog(label: string, data: unknown) {
-  if (DEV_MODE) {
-    console.log('\n' + '='.repeat(60));
-    console.log(`[PROTOCOL GENERATION] ${label}`);
-    console.log('='.repeat(60));
-    if (typeof data === 'string') {
-      console.log(data);
-    } else {
-      console.log(JSON.stringify(data, null, 2));
-    }
-    console.log('='.repeat(60) + '\n');
-  }
-}
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+  
   // Rate limiting
   const rateLimitResult: RateLimitResult = applyRateLimit('consultation-protocol', 10, 60000);
   if (!rateLimitResult.allowed) {
@@ -55,16 +40,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body: GenerateProtocolRequest = await request.json();
     const { conversationHistory, consultationId } = body;
 
-    devLog('INCOMING PROTOCOL REQUEST', {
-      userId: user.id,
-      consultationId,
-      conversationLength: conversationHistory.length,
-      conversationPreview: conversationHistory.map(m => ({
-        role: m.role,
-        contentPreview: m.content.substring(0, 50) + '...'
-      }))
-    });
-
     if (!conversationHistory || conversationHistory.length === 0) {
       return NextResponse.json({ error: 'Conversation history is required' }, { status: 400 });
     }
@@ -85,20 +60,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       tier: 'free'
     };
 
-    devLog('HEALTH CONTEXT FOR PROTOCOL', healthContext);
-
     const tier = healthContext.tier || 'free';
 
     // Extract the user's primary concern from the first user message
     const firstUserMessage = conversationHistory.find(m => m.role === 'user');
     const primaryConcern = firstUserMessage?.content || 'General wellness';
 
-    devLog('PRIMARY CONCERN EXTRACTED', primaryConcern);
-
     // Build system prompt for protocol generation
     const systemPrompt = buildProtocolSystemPrompt(tier, healthContext);
-
-    devLog('PROTOCOL SYSTEM PROMPT', systemPrompt);
 
     // Build the final message asking for the protocol
     const messagesWithRequest: { role: 'user' | 'assistant'; content: string }[] = [
@@ -109,8 +78,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     ];
 
-    devLog('MESSAGES SENT TO CLAUDE FOR PROTOCOL', messagesWithRequest);
-
     // Call Claude for protocol generation
     const claudeResponse = await generateProtocolWithClaude({
       systemPrompt,
@@ -118,21 +85,40 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       maxTokens: 2048
     });
 
-    devLog('CLAUDE RAW PROTOCOL RESPONSE', claudeResponse);
+    const duration = Date.now() - startTime;
+
+    // Log the protocol generation with usage data
+    logConsultation({
+      timestamp: new Date().toISOString(),
+      type: 'protocol',
+      userId: user.id,
+      consultationId: consultationId || undefined,
+      tier,
+      request: {
+        systemPrompt,
+        messages: messagesWithRequest,
+        healthContext
+      },
+      response: {
+        content: claudeResponse.content,
+        usage: claudeResponse.usage,
+        cost: calculateCost(claudeResponse.usage)
+      },
+      duration
+    });
 
     // Parse the JSON response
     let protocolData: Partial<GeneratedProtocol>;
     try {
       // Try to extract JSON from the response (Claude might wrap it in markdown)
-      const jsonMatch = claudeResponse.match(/\{[\s\S]*\}/);
+      const jsonMatch = claudeResponse.content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
       protocolData = JSON.parse(jsonMatch[0]);
-      devLog('PARSED PROTOCOL DATA', protocolData);
     } catch (parseError) {
       console.error('[PROTOCOL GENERATION] Failed to parse protocol JSON:', parseError);
-      console.error('[PROTOCOL GENERATION] Raw response:', claudeResponse);
+      console.error('[PROTOCOL GENERATION] Raw response:', claudeResponse.content);
       return NextResponse.json(
         { error: 'Failed to generate protocol. Please try again.' },
         { status: 500 }
@@ -145,8 +131,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       id: `rec-${Date.now()}-${index}`,
       products: addAffiliateLinks(rec.products || [])
     }));
-
-    devLog('RECOMMENDATIONS WITH AFFILIATE LINKS', recommendations);
 
     // Build the final protocol
     const protocol: GeneratedProtocol = {
@@ -169,8 +153,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       created_at: new Date().toISOString()
     };
 
-    devLog('FINAL PROTOCOL OBJECT', protocol);
-
     // Save to database - also update initial_input with the primary concern
     if (consultationId) {
       const { error: updateError } = await supabase
@@ -187,9 +169,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       if (updateError) {
         console.error('[PROTOCOL GENERATION] Failed to save protocol:', updateError);
-        // Continue anyway, user still gets their protocol
-      } else {
-        devLog('PROTOCOL SAVED TO DATABASE', { consultationId, primaryConcern });
       }
     }
 
