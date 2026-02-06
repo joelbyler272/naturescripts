@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateProtocolWithClaude } from '@/lib/anthropic/client';
 import { buildProtocolSystemPrompt } from '@/lib/consultation/prompts';
-import { logConsultation, calculateCost } from '@/lib/consultation/logger';
+import { logConsultationCall, printUsageSummary } from '@/lib/consultation/debugLogger';
 import { 
   HealthContext, 
   GeneratedProtocol,
@@ -13,8 +13,6 @@ import { applyRateLimit, RateLimitResult } from '@/lib/utils/rateLimit';
 import { addAffiliateLinks } from '@/lib/consultation/affiliateLinks';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const startTime = Date.now();
-  
   // Rate limiting
   const rateLimitResult: RateLimitResult = applyRateLimit('consultation-protocol', 10, 60000);
   if (!rateLimitResult.allowed) {
@@ -85,27 +83,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       maxTokens: 2048
     });
 
-    const duration = Date.now() - startTime;
-
-    // Log the protocol generation with usage data
-    logConsultation({
-      timestamp: new Date().toISOString(),
-      type: 'protocol',
+    // Log the full consultation call with cost tracking
+    logConsultationCall({
+      endpoint: 'protocol',
       userId: user.id,
       consultationId: consultationId || undefined,
-      tier,
       request: {
         systemPrompt,
         messages: messagesWithRequest,
-        healthContext
       },
       response: {
         content: claudeResponse.content,
-        usage: claudeResponse.usage,
-        cost: calculateCost(claudeResponse.usage)
+        model: claudeResponse.usage.model,
       },
-      duration
+      healthContext,
+      metadata: {
+        tier,
+        primaryConcern,
+        conversationLength: conversationHistory.length,
+      },
     });
+
+    // Print usage summary after each call
+    printUsageSummary();
 
     // Parse the JSON response
     let protocolData: Partial<GeneratedProtocol>;
