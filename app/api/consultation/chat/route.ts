@@ -10,11 +10,27 @@ import {
   ChatResponse 
 } from '@/lib/consultation/types';
 import { applyRateLimit, RateLimitResult } from '@/lib/utils/rateLimit';
-import { logger } from '@/lib/utils/logger';
+
+// Development logging helper
+const DEV_MODE = process.env.NODE_ENV === 'development';
+
+function devLog(label: string, data: unknown) {
+  if (DEV_MODE) {
+    console.log('\n' + '='.repeat(60));
+    console.log(`[CONSULTATION CHAT] ${label}`);
+    console.log('='.repeat(60));
+    if (typeof data === 'string') {
+      console.log(data);
+    } else {
+      console.log(JSON.stringify(data, null, 2));
+    }
+    console.log('='.repeat(60) + '\n');
+  }
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // Rate limiting
-  const rateLimitResult: RateLimitResult = applyRateLimit('consultation-chat', 20, 60000); // 20 per minute
+  const rateLimitResult: RateLimitResult = applyRateLimit('consultation-chat', 20, 60000);
   if (!rateLimitResult.allowed) {
     return NextResponse.json(
       { error: 'Too many requests. Please wait a moment.' },
@@ -38,6 +54,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body: ChatRequest = await request.json();
     const { message, conversationHistory, consultationId } = body;
 
+    devLog('INCOMING REQUEST', {
+      userId: user.id,
+      consultationId,
+      userMessage: message,
+      conversationHistoryLength: conversationHistory.length
+    });
+
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
@@ -47,7 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .rpc('get_user_health_context', { p_user_id: user.id });
     
     if (healthError) {
-      logger.error('Failed to get health context:', healthError);
+      console.error('[CONSULTATION CHAT] Failed to get health context:', healthError);
     }
 
     const healthContext: HealthContext = healthData || {
@@ -58,6 +81,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       tier: 'free'
     };
 
+    devLog('HEALTH CONTEXT FROM DATABASE', healthContext);
+
     const tier = healthContext.tier || 'free';
 
     // For Pro users, get consultation history
@@ -67,9 +92,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .rpc('get_consultation_history', { p_user_id: user.id, p_limit: 5 });
       
       if (historyError) {
-        logger.error('Failed to get consultation history:', historyError);
+        console.error('[CONSULTATION CHAT] Failed to get consultation history:', historyError);
       } else if (historyData) {
         consultationHistoryData = historyData;
+        devLog('PRO USER CONSULTATION HISTORY', consultationHistoryData);
       }
     }
 
@@ -84,24 +110,49 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     ];
 
-    // Count exchanges (user messages)
+    // Count exchanges (user messages only, not including the greeting)
     const exchangeCount = updatedHistory.filter(m => m.role === 'user').length;
+
+    devLog('EXCHANGE COUNT', { 
+      exchangeCount, 
+      tier,
+      maxExchangesForTier: tier === 'free' ? 2 : 4
+    });
 
     // Build system prompt
     const systemPrompt = buildChatSystemPrompt(tier, healthContext, consultationHistoryData);
 
+    devLog('SYSTEM PROMPT SENT TO CLAUDE', systemPrompt);
+
+    // Build messages for Claude
+    const messagesForClaude = updatedHistory.map(m => ({ role: m.role, content: m.content }));
+    
+    devLog('CONVERSATION HISTORY SENT TO CLAUDE', messagesForClaude);
+
     // Call Claude
     const claudeResponse = await chatWithClaude({
       systemPrompt,
-      messages: updatedHistory.map(m => ({ role: m.role, content: m.content }))
+      messages: messagesForClaude
     });
 
+    devLog('CLAUDE RAW RESPONSE', claudeResponse);
+
     // Determine if ready to generate protocol
-    // Free: after 1-2 exchanges, Pro: after 1-4 exchanges or when Claude indicates
-    const maxExchanges = tier === 'free' ? 2 : 4;
+    // FIXED: Only trigger when Claude explicitly says the ready phrase
+    // Don't auto-trigger based on exchange count alone
     const isReadyIndicator = claudeResponse.toLowerCase().includes('i have what i need') ||
-                            claudeResponse.toLowerCase().includes('ready to put together');
-    const isReadyToGenerate = exchangeCount >= maxExchanges || isReadyIndicator;
+                            claudeResponse.toLowerCase().includes('ready to put together') ||
+                            claudeResponse.toLowerCase().includes('i have enough information');
+    
+    // Only set ready if Claude explicitly indicates readiness
+    const isReadyToGenerate = isReadyIndicator;
+
+    devLog('READY TO GENERATE CHECK', {
+      isReadyIndicator,
+      isReadyToGenerate,
+      exchangeCount,
+      claudeResponsePreview: claudeResponse.substring(0, 100) + '...'
+    });
 
     const response: ChatResponse = {
       message: claudeResponse,
@@ -109,10 +160,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       exchangeCount
     };
 
+    devLog('RESPONSE SENT TO FRONTEND', response);
+
     return NextResponse.json(response);
 
   } catch (error) {
-    logger.error('Consultation chat error:', error);
+    console.error('[CONSULTATION CHAT] Error:', error);
     return NextResponse.json(
       { error: 'Failed to process consultation. Please try again.' },
       { status: 500 }
