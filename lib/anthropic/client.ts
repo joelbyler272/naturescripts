@@ -5,6 +5,8 @@ import Anthropic from '@anthropic-ai/sdk';
 // Initialize the client (uses ANTHROPIC_API_KEY env var automatically)
 const anthropic = new Anthropic();
 
+const MODEL = 'claude-sonnet-4-20250514';
+
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -16,15 +18,24 @@ export interface ClaudeChatOptions {
   maxTokens?: number;
 }
 
+export interface ClaudeResponse {
+  content: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    model: string;
+  };
+}
+
 /**
- * Send a chat message to Claude and get a response
+ * Send a chat message to Claude and get a response with usage info
  */
-export async function chatWithClaude(options: ClaudeChatOptions): Promise<string> {
+export async function chatWithClaude(options: ClaudeChatOptions): Promise<ClaudeResponse> {
   const { systemPrompt, messages, maxTokens = 1024 } = options;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: messages.map(m => ({
@@ -39,7 +50,14 @@ export async function chatWithClaude(options: ClaudeChatOptions): Promise<string
       throw new Error('No text response from Claude');
     }
 
-    return textContent.text;
+    return {
+      content: textContent.text,
+      usage: {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        model: MODEL,
+      }
+    };
   } catch (error) {
     console.error('Claude API error:', error);
     throw error;
@@ -49,12 +67,12 @@ export async function chatWithClaude(options: ClaudeChatOptions): Promise<string
 /**
  * Generate a protocol using Claude (expects JSON response)
  */
-export async function generateProtocolWithClaude(options: ClaudeChatOptions): Promise<string> {
+export async function generateProtocolWithClaude(options: ClaudeChatOptions): Promise<ClaudeResponse> {
   const { systemPrompt, messages, maxTokens = 2048 } = options;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: messages.map(m => ({
@@ -69,7 +87,14 @@ export async function generateProtocolWithClaude(options: ClaudeChatOptions): Pr
       throw new Error('No text response from Claude');
     }
 
-    return textContent.text;
+    return {
+      content: textContent.text,
+      usage: {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        model: MODEL,
+      }
+    };
   } catch (error) {
     console.error('Claude API error:', error);
     throw error;
