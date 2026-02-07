@@ -60,13 +60,20 @@ export async function sendVerificationEmail({
 }
 
 /**
- * Generate HTML email template
+ * Generate HTML email template with NatureScripts logo
  */
 function generateVerificationEmailHtml({ 
   firstName, 
   verificationUrl, 
   protocolSummary 
 }: Omit<SendVerificationEmailParams, 'to'>): string {
+  // SVG logo inline (leaf icon + text)
+  const logoSvg = `<svg width="160" height="32" viewBox="0 0 160 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 4C16 4 8 8 8 16C8 20 10 24 16 28C22 24 24 20 24 16C24 8 16 4 16 4Z" fill="#408d59"/>
+    <path d="M16 8C16 8 12 11 12 16C12 19 13.5 22 16 24C18.5 22 20 19 20 16C20 11 16 8 16 8Z" fill="#5ba872"/>
+    <text x="36" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="#408d59">NatureScripts</text>
+  </svg>`;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -80,12 +87,10 @@ function generateVerificationEmailHtml({
     <tr>
       <td align="center" style="padding: 40px 20px;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          <!-- Header -->
+          <!-- Header with Logo -->
           <tr>
             <td style="background-color: #408d59; padding: 32px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">
-                🌿 NatureScripts
-              </h1>
+              ${logoSvg}
             </td>
           </tr>
           

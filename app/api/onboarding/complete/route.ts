@@ -1,5 +1,4 @@
-// Complete onboarding v3 - Creates consultation FIRST, then sends email with consultation ID
-// This ensures the user can be redirected directly to their protocol
+// Complete onboarding - Creates consultation, increments daily usage, sends email
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -8,6 +7,7 @@ import { buildProtocolSystemPrompt } from '@/lib/consultation/prompts';
 import { sendVerificationEmail } from '@/lib/email/resend';
 import { OnboardingState, getProfileData, buildProtocolContext } from '@/lib/onboarding/stateMachine';
 import { HealthContext, GeneratedProtocol } from '@/lib/consultation/types';
+import { getLocalDateString } from '@/lib/utils/date';
 import crypto from 'crypto';
 
 const supabaseAdmin = createClient(
@@ -129,10 +129,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```\n?/g, '');
       }
       protocol = JSON.parse(jsonStr);
-      console.log('[ONBOARDING] Step 3 DONE - Protocol generated, recommendations:', protocol.recommendations?.length || 0);
+      console.log('[ONBOARDING] Step 3 DONE - Protocol generated, title:', protocol.title, ', recommendations:', protocol.recommendations?.length || 0);
     } catch (parseError) {
       console.error('[ONBOARDING] Protocol parse error:', parseError);
       protocol = {
+        title: 'Health Support',
         summary: 'Based on our conversation, here are wellness recommendations for you.',
         recommendations: [],
         disclaimer: 'Please consult with a healthcare provider before starting any new supplement regimen.'
@@ -140,12 +141,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // ==========================================
-    // STEP 4: Save consultation (GET THE ID!)
-    // Column is "conversation_log" not "conversation_history"
+    // STEP 4: Save consultation
     // ==========================================
     console.log('[ONBOARDING] Step 4: Saving consultation...');
     
-    // Format conversation for the conversation_log column
     const formattedConversation = conversationHistory.map(msg => ({
       role: msg.role,
       content: msg.content,
@@ -157,7 +156,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .insert({
         user_id: userId,
         initial_input: profileData.primaryConcern || 'Onboarding consultation',
-        conversation_log: formattedConversation,  // FIXED: was conversation_history
+        conversation_log: formattedConversation,
         protocol_data: protocol,
         status: 'completed',
         tier_at_creation: 'free',
@@ -167,23 +166,44 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (consultError) {
       console.error('[ONBOARDING] ❌ Consultation save FAILED:', consultError);
-      console.error('[ONBOARDING] Consultation error details:', JSON.stringify(consultError, null, 2));
     } else {
       console.log('[ONBOARDING] Step 4 DONE - Consultation ID:', consultation?.id);
     }
 
     const consultationId = consultation?.id;
-    console.log('[ONBOARDING] ========================================');
-    console.log('[ONBOARDING] CONSULTATION ID TO USE:', consultationId);
-    console.log('[ONBOARDING] ========================================');
 
     // ==========================================
-    // STEP 5: Send verification email WITH consultation ID
+    // STEP 5: Increment daily usage (counts as 1 of 3 free)
     // ==========================================
-    console.log('[ONBOARDING] Step 5: Generating invite link...');
+    console.log('[ONBOARDING] Step 5: Incrementing daily usage...');
+    const today = getLocalDateString();
+    
+    const { error: usageError } = await supabaseAdmin
+      .from('daily_usage')
+      .upsert(
+        { 
+          user_id: userId, 
+          date: today, 
+          consultation_count: 1 
+        },
+        { 
+          onConflict: 'user_id,date',
+          ignoreDuplicates: false 
+        }
+      );
+
+    if (usageError) {
+      console.error('[ONBOARDING] Daily usage warning:', usageError);
+    } else {
+      console.log('[ONBOARDING] Step 5 DONE - Daily usage incremented');
+    }
+
+    // ==========================================
+    // STEP 6: Send verification email WITH consultation ID
+    // ==========================================
+    console.log('[ONBOARDING] Step 6: Generating invite link...');
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     
-    // Build the redirect URL that includes the consultation ID
     const redirectUrl = consultationId 
       ? `${appUrl}/auth/callback?type=invite&consultation=${consultationId}`
       : `${appUrl}/auth/callback?type=invite`;
@@ -201,8 +221,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (inviteError) {
       console.error('[ONBOARDING] ❌ Invite link error:', inviteError);
     } else {
-      console.log('[ONBOARDING] Step 5 DONE - Invite link generated');
-      console.log('[ONBOARDING] Action link:', inviteLinkData?.properties?.action_link?.substring(0, 100) + '...');
+      console.log('[ONBOARDING] Step 6 DONE - Invite link generated');
     }
 
     let emailSent = false;
