@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { WelcomeHeader } from '@/components/app/WelcomeHeader';
 import { ProtocolCard } from '@/components/protocol/ProtocolCard';
@@ -10,7 +10,7 @@ import { useConsultations } from '@/lib/hooks/useConsultations';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { HEALTH_SUGGESTIONS } from '@/lib/constants/suggestions';
 import { routes } from '@/lib/constants/routes';
-import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Leaf, Sparkles } from 'lucide-react';
+import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TIPS = [
@@ -45,6 +45,7 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 
 export function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { pastProtocols, loading: consultationsLoading } = useConsultations();
   const { usage, loading: usageLoading, isAtLimit, isPro } = useUsageLimits();
@@ -53,8 +54,27 @@ export function DashboardContent() {
   const [isFocused, setIsFocused] = useState(false);
   const [currentTip, setCurrentTip] = useState('');
   const [visibleSuggestions, setVisibleSuggestions] = useState<string[]>([]);
+  const [hasCheckedWelcome, setHasCheckedWelcome] = useState(false);
 
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
+  const isWelcome = searchParams.get('welcome') === 'true';
+
+  // If user came from onboarding (welcome=true), redirect to their protocol
+  useEffect(() => {
+    if (isWelcome && !consultationsLoading && !hasCheckedWelcome && pastProtocols.length > 0) {
+      setHasCheckedWelcome(true);
+      // Redirect to the most recent protocol with welcome flag
+      const latestProtocol = pastProtocols[0];
+      if (latestProtocol?.id) {
+        console.log('[DASHBOARD] Redirecting welcome user to protocol:', latestProtocol.id);
+        router.replace(`/protocols/${latestProtocol.id}?welcome=true`);
+      }
+    } else if (isWelcome && !consultationsLoading && pastProtocols.length === 0) {
+      // No protocols found, just clear the welcome param
+      setHasCheckedWelcome(true);
+      router.replace('/dashboard');
+    }
+  }, [isWelcome, consultationsLoading, pastProtocols, hasCheckedWelcome, router]);
 
   // Pick 3 random suggestions client-side only (changes on refresh)
   useEffect(() => {
@@ -85,6 +105,18 @@ export function DashboardContent() {
   };
 
   const isLoading = consultationsLoading || usageLoading;
+
+  // Show loading if we're about to redirect
+  if (isWelcome && !hasCheckedWelcome) {
+    return (
+      <div className="w-full flex items-center justify-center py-24">
+        <div className="text-center">
+          <Loader2 className="w-6 h-6 animate-spin text-accent mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading your protocol...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
