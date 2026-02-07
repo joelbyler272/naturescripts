@@ -24,6 +24,7 @@ function SetPasswordContent() {
   const [success, setSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [redirectUrl, setRedirectUrl] = useState('/dashboard?welcome=true');
 
   // Verify the session on mount - handle both hash tokens and existing sessions
   useEffect(() => {
@@ -52,9 +53,13 @@ function SetPasswordContent() {
             }
             
             if (data.session) {
-              console.log('[SET PASSWORD] Session set successfully from hash');
+              console.log('[SET PASSWORD] Session set successfully from hash, user:', data.session.user.id);
               setUserEmail(data.session.user.email || null);
               setUserId(data.session.user.id);
+              
+              // Try to find the user's consultation
+              await findUserConsultation(data.session.user.id);
+              
               setIsVerifying(false);
               window.history.replaceState(null, '', window.location.pathname);
               return;
@@ -79,9 +84,13 @@ function SetPasswordContent() {
           return;
         }
 
-        console.log('[SET PASSWORD] Existing session found');
+        console.log('[SET PASSWORD] Existing session found, user:', session.user.id);
         setUserEmail(session.user.email || null);
         setUserId(session.user.id);
+        
+        // Try to find the user's consultation
+        await findUserConsultation(session.user.id);
+        
         setIsVerifying(false);
       } catch (err) {
         console.error('[SET PASSWORD] Unexpected error:', err);
@@ -91,7 +100,39 @@ function SetPasswordContent() {
     }
 
     verifySession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Find the user's most recent consultation
+  async function findUserConsultation(uid: string) {
+    try {
+      console.log('[SET PASSWORD] Looking for consultation for user:', uid);
+      
+      const { data: consultation, error: consultError } = await supabase
+        .from('consultations')
+        .select('id')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (consultError) {
+        console.error('[SET PASSWORD] Consultation query error:', consultError);
+        // Fall back to dashboard
+        return;
+      }
+
+      if (consultation?.id) {
+        console.log('[SET PASSWORD] Found consultation:', consultation.id);
+        setRedirectUrl(`/protocols/${consultation.id}?welcome=true`);
+      } else {
+        console.log('[SET PASSWORD] No consultation found, will redirect to dashboard');
+      }
+    } catch (err) {
+      console.error('[SET PASSWORD] Error finding consultation:', err);
+      // Fall back to dashboard - don't block the flow
+    }
+  }
 
   const validatePassword = (): string | null => {
     if (password.length < 8) {
@@ -147,26 +188,29 @@ function SetPasswordContent() {
           data: { onboarding_in_progress: false },
         });
 
-        // Find the user's most recent consultation (created during onboarding)
-        const { data: consultation } = await supabase
-          .from('consultations')
-          .select('id')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+        // Try one more time to find consultation if we don't have one
+        if (redirectUrl === '/dashboard?welcome=true') {
+          const { data: consultation } = await supabase
+            .from('consultations')
+            .select('id')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
 
-        setSuccess(true);
-
-        // Redirect to the protocol page with welcome flag
-        setTimeout(() => {
           if (consultation?.id) {
-            router.push(`/protocols/${consultation.id}?welcome=true`);
-          } else {
-            router.push('/dashboard?welcome=true');
+            setRedirectUrl(`/protocols/${consultation.id}?welcome=true`);
           }
-        }, 2000);
+        }
       }
+
+      setSuccess(true);
+
+      // Redirect after a brief delay
+      setTimeout(() => {
+        console.log('[SET PASSWORD] Redirecting to:', redirectUrl);
+        router.push(redirectUrl);
+      }, 2000);
 
     } catch (err) {
       console.error('[SET PASSWORD] Password update error:', err);
