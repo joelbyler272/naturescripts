@@ -1,47 +1,74 @@
-import { memo } from 'react';
+'use client';
+
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, ChevronRight } from 'lucide-react';
 import { Consultation } from '@/types';
-import { getProtocolLabel, getRecommendationCount } from '@/lib/utils/typeGuards';
-import { format } from 'date-fns';
+import { routes } from '@/lib/constants/routes';
+import { ChevronRight, Leaf } from 'lucide-react';
+import { GeneratedProtocol } from '@/lib/consultation/types';
 
 interface ProtocolCardProps {
   consultation: Consultation;
 }
 
-export const ProtocolCard = memo(function ProtocolCard({ consultation }: ProtocolCardProps) {
-  const date = format(new Date(consultation.created_at), 'MMM dd, yyyy');
-
-  // Use centralized type guards for protocol data extraction
-  const label = getProtocolLabel(
-    consultation.protocol_data,
-    consultation.initial_input.slice(0, 60)
+// Type guard for Claude-generated protocol
+function isClaudeProtocol(data: unknown): data is GeneratedProtocol {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'summary' in data &&
+    'recommendations' in data
   );
-  const recCount = getRecommendationCount(consultation.protocol_data);
+}
+
+export function ProtocolCard({ consultation }: ProtocolCardProps) {
+  const protocolData = consultation.protocol_data;
+  
+  // Get title from protocol_data or generate from initial_input
+  let title = 'Health Protocol';
+  let recommendationCount = 0;
+  
+  if (isClaudeProtocol(protocolData)) {
+    // New format with title
+    title = protocolData.title || consultation.initial_input?.slice(0, 40) || 'Health Protocol';
+    recommendationCount = protocolData.recommendations?.length || 0;
+  } else if (protocolData && typeof protocolData === 'object') {
+    // Legacy format
+    const legacy = protocolData as { primaryConcern?: string; recommendations?: unknown[] };
+    title = legacy.primaryConcern || consultation.initial_input?.slice(0, 40) || 'Health Protocol';
+    recommendationCount = Array.isArray(legacy.recommendations) ? legacy.recommendations.length : 0;
+  }
+  
+  // Truncate title if too long
+  if (title.length > 50) {
+    title = title.slice(0, 47) + '...';
+  }
+
+  const formattedDate = new Date(consultation.created_at).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
 
   return (
-    <Link href={`/protocols/${consultation.id}`}>
-      <div className="bg-white border border-border/50 rounded-xl px-4 py-3 hover:border-accent/30 transition-colors cursor-pointer">
-        <div className="flex items-center justify-between">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-foreground text-sm truncate">
-              {label}
-            </h3>
-            <div className="flex items-center gap-2 mt-1">
-              <Calendar className="w-3 h-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{date}</span>
-              {recCount > 0 && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                  {recCount} rec{recCount > 1 ? 's' : ''}
-                </Badge>
-              )}
-            </div>
+    <Link
+      href={`${routes.protocols}/${consultation.id}`}
+      className="group block bg-white border border-border/50 rounded-xl p-4 hover:border-accent/30 hover:shadow-sm transition-all"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Leaf className="w-5 h-5 text-accent" />
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-3" />
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-foreground truncate">
+              {title}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {formattedDate} · {recommendationCount} recommendation{recommendationCount !== 1 ? 's' : ''}
+            </p>
+          </div>
         </div>
+        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors flex-shrink-0" />
       </div>
     </Link>
   );
-});
+}

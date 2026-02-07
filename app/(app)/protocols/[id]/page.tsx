@@ -11,6 +11,7 @@ import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink,
 import { routes } from '@/lib/constants/routes';
 import { sanitizeProductUrl } from '@/lib/utils/urlValidation';
 import { WelcomeWalkthrough } from '@/components/protocol/WelcomeWalkthrough';
+import { UpgradeModal } from '@/components/protocol/UpgradeModal';
 import {
   ArrowLeft,
   Leaf,
@@ -65,6 +66,7 @@ function ProtocolPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Check for welcome param
   useEffect(() => {
@@ -77,6 +79,10 @@ function ProtocolPageContent() {
     setShowWelcome(false);
     // Remove the welcome param from URL
     router.replace(`/protocols/${params.id}`, { scroll: false });
+    // Show upgrade modal after a short delay
+    setTimeout(() => {
+      setShowUpgradeModal(true);
+    }, 500);
   };
 
   const loadProtocol = useCallback(async () => {
@@ -165,6 +171,13 @@ function ProtocolPageContent() {
     );
   }
 
+  // Get protocol title for upgrade modal
+  const protocolTitle = isClaudeProtocol(protocolData) 
+    ? protocolData.title 
+    : isLegacyProtocol(protocolData) 
+      ? protocolData.primaryConcern 
+      : undefined;
+
   // Check if it's a Claude-generated protocol (new format with products)
   if (isClaudeProtocol(protocolData)) {
     return (
@@ -175,6 +188,11 @@ function ProtocolPageContent() {
             onComplete={handleWelcomeComplete} 
           />
         )}
+        <UpgradeModal 
+          isOpen={showUpgradeModal} 
+          onClose={() => setShowUpgradeModal(false)}
+          protocolTitle={protocolTitle}
+        />
         <ClaudeProtocolView consultation={consultation} protocol={protocolData} />
       </>
     );
@@ -189,6 +207,11 @@ function ProtocolPageContent() {
           onComplete={handleWelcomeComplete} 
         />
       )}
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+        protocolTitle={protocolTitle}
+      />
       <LegacyProtocolView consultation={consultation} protocolData={protocolData} />
     </>
   );
@@ -209,6 +232,9 @@ export default function ProtocolPage() {
 
 // New Claude Protocol View with Product Cards
 function ClaudeProtocolView({ consultation, protocol }: { consultation: Consultation; protocol: NewGeneratedProtocol }) {
+  // Generate a title from summary if not provided
+  const displayTitle = protocol.title || 'Your Personalized Protocol';
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <Link
@@ -229,7 +255,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
             · {new Date(consultation.created_at).toLocaleDateString()}
           </span>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground mb-3">Your Personalized Protocol</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-3">{displayTitle}</h1>
         <p className="text-muted-foreground">{protocol.summary}</p>
       </div>
 
@@ -392,7 +418,7 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
             {recommendation.products.map((product: ProductLink, pIndex: number) => (
               <a
                 key={pIndex}
-                href={sanitizeProductUrl(product.url)}
+                href={sanitizeProductUrl(product.url || '#')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors group"
@@ -477,7 +503,7 @@ function LegacyProtocolView({ consultation, protocolData }: { consultation: Cons
             · {new Date(consultation.created_at).toLocaleDateString()}
           </span>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground mb-2">{title} Protocol</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-2">{title}</h1>
         {summary && <p className="text-muted-foreground">{summary}</p>}
       </div>
 
