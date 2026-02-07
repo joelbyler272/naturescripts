@@ -23,13 +23,13 @@ function SetPasswordContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Verify the session on mount - handle both hash tokens and existing sessions
   useEffect(() => {
     async function verifySession() {
       try {
         // Check if there are auth params in the URL hash (from Supabase redirect)
-        // Hash looks like: #access_token=xxx&refresh_token=xxx&type=invite
         if (typeof window !== 'undefined' && window.location.hash) {
           const hashParams = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = hashParams.get('access_token');
@@ -39,7 +39,6 @@ function SetPasswordContent() {
           console.log('[SET PASSWORD] Hash params detected, type:', type);
           
           if (accessToken && refreshToken) {
-            // Set the session from the hash params
             const { data, error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -55,15 +54,15 @@ function SetPasswordContent() {
             if (data.session) {
               console.log('[SET PASSWORD] Session set successfully from hash');
               setUserEmail(data.session.user.email || null);
+              setUserId(data.session.user.id);
               setIsVerifying(false);
-              // Clear the hash from URL for cleaner look
               window.history.replaceState(null, '', window.location.pathname);
               return;
             }
           }
         }
 
-        // Check for existing session (in case user refreshed the page or came from callback)
+        // Check for existing session
         const { data: { session }, error: getSessionError } = await supabase.auth.getSession();
         
         if (getSessionError) {
@@ -82,6 +81,7 @@ function SetPasswordContent() {
 
         console.log('[SET PASSWORD] Existing session found');
         setUserEmail(session.user.email || null);
+        setUserId(session.user.id);
         setIsVerifying(false);
       } catch (err) {
         console.error('[SET PASSWORD] Unexpected error:', err);
@@ -146,14 +146,27 @@ function SetPasswordContent() {
         await supabase.auth.updateUser({
           data: { onboarding_in_progress: false },
         });
+
+        // Find the user's most recent consultation (created during onboarding)
+        const { data: consultation } = await supabase
+          .from('consultations')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        setSuccess(true);
+
+        // Redirect to the protocol page with welcome flag
+        setTimeout(() => {
+          if (consultation?.id) {
+            router.push(`/protocols/${consultation.id}?welcome=true`);
+          } else {
+            router.push('/dashboard?welcome=true');
+          }
+        }, 2000);
       }
-
-      setSuccess(true);
-
-      // Redirect to dashboard after a brief delay
-      setTimeout(() => {
-        router.push('/dashboard?welcome=true');
-      }, 2000);
 
     } catch (err) {
       console.error('[SET PASSWORD] Password update error:', err);
@@ -185,7 +198,7 @@ function SetPasswordContent() {
             You're all set!
           </h1>
           <p className="text-muted-foreground mb-6">
-            Your password has been set. Redirecting to your dashboard...
+            Taking you to your personalized protocol...
           </p>
           <Loader2 className="w-5 h-5 animate-spin text-accent mx-auto" />
         </div>
@@ -280,13 +293,13 @@ function SetPasswordContent() {
                   Setting password...
                 </>
               ) : (
-                'Set Password & Continue'
+                'Set Password & View Protocol'
               )}
             </Button>
           </form>
 
           <p className="text-xs text-muted-foreground text-center mt-6">
-            Your protocol is waiting for you on the dashboard!
+            Your personalized protocol is ready!
           </p>
         </div>
       </div>
