@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,11 +10,11 @@ import Link from 'next/link';
 
 const supabase = createClient();
 
-// Common weak passwords to check against
 const COMMON_PASSWORDS = ['123456', 'password', 'qwerty', '123456789', 'abc123', 'password1'];
 
 function SetPasswordContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,14 +23,19 @@ function SetPasswordContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [redirectUrl, setRedirectUrl] = useState('/dashboard?welcome=true');
+  const [consultationId, setConsultationId] = useState<string | null>(null);
 
-  // Verify the session on mount - handle both hash tokens and existing sessions
   useEffect(() => {
     async function verifySession() {
       try {
-        // Check if there are auth params in the URL hash (from Supabase redirect)
+        // Get consultation ID from URL params (passed from callback)
+        const consultationFromParams = searchParams.get('consultation');
+        if (consultationFromParams) {
+          console.log('[SET PASSWORD] Consultation ID from params:', consultationFromParams);
+          setConsultationId(consultationFromParams);
+        }
+
+        // Check if there are auth params in the URL hash
         if (typeof window !== 'undefined' && window.location.hash) {
           const hashParams = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = hashParams.get('access_token');
@@ -53,15 +58,10 @@ function SetPasswordContent() {
             }
             
             if (data.session) {
-              console.log('[SET PASSWORD] Session set successfully from hash, user:', data.session.user.id);
+              console.log('[SET PASSWORD] Session set successfully from hash');
               setUserEmail(data.session.user.email || null);
-              setUserId(data.session.user.id);
-              
-              // Try to find the user's consultation
-              await findUserConsultation(data.session.user.id);
-              
               setIsVerifying(false);
-              window.history.replaceState(null, '', window.location.pathname);
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
               return;
             }
           }
@@ -84,13 +84,8 @@ function SetPasswordContent() {
           return;
         }
 
-        console.log('[SET PASSWORD] Existing session found, user:', session.user.id);
+        console.log('[SET PASSWORD] Session found for:', session.user.email);
         setUserEmail(session.user.email || null);
-        setUserId(session.user.id);
-        
-        // Try to find the user's consultation
-        await findUserConsultation(session.user.id);
-        
         setIsVerifying(false);
       } catch (err) {
         console.error('[SET PASSWORD] Unexpected error:', err);
@@ -100,39 +95,7 @@ function SetPasswordContent() {
     }
 
     verifySession();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Find the user's most recent consultation
-  async function findUserConsultation(uid: string) {
-    try {
-      console.log('[SET PASSWORD] Looking for consultation for user:', uid);
-      
-      const { data: consultation, error: consultError } = await supabase
-        .from('consultations')
-        .select('id')
-        .eq('user_id', uid)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (consultError) {
-        console.error('[SET PASSWORD] Consultation query error:', consultError);
-        // Fall back to dashboard
-        return;
-      }
-
-      if (consultation?.id) {
-        console.log('[SET PASSWORD] Found consultation:', consultation.id);
-        setRedirectUrl(`/protocols/${consultation.id}?welcome=true`);
-      } else {
-        console.log('[SET PASSWORD] No consultation found, will redirect to dashboard');
-      }
-    } catch (err) {
-      console.error('[SET PASSWORD] Error finding consultation:', err);
-      // Fall back to dashboard - don't block the flow
-    }
-  }
+  }, [searchParams]);
 
   const validatePassword = (): string | null => {
     if (password.length < 8) {
@@ -163,7 +126,6 @@ function SetPasswordContent() {
     setError(null);
 
     try {
-      // Update the user's password
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       });
@@ -183,34 +145,23 @@ function SetPasswordContent() {
           })
           .eq('id', user.id);
 
-        // Update user metadata
         await supabase.auth.updateUser({
           data: { onboarding_in_progress: false },
         });
-
-        // Try one more time to find consultation if we don't have one
-        if (redirectUrl === '/dashboard?welcome=true') {
-          const { data: consultation } = await supabase
-            .from('consultations')
-            .select('id')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          if (consultation?.id) {
-            setRedirectUrl(`/protocols/${consultation.id}?welcome=true`);
-          }
-        }
       }
 
       setSuccess(true);
 
-      // Redirect after a brief delay
+      // Redirect to protocol page if we have the consultation ID
       setTimeout(() => {
-        console.log('[SET PASSWORD] Redirecting to:', redirectUrl);
-        router.push(redirectUrl);
-      }, 2000);
+        if (consultationId) {
+          console.log('[SET PASSWORD] Redirecting to protocol:', consultationId);
+          router.push(`/protocols/${consultationId}?welcome=true`);
+        } else {
+          console.log('[SET PASSWORD] No consultation ID, redirecting to dashboard');
+          router.push('/dashboard?welcome=true');
+        }
+      }, 1500);
 
     } catch (err) {
       console.error('[SET PASSWORD] Password update error:', err);
@@ -269,9 +220,6 @@ function SetPasswordContent() {
                 Go to Sign In
               </Button>
             </Link>
-            <p className="text-xs text-muted-foreground">
-              You can request a password reset from the sign in page
-            </p>
           </div>
         </div>
       </div>

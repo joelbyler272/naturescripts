@@ -1,5 +1,5 @@
-// Complete onboarding v2 - Uses state machine data instead of extracting from conversation
-// Only ONE API call: protocol generation
+// Complete onboarding v3 - Creates consultation FIRST, then sends email with consultation ID
+// This ensures the user can be redirected directly to their protocol
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -41,6 +41,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
+    console.log('[ONBOARDING] Starting for email:', email);
+
     // Check if user exists
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(
@@ -54,11 +56,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Get profile data from state machine (no API call needed!)
+    // Get profile data from state machine
     const profileData = getProfileData(state);
+    console.log('[ONBOARDING] Profile data:', profileData.firstName);
 
     // ==========================================
-    // Create user account
+    // STEP 1: Create user account
     // ==========================================
     const tempPassword = crypto.randomBytes(32).toString('hex');
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -74,11 +77,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const userId = newUser.user.id;
+    console.log('[ONBOARDING] User created:', userId);
 
     // ==========================================
-    // Create profile
+    // STEP 2: Create profile
     // ==========================================
-    await supabaseAdmin.from('profiles').upsert({
+    const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
       id: userId,
       tier: 'free',
       onboarding_completed: false,
@@ -88,9 +92,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       health_notes: profileData.primaryConcern ? `Primary concern: ${profileData.primaryConcern}` : null,
     });
 
+    if (profileError) {
+      console.error('[ONBOARDING] Profile creation error:', profileError);
+    }
+
     // ==========================================
-    // Generate protocol (ONE API call)
+    // STEP 3: Generate protocol (ONE API call)
     // ==========================================
+    console.log('[ONBOARDING] Generating protocol...');
     const healthContext: HealthContext = {
       health_conditions: profileData.healthConditions,
       medications: profileData.medications.map(m => ({ name: m, dosage: '', frequency: '' })),
@@ -114,7 +123,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```\n?/g, '');
       }
       protocol = JSON.parse(jsonStr);
-    } catch {
+      console.log('[ONBOARDING] Protocol generated successfully');
+    } catch (parseError) {
+      console.error('[ONBOARDING] Protocol parse error:', parseError);
       protocol = {
         summary: 'Based on our conversation, here are wellness recommendations for you.',
         recommendations: [],
@@ -123,9 +134,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // ==========================================
-    // Save consultation
+    // STEP 4: Save consultation (GET THE ID!)
     // ==========================================
-    const { data: consultation } = await supabaseAdmin
+    const { data: consultation, error: consultError } = await supabaseAdmin
       .from('consultations')
       .insert({
         user_id: userId,
@@ -138,37 +149,65 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .select('id')
       .single();
 
+    if (consultError) {
+      console.error('[ONBOARDING] Consultation save error:', consultError);
+    }
+
+    const consultationId = consultation?.id;
+    console.log('[ONBOARDING] Consultation saved with ID:', consultationId);
+
     // ==========================================
-    // Send verification email
+    // STEP 5: Send verification email WITH consultation ID
     // ==========================================
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     
-    const { data: inviteLinkData } = await supabaseAdmin.auth.admin.generateLink({
+    // Build the redirect URL that includes the consultation ID
+    const redirectPath = consultationId 
+      ? `/protocols/${consultationId}?welcome=true`
+      : '/dashboard?welcome=true';
+    
+    const { data: inviteLinkData, error: inviteError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'invite',
       email: email.toLowerCase(),
-      options: { redirectTo: `${appUrl}/auth/callback?type=invite` },
+      options: { 
+        redirectTo: `${appUrl}/auth/callback?type=invite&consultation=${consultationId || ''}` 
+      },
     });
 
+    if (inviteError) {
+      console.error('[ONBOARDING] Invite link error:', inviteError);
+    }
+
+    let emailSent = false;
     if (inviteLinkData?.properties?.action_link) {
-      await sendVerificationEmail({
-        to: email,
-        firstName: profileData.firstName,
-        verificationUrl: inviteLinkData.properties.action_link,
-        protocolSummary: protocol.summary,
-      });
+      try {
+        await sendVerificationEmail({
+          to: email,
+          firstName: profileData.firstName,
+          verificationUrl: inviteLinkData.properties.action_link,
+          protocolSummary: protocol.summary,
+        });
+        emailSent = true;
+        console.log('[ONBOARDING] Verification email sent');
+      } catch (emailError) {
+        console.error('[ONBOARDING] Email send error:', emailError);
+      }
     }
 
     return NextResponse.json({
       success: true,
       userId,
-      consultationId: consultation?.id,
+      consultationId,
       protocol,
       firstName: profileData.firstName,
-      message: `Thanks ${profileData.firstName}! Check your email at ${email} to set your password.`,
+      emailSent,
+      message: emailSent 
+        ? `Thanks ${profileData.firstName}! Check your email at ${email} to set your password and view your protocol.`
+        : `Your protocol is ready, ${profileData.firstName}! We had trouble sending the email - please try signing in with your email.`,
     });
 
   } catch (error) {
-    console.error('[ONBOARDING] Error:', error);
+    console.error('[ONBOARDING] Unexpected error:', error);
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }

@@ -6,6 +6,9 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/dashboard';
   const type = searchParams.get('type'); // 'magiclink', 'recovery', 'invite', etc.
+  const consultationId = searchParams.get('consultation'); // consultation ID from onboarding
+
+  console.log('[AUTH CALLBACK] type:', type, 'consultation:', consultationId);
 
   // Handle PKCE flow (code in query params)
   if (code) {
@@ -13,9 +16,12 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (!error) {
-      // For magic links/invites from onboarding, redirect to set-password
+      // For magic links/invites from onboarding, redirect to set-password with consultation ID
       if (type === 'magiclink' || type === 'invite') {
-        return NextResponse.redirect(`${origin}/auth/set-password`);
+        const redirectUrl = consultationId 
+          ? `${origin}/auth/set-password?consultation=${consultationId}`
+          : `${origin}/auth/set-password`;
+        return NextResponse.redirect(redirectUrl);
       }
       // For password recovery
       if (type === 'recovery') {
@@ -29,11 +35,12 @@ export async function GET(request: Request) {
   }
 
   // If no code, Supabase might be using hash fragment flow
-  // We need to redirect to a client-side page that can read the hash
-  // and extract the tokens
+  // Redirect to set-password page which will handle hash tokens client-side
   if (type === 'magiclink' || type === 'invite') {
-    // Redirect to set-password page which will handle hash tokens client-side
-    return NextResponse.redirect(`${origin}/auth/set-password`);
+    const redirectUrl = consultationId 
+      ? `${origin}/auth/set-password?consultation=${consultationId}`
+      : `${origin}/auth/set-password`;
+    return NextResponse.redirect(redirectUrl);
   }
 
   // Check for token_hash (alternative auth flow)
@@ -48,7 +55,10 @@ export async function GET(request: Request) {
     });
     
     if (!error) {
-      return NextResponse.redirect(`${origin}/auth/set-password`);
+      const redirectUrl = consultationId 
+        ? `${origin}/auth/set-password?consultation=${consultationId}`
+        : `${origin}/auth/set-password`;
+      return NextResponse.redirect(redirectUrl);
     }
     
     console.error('[AUTH CALLBACK] Token verification error:', error);
