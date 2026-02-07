@@ -1,4 +1,5 @@
 // Complete onboarding v3 - Creates consultation FIRST, then sends email with consultation ID
+// This ensures the user can be redirected directly to their protocol
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -22,11 +23,8 @@ interface OnboardingCompleteRequest {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  console.log('[ONBOARDING] ====== START ======');
-  
   try {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('[ONBOARDING] Missing SUPABASE_SERVICE_ROLE_KEY');
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
@@ -34,15 +32,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { email, state, conversationHistory } = body;
 
     if (!email || !state) {
-      console.error('[ONBOARDING] Missing email or state');
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Validate email
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
+    console.log('[ONBOARDING] ====== START ======');
     console.log('[ONBOARDING] Email:', email);
 
     // Check if user exists
@@ -52,13 +51,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
 
     if (existingUser) {
-      console.log('[ONBOARDING] User already exists');
       return NextResponse.json(
         { error: 'Account exists', existingUser: true },
         { status: 409 }
       );
     }
 
+    // Get profile data from state machine
     const profileData = getProfileData(state);
     console.log('[ONBOARDING] Profile firstName:', profileData.firstName);
     console.log('[ONBOARDING] Primary concern:', profileData.primaryConcern);
@@ -76,7 +75,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     if (createError || !newUser.user) {
-      console.error('[ONBOARDING] User creation failed:', createError);
+      console.error('[ONBOARDING] ❌ User creation FAILED:', createError);
       return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
     }
 
@@ -98,13 +97,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     if (profileError) {
-      console.error('[ONBOARDING] Profile creation error:', profileError);
+      console.error('[ONBOARDING] Profile warning:', profileError);
     } else {
       console.log('[ONBOARDING] Step 2 DONE - Profile created');
     }
 
     // ==========================================
-    // STEP 3: Generate protocol
+    // STEP 3: Generate protocol (ONE API call)
     // ==========================================
     console.log('[ONBOARDING] Step 3: Generating protocol with Claude...');
     const healthContext: HealthContext = {
@@ -141,15 +140,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // ==========================================
-    // STEP 4: Save consultation - THIS IS WHERE WE GET THE ID
+    // STEP 4: Save consultation (GET THE ID!)
+    // Column is "conversation_log" not "conversation_history"
     // ==========================================
     console.log('[ONBOARDING] Step 4: Saving consultation...');
+    
+    // Format conversation for the conversation_log column
+    const formattedConversation = conversationHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content,
+      timestamp: new Date().toISOString()
+    }));
+
     const { data: consultation, error: consultError } = await supabaseAdmin
       .from('consultations')
       .insert({
         user_id: userId,
         initial_input: profileData.primaryConcern || 'Onboarding consultation',
-        conversation_history: conversationHistory,
+        conversation_log: formattedConversation,  // FIXED: was conversation_history
         protocol_data: protocol,
         status: 'completed',
         tier_at_creation: 'free',
@@ -165,20 +173,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const consultationId = consultation?.id;
-    
-    // Log the consultation ID explicitly
     console.log('[ONBOARDING] ========================================');
     console.log('[ONBOARDING] CONSULTATION ID TO USE:', consultationId);
-    console.log('[ONBOARDING] Type of consultationId:', typeof consultationId);
     console.log('[ONBOARDING] ========================================');
 
     // ==========================================
-    // STEP 5: Send verification email with consultation ID
+    // STEP 5: Send verification email WITH consultation ID
     // ==========================================
     console.log('[ONBOARDING] Step 5: Generating invite link...');
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     
-    // Build redirect URL with consultation ID
+    // Build the redirect URL that includes the consultation ID
     const redirectUrl = consultationId 
       ? `${appUrl}/auth/callback?type=invite&consultation=${consultationId}`
       : `${appUrl}/auth/callback?type=invite`;
@@ -194,7 +199,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     if (inviteError) {
-      console.error('[ONBOARDING] ❌ Invite link generation FAILED:', inviteError);
+      console.error('[ONBOARDING] ❌ Invite link error:', inviteError);
     } else {
       console.log('[ONBOARDING] Step 5 DONE - Invite link generated');
       console.log('[ONBOARDING] Action link:', inviteLinkData?.properties?.action_link?.substring(0, 100) + '...');
@@ -213,12 +218,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         emailSent = true;
         console.log('[ONBOARDING] ✅ Email sent successfully');
       } catch (emailError) {
-        console.error('[ONBOARDING] ❌ Email send FAILED:', emailError);
+        console.error('[ONBOARDING] ❌ Email send error:', emailError);
       }
     }
 
     console.log('[ONBOARDING] ====== COMPLETE ======');
-    console.log('[ONBOARDING] Final consultationId being returned:', consultationId);
 
     return NextResponse.json({
       success: true,
@@ -228,12 +232,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       firstName: profileData.firstName,
       emailSent,
       message: emailSent 
-        ? `Thanks ${profileData.firstName}! Check your email at ${email} to set your password.`
-        : `Protocol ready! We had trouble sending the email.`,
+        ? `Thanks ${profileData.firstName}! Check your email at ${email} to set your password and view your protocol.`
+        : `Your protocol is ready, ${profileData.firstName}! We had trouble sending the email - please try signing in with your email.`,
     });
 
   } catch (error) {
-    console.error('[ONBOARDING] ❌ UNEXPECTED ERROR:', error);
+    console.error('[ONBOARDING] ❌ Unexpected error:', error);
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }
