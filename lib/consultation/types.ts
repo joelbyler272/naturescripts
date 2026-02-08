@@ -76,18 +76,19 @@ export interface LegacyGeneratedProtocol {
 // Protocol Types
 
 export interface GeneratedProtocol {
-  id: string;
+  id?: string;
+  title?: string; // 1-4 word title like "Sleep Support" or "Knee Pain Relief"
   summary: string;
   recommendations: Recommendation[];
   dietary_shifts?: DietaryShift[];
   lifestyle_practices?: LifestylePractice[];
   tracking_suggestions?: TrackingSuggestion[];
   disclaimer: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface Recommendation {
-  id: string;
+  id?: string;
   name: string;
   type: 'herb' | 'vitamin' | 'mineral' | 'supplement' | 'essential_oil' | 'other';
   dosage: string;
@@ -100,27 +101,27 @@ export interface Recommendation {
 export interface ProductLink {
   name: string;
   brand: string;
-  url: string;
+  url?: string;
   price?: string;
   source: 'amazon' | 'iherb' | 'other';
 }
 
 export interface DietaryShift {
-  id: string;
+  id?: string;
   action: 'add' | 'reduce' | 'avoid';
   item: string;
   rationale: string;
 }
 
 export interface LifestylePractice {
-  id: string;
+  id?: string;
   practice: string;
   timing?: string;
   rationale: string;
 }
 
 export interface TrackingSuggestion {
-  id: string;
+  id?: string;
   metric: string;
   frequency: 'daily' | 'weekly';
   description: string;

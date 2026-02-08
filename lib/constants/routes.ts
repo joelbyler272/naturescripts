@@ -12,6 +12,10 @@ export const routes = {
   signIn: '/sign-in',
   signUp: '/sign-up',
   verifyEmail: '/verify-email',
+  setPassword: '/auth/set-password',
+  
+  // Onboarding (new users, no auth required)
+  onboarding: '/onboarding',
   
   // Public
   remedies: '/remedies',
@@ -21,7 +25,7 @@ export const routes = {
   libraryResearch: '/library/research',
   blog: '/blog',
   
-  // App
+  // App (requires auth)
   dashboard: '/dashboard',
   consultation: '/consultation',
   protocols: '/protocols',

@@ -1,0 +1,254 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ChatMessage } from '@/components/consultation/ChatMessage';
+import { ChatInput } from '@/components/consultation/ChatInput';
+import { TypingIndicator } from '@/components/consultation/TypingIndicator';
+import { ConversationMessage, GeneratedProtocol } from '@/lib/consultation/types';
+import { 
+  OnboardingState, 
+  createInitialState, 
+  processOnboardingMessage,
+  isReadyForProtocol,
+  getProfileData
+} from '@/lib/onboarding/stateMachine';
+import { logger } from '@/lib/utils/logger';
+import { ArrowRight, Mail, CheckCircle, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+
+interface OnboardingChatProps {
+  initialQuery?: string;
+}
+
+function createMessage(role: 'user' | 'assistant', content: string): ConversationMessage {
+  return {
+    id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    role,
+    content,
+    timestamp: new Date().toISOString()
+  };
+}
+
+export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasInitialized = useRef(false);
+
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>(createInitialState());
+  const [isTyping, setIsTyping] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
+  const [completionState, setCompletionState] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
+  const [existingUserError, setExistingUserError] = useState<boolean>(false);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
+  // Initialize
+  const initializeChat = useCallback(async () => {
+    const greeting = createMessage(
+      'assistant',
+      "Hi there! I'm here to help create a personalized natural health protocol for you. What's been bothering you, or what would you like support with?"
+    );
+    setMessages([greeting]);
+
+    // If there's an initial query, process it immediately
+    if (initialQuery) {
+      // Small delay to show greeting first
+      setTimeout(() => {
+        handleUserMessage(initialQuery);
+      }, 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
+
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    initializeChat();
+  }, [initializeChat]);
+
+  // Handle user message with state machine
+  const handleUserMessage = async (content: string) => {
+    const userMessage = createMessage('user', content);
+    setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
+
+    // Process through state machine
+    const result = processOnboardingMessage({
+      message: content,
+      state: onboardingState,
+    });
+
+    // Small delay to feel natural
+    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
+
+    if (result.needsApiCall && result.apiCallType === 'clarifying') {
+      // Make the ONE clarifying question API call
+      try {
+        const response = await fetch('/api/onboarding/clarify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            state: result.newState,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const assistantMessage = createMessage('assistant', data.question);
+          setMessages(prev => [...prev, assistantMessage]);
+        } else {
+          // Fallback to a generic question
+          const fallbackQuestion = `That's helpful context, ${result.newState.firstName}. Is there anything that seems to make it better or worse?`;
+          const assistantMessage = createMessage('assistant', fallbackQuestion);
+          setMessages(prev => [...prev, assistantMessage]);
+        }
+      } catch (error) {
+        logger.error('Clarifying question API error:', error);
+        const fallbackQuestion = `Thanks for sharing that, ${result.newState.firstName}. Is there anything that seems to trigger it or make it worse?`;
+        const assistantMessage = createMessage('assistant', fallbackQuestion);
+        setMessages(prev => [...prev, assistantMessage]);
+      }
+    } else if (result.reply) {
+      // Use hardcoded response
+      const assistantMessage = createMessage('assistant', result.reply);
+      setMessages(prev => [...prev, assistantMessage]);
+    }
+
+    setOnboardingState(result.newState);
+    setIsTyping(false);
+  };
+
+  // Generate protocol
+  const handleGenerateProtocol = async () => {
+    if (!isReadyForProtocol(onboardingState)) return;
+
+    setIsGenerating(true);
+    setCompletionState('creating');
+
+    try {
+      const profileData = getProfileData(onboardingState);
+      
+      const response = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: profileData.email,
+          state: onboardingState,
+          conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.existingUser) {
+          setExistingUserError(true);
+          setCompletionState('error');
+          return;
+        }
+        throw new Error(data.error || 'Failed to complete onboarding');
+      }
+
+      setGeneratedProtocol(data.protocol);
+      setOnboardingState(prev => ({ ...prev, step: 'complete' }));
+      setCompletionState('done');
+
+    } catch (error) {
+      logger.error('Protocol generation error:', error);
+      setCompletionState('error');
+      const errorMessage = createMessage('assistant', "I had trouble creating your protocol. Please try again.");
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const isReady = isReadyForProtocol(onboardingState);
+  const isChatDisabled = isTyping || isGenerating || completionState === 'done' || isReady;
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-10rem)] bg-white rounded-xl border border-border/50 overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        {messages.map((message) => (
+          <ChatMessage key={message.id} role={message.role} content={message.content} />
+        ))}
+
+        {isTyping && <TypingIndicator />}
+
+        {/* Existing user error */}
+        {existingUserError && (
+          <div className="flex flex-col items-center pt-6 pb-4">
+            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
+              <Mail className="w-8 h-8 text-amber-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Account Already Exists</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+              It looks like you already have an account with <span className="font-medium text-foreground">{onboardingState.email}</span>. Please sign in to continue.
+            </p>
+            <Link href="/sign-in" className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors">
+              Sign In
+            </Link>
+          </div>
+        )}
+
+        {/* Protocol ready */}
+        {completionState === 'done' && generatedProtocol && (
+          <div className="flex flex-col items-center pt-6 pb-4">
+            <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-accent" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Your protocol is ready, {onboardingState.firstName}!
+            </h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+              We've sent an email to <span className="font-medium text-foreground">{onboardingState.email}</span> with a link to set your password and access your full protocol.
+            </p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-4 py-2 rounded-lg">
+              <Mail className="w-4 h-4" />
+              Check your inbox (and spam folder)
+            </div>
+          </div>
+        )}
+
+        {/* Generate button */}
+        {isReady && !generatedProtocol && !existingUserError && completionState !== 'done' && (
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={handleGenerateProtocol}
+              disabled={isGenerating}
+              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating your protocol...
+                </>
+              ) : (
+                <>
+                  Generate my protocol
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      <ChatInput
+        onSend={handleUserMessage}
+        disabled={isChatDisabled}
+        placeholder={
+          completionState === 'done' ? "Check your email to access your protocol" :
+          isReady ? "Click the button above to generate your protocol" :
+          "Share more details..."
+        }
+      />
+    </div>
+  );
+}

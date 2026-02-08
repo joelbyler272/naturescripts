@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getConsultation } from '@/lib/supabase/database';
@@ -10,6 +10,8 @@ import { Consultation, Protocol } from '@/types';
 import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice } from '@/lib/consultation/types';
 import { routes } from '@/lib/constants/routes';
 import { sanitizeProductUrl } from '@/lib/utils/urlValidation';
+import { WelcomeWalkthrough } from '@/components/protocol/WelcomeWalkthrough';
+import { UpgradeModal } from '@/components/protocol/UpgradeModal';
 import {
   ArrowLeft,
   Leaf,
@@ -54,13 +56,34 @@ function isOldProtocolShape(data: unknown): data is Protocol {
   );
 }
 
-export default function ProtocolPage() {
+function ProtocolPageContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { user } = useAuth();
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Check for welcome param
+  useEffect(() => {
+    if (searchParams.get('welcome') === 'true') {
+      setShowWelcome(true);
+    }
+  }, [searchParams]);
+
+  const handleWelcomeComplete = () => {
+    setShowWelcome(false);
+    // Remove the welcome param from URL
+    router.replace(`/protocols/${params.id}`, { scroll: false });
+    // Show upgrade modal after a short delay
+    setTimeout(() => {
+      setShowUpgradeModal(true);
+    }, 500);
+  };
 
   const loadProtocol = useCallback(async () => {
     if (!params.id || typeof params.id !== 'string') {
@@ -92,6 +115,8 @@ export default function ProtocolPage() {
     setLoading(true);
     loadProtocol();
   };
+
+  const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
 
   if (loading) {
     return (
@@ -146,17 +171,70 @@ export default function ProtocolPage() {
     );
   }
 
+  // Get protocol title for upgrade modal
+  const protocolTitle = isClaudeProtocol(protocolData) 
+    ? protocolData.title 
+    : isLegacyProtocol(protocolData) 
+      ? protocolData.primaryConcern 
+      : undefined;
+
   // Check if it's a Claude-generated protocol (new format with products)
   if (isClaudeProtocol(protocolData)) {
-    return <ClaudeProtocolView consultation={consultation} protocol={protocolData} />;
+    return (
+      <>
+        {showWelcome && (
+          <WelcomeWalkthrough 
+            firstName={firstName} 
+            onComplete={handleWelcomeComplete} 
+          />
+        )}
+        <UpgradeModal 
+          isOpen={showUpgradeModal} 
+          onClose={() => setShowUpgradeModal(false)}
+          protocolTitle={protocolTitle}
+        />
+        <ClaudeProtocolView consultation={consultation} protocol={protocolData} />
+      </>
+    );
   }
 
   // Fall back to legacy display for old protocols
-  return <LegacyProtocolView consultation={consultation} protocolData={protocolData} />;
+  return (
+    <>
+      {showWelcome && (
+        <WelcomeWalkthrough 
+          firstName={firstName} 
+          onComplete={handleWelcomeComplete} 
+        />
+      )}
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+        protocolTitle={protocolTitle}
+      />
+      <LegacyProtocolView consultation={consultation} protocolData={protocolData} />
+    </>
+  );
+}
+
+export default function ProtocolPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center py-24 gap-2">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    }>
+      <ProtocolPageContent />
+    </Suspense>
+  );
 }
 
 // New Claude Protocol View with Product Cards
 function ClaudeProtocolView({ consultation, protocol }: { consultation: Consultation; protocol: NewGeneratedProtocol }) {
+  // Generate a title from summary if not provided
+  const displayTitle = protocol.title || 'Your Personalized Protocol';
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <Link
@@ -177,7 +255,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
             · {new Date(consultation.created_at).toLocaleDateString()}
           </span>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground mb-3">Your Personalized Protocol</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-3">{displayTitle}</h1>
         <p className="text-muted-foreground">{protocol.summary}</p>
       </div>
 
@@ -340,7 +418,7 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
             {recommendation.products.map((product: ProductLink, pIndex: number) => (
               <a
                 key={pIndex}
-                href={sanitizeProductUrl(product.url)}
+                href={sanitizeProductUrl(product.url || '#')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors group"
@@ -373,7 +451,6 @@ function LegacyProtocolView({ consultation, protocolData }: { consultation: Cons
   const isLegacy = isLegacyProtocol(protocolData);
   const isOld = isOldProtocolShape(protocolData);
 
-  // Extract data based on format
   let title = consultation.initial_input?.slice(0, 60) || 'Health Protocol';
   let summary = '';
   let recommendations: { herb: string; botanicalName?: string; dosage: string; timing: string; reason: string }[] = [];
@@ -426,7 +503,7 @@ function LegacyProtocolView({ consultation, protocolData }: { consultation: Cons
             · {new Date(consultation.created_at).toLocaleDateString()}
           </span>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground mb-2">{title} Protocol</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-2">{title}</h1>
         {summary && <p className="text-muted-foreground">{summary}</p>}
       </div>
 
