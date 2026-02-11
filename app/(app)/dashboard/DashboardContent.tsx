@@ -66,7 +66,6 @@ export function DashboardContent() {
       // Redirect to the most recent protocol with welcome flag
       const latestProtocol = pastProtocols[0];
       if (latestProtocol?.id) {
-        console.log('[DASHBOARD] Redirecting welcome user to protocol:', latestProtocol.id);
         router.replace(`/protocols/${latestProtocol.id}?welcome=true`);
       }
     } else if (isWelcome && !consultationsLoading && pastProtocols.length === 0) {
@@ -162,7 +161,7 @@ export function DashboardContent() {
           <div>
             <p className="text-sm font-medium text-amber-800">Daily limit reached</p>
             <p className="text-sm text-amber-700 mt-1">
-              You&apos;ve used all 3 free consultations for today.
+              You&apos;ve used all {usage.dailyLimit} free consultations for today.
               <Link href={routes.upgrade} className="underline ml-1">Upgrade to Pro</Link> for unlimited.
             </p>
           </div>

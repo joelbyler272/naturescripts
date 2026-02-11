@@ -43,19 +43,23 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // Delete the auth user using admin client
     // This requires SUPABASE_SERVICE_ROLE_KEY
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (serviceRoleKey) {
-      const adminClient = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        serviceRoleKey
+    if (!serviceRoleKey) {
+      console.error('[ACCOUNT DELETE] SUPABASE_SERVICE_ROLE_KEY not set — auth user record was NOT deleted');
+      return NextResponse.json(
+        { error: 'Server configuration error: unable to fully delete account. Please contact support.' },
+        { status: 500 }
       );
+    }
 
-      const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(user.id);
-      
-      if (deleteAuthError) {
-        console.error('[ACCOUNT DELETE] Error deleting auth user:', deleteAuthError);
-        // Data is already deleted, so we continue
-        // User won't be able to log in since profile is gone
-      }
+    const adminClient = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey
+    );
+
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(user.id);
+
+    if (deleteAuthError) {
+      console.error('[ACCOUNT DELETE] Error deleting auth user:', deleteAuthError.message);
     }
 
     // Sign out the user

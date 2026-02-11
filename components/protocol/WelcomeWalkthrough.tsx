@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, ChevronRight, ChevronLeft, Sparkles, Leaf, Clock, ShoppingCart, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,11 +47,19 @@ const STEPS = [
 export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthroughProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [isExiting, setIsExiting] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const step = STEPS[currentStep];
   const Icon = step.icon;
   const isLastStep = currentStep === STEPS.length - 1;
   const isFirstStep = currentStep === 0;
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const handleNext = () => {
     if (isLastStep) {
@@ -68,9 +76,10 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
   };
 
   const handleComplete = () => {
-    setIsVisible(false);
+    setIsExiting(true);
     // Small delay for animation
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
+      setIsVisible(false);
       onComplete();
     }, 300);
   };
@@ -79,23 +88,44 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
     handleComplete();
   };
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') handleSkip();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   if (!isVisible) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300",
+        isExiting ? "opacity-0" : "opacity-100"
+      )}
+    >
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleSkip}
       />
-      
+
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-300">
+      <div className={cn(
+        "relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-300 transition-all",
+        isExiting && "opacity-0 scale-95"
+      )}>
         {/* Close button */}
         <button
           onClick={handleSkip}
+          aria-label="Close"
           className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="w-5 h-5" />
@@ -121,7 +151,7 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
           </div>
           
           <h2 className="text-xl font-semibold text-foreground mb-2">
-            {currentStep === 0 ? `${step.title.replace('!', `, ${firstName}!`)}` : step.title}
+            {step.id === 'welcome' ? `Welcome to your protocol, ${firstName}!` : step.title}
           </h2>
           
           <p className="text-muted-foreground text-sm leading-relaxed">

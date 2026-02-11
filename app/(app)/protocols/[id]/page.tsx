@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getConsultation } from '@/lib/supabase/database';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Consultation, Protocol } from '@/types';
-import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice } from '@/lib/consultation/types';
+import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice, isClaudeProtocol } from '@/lib/consultation/types';
 import { routes } from '@/lib/constants/routes';
 import { sanitizeProductUrl } from '@/lib/utils/urlValidation';
 import { WelcomeWalkthrough } from '@/components/protocol/WelcomeWalkthrough';
@@ -26,16 +26,6 @@ import {
   Activity,
   ShoppingCart,
 } from 'lucide-react';
-
-// Type guard for Claude-generated protocol (new format)
-function isClaudeProtocol(data: unknown): data is NewGeneratedProtocol {
-  if (typeof data !== 'object' || data === null) return false;
-  if (!('summary' in data) || !('recommendations' in data)) return false;
-  const recs = (data as { recommendations: unknown }).recommendations;
-  if (!Array.isArray(recs) || recs.length === 0) return false;
-  const first = recs[0];
-  return typeof first === 'object' && first !== null && 'products' in first;
-}
 
 // Type guard for old template-based protocol
 function isLegacyProtocol(data: unknown): data is { primaryConcern: string; summary?: string; recommendations?: unknown[]; lifestyleTips?: string[]; warnings?: string[] } {
@@ -75,15 +65,16 @@ function ProtocolPageContent() {
     }
   }, [searchParams]);
 
-  const handleWelcomeComplete = () => {
+  const handleWelcomeComplete = useCallback(() => {
     setShowWelcome(false);
     // Remove the welcome param from URL
     router.replace(`/protocols/${params.id}`, { scroll: false });
     // Show upgrade modal after a short delay
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setShowUpgradeModal(true);
     }, 500);
-  };
+    return () => clearTimeout(timer);
+  }, [router, params.id]);
 
   const loadProtocol = useCallback(async () => {
     if (!params.id || typeof params.id !== 'string') {
@@ -99,6 +90,7 @@ function ProtocolPageContent() {
       const data = await getConsultation(params.id, user.id);
       setConsultation(data);
     } catch (err) {
+      console.error('Failed to load protocol:', err);
       setError('Failed to load protocol. Please try again.');
     } finally {
       setLoading(false);
@@ -188,10 +180,9 @@ function ProtocolPageContent() {
             onComplete={handleWelcomeComplete} 
           />
         )}
-        <UpgradeModal 
-          isOpen={showUpgradeModal} 
+        <UpgradeModal
+          isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
-          protocolTitle={protocolTitle}
         />
         <ClaudeProtocolView consultation={consultation} protocol={protocolData} />
       </>
@@ -207,10 +198,9 @@ function ProtocolPageContent() {
           onComplete={handleWelcomeComplete} 
         />
       )}
-      <UpgradeModal 
-        isOpen={showUpgradeModal} 
+      <UpgradeModal
+        isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        protocolTitle={protocolTitle}
       />
       <LegacyProtocolView consultation={consultation} protocolData={protocolData} />
     </>
@@ -416,9 +406,10 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {recommendation.products.map((product: ProductLink, pIndex: number) => (
+              product.url ? (
               <a
                 key={pIndex}
-                href={sanitizeProductUrl(product.url || '#')}
+                href={sanitizeProductUrl(product.url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors group"
@@ -438,6 +429,26 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
                   <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-accent transition-colors" />
                 </div>
               </a>
+              ) : (
+              <div
+                key={pIndex}
+                className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{product.brand}</p>
+                  <p className="text-xs text-muted-foreground truncate">{product.name}</p>
+                </div>
+                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded ${
+                    product.source === 'amazon' ? 'bg-orange-100 text-orange-700' :
+                    product.source === 'iherb' ? 'bg-green-100 text-green-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {product.source === 'amazon' ? 'Amazon' : product.source === 'iherb' ? 'iHerb' : product.source}
+                  </span>
+                </div>
+              </div>
+              )
             ))}
           </div>
         </div>

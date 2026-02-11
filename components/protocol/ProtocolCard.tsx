@@ -4,20 +4,10 @@ import Link from 'next/link';
 import { Consultation } from '@/types';
 import { routes } from '@/lib/constants/routes';
 import { ChevronRight, Leaf } from 'lucide-react';
-import { GeneratedProtocol } from '@/lib/consultation/types';
+import { isClaudeProtocol } from '@/lib/consultation/types';
 
 interface ProtocolCardProps {
   consultation: Consultation;
-}
-
-// Type guard for Claude-generated protocol
-function isClaudeProtocol(data: unknown): data is GeneratedProtocol {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'summary' in data &&
-    'recommendations' in data
-  );
 }
 
 export function ProtocolCard({ consultation }: ProtocolCardProps) {
@@ -29,12 +19,14 @@ export function ProtocolCard({ consultation }: ProtocolCardProps) {
   
   if (isClaudeProtocol(protocolData)) {
     // New format with title
-    title = protocolData.title || consultation.initial_input?.slice(0, 40) || 'Health Protocol';
+    const input = consultation.initial_input;
+    title = protocolData.title || (input && input.length > 40 ? input.slice(0, 40) + '...' : input) || 'Health Protocol';
     recommendationCount = protocolData.recommendations?.length || 0;
   } else if (protocolData && typeof protocolData === 'object') {
     // Legacy format
     const legacy = protocolData as { primaryConcern?: string; recommendations?: unknown[] };
-    title = legacy.primaryConcern || consultation.initial_input?.slice(0, 40) || 'Health Protocol';
+    const input = consultation.initial_input;
+    title = legacy.primaryConcern || (input && input.length > 40 ? input.slice(0, 40) + '...' : input) || 'Health Protocol';
     recommendationCount = Array.isArray(legacy.recommendations) ? legacy.recommendations.length : 0;
   }
   

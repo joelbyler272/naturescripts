@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,17 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
   const [confirmation, setConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && !isDeleting) onClose();
+  }, [onClose, isDeleting]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 
@@ -35,13 +46,13 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
         body: JSON.stringify({ confirmation }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const data = await response.json();
         throw new Error(data.error || 'Failed to delete account');
       }
 
       // Redirect to home page after successful deletion
+      setIsDeleting(false);
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -50,7 +61,7 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/50" 
@@ -79,10 +90,11 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground block mb-2">
+            <label htmlFor="delete-confirmation" className="text-sm font-medium text-foreground block mb-2">
               Type <span className="font-mono bg-muted px-1 rounded">DELETE MY ACCOUNT</span> to confirm:
             </label>
             <Input
+              id="delete-confirmation"
               value={confirmation}
               onChange={(e) => setConfirmation(e.target.value)}
               placeholder="DELETE MY ACCOUNT"
@@ -100,6 +112,7 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
               variant="outline"
               onClick={onClose}
               disabled={isDeleting}
+              aria-label="Cancel"
               className="flex-1"
             >
               Cancel
@@ -108,6 +121,7 @@ export function DeleteAccountModal({ isOpen, onClose }: DeleteAccountModalProps)
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting || confirmation !== 'DELETE MY ACCOUNT'}
+              aria-label="Delete My Account"
               className="flex-1"
             >
               {isDeleting ? (

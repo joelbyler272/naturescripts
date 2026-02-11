@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,14 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Check, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
-const supabase = createClient();
-
 const COMMON_PASSWORDS = ['123456', 'password', 'qwerty', '123456789', 'abc123', 'password1'];
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function SetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+  const [supabase] = useState(() => createClient());
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,13 +27,21 @@ function SetPasswordContent() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [consultationId, setConsultationId] = useState<string | null>(null);
 
+  // Cleanup redirect timer on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     async function verifySession() {
       try {
         // Get consultation ID from URL params (passed from callback)
         const consultationFromParams = searchParams.get('consultation');
-        if (consultationFromParams) {
-          console.log('[SET PASSWORD] Consultation ID from params:', consultationFromParams);
+        if (consultationFromParams && UUID_REGEX.test(consultationFromParams)) {
           setConsultationId(consultationFromParams);
         }
 
@@ -40,25 +50,20 @@ function SetPasswordContent() {
           const hashParams = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
-          const type = hashParams.get('type');
-          
-          console.log('[SET PASSWORD] Hash params detected, type:', type);
-          
+
           if (accessToken && refreshToken) {
             const { data, error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
-            
+
             if (sessionError) {
-              console.error('[SET PASSWORD] Failed to set session from hash:', sessionError);
               setError('Your verification link has expired or is invalid. Please request a new one.');
               setIsVerifying(false);
               return;
             }
-            
+
             if (data.session) {
-              console.log('[SET PASSWORD] Session set successfully from hash');
               setUserEmail(data.session.user.email || null);
               setIsVerifying(false);
               window.history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -67,25 +72,22 @@ function SetPasswordContent() {
           }
         }
 
-        // Check for existing session
-        const { data: { session }, error: getSessionError } = await supabase.auth.getSession();
-        
-        if (getSessionError) {
-          console.error('[SET PASSWORD] Get session error:', getSessionError);
+        // Check for existing user (server-verified)
+        const { data: { user }, error: getUserError } = await supabase.auth.getUser();
+
+        if (getUserError) {
           setError('Your verification link has expired or is invalid. Please request a new one.');
           setIsVerifying(false);
           return;
         }
 
-        if (!session) {
-          console.log('[SET PASSWORD] No session found');
+        if (!user) {
           setError('Your verification link has expired or is invalid. Please request a new one.');
           setIsVerifying(false);
           return;
         }
 
-        console.log('[SET PASSWORD] Session found for:', session.user.email);
-        setUserEmail(session.user.email || null);
+        setUserEmail(user.email || null);
         setIsVerifying(false);
       } catch (err) {
         console.error('[SET PASSWORD] Unexpected error:', err);
@@ -95,7 +97,7 @@ function SetPasswordContent() {
     }
 
     verifySession();
-  }, [searchParams]);
+  }, [searchParams, supabase]);
 
   const validatePassword = (): string | null => {
     if (password.length < 8) {
@@ -115,7 +117,7 @@ function SetPasswordContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validatePassword();
     if (validationError) {
       setError(validationError);
@@ -153,12 +155,10 @@ function SetPasswordContent() {
       setSuccess(true);
 
       // Redirect to protocol page if we have the consultation ID
-      setTimeout(() => {
+      redirectTimerRef.current = setTimeout(() => {
         if (consultationId) {
-          console.log('[SET PASSWORD] Redirecting to protocol:', consultationId);
           router.push(`/protocols/${consultationId}?welcome=true`);
         } else {
-          console.log('[SET PASSWORD] No consultation ID, redirecting to dashboard');
           router.push('/dashboard?welcome=true');
         }
       }, 1500);

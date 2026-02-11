@@ -2,14 +2,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendVerificationEmail } from '@/lib/email/resend';
+import { applyRateLimit, getClientIp } from '@/lib/utils/rateLimit';
 import crypto from 'crypto';
 
-// Admin client for user creation
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+// Lazy admin client to avoid crash if env vars missing at module load
+let _supabaseAdmin: ReturnType<typeof createClient> | null = null;
+function getSupabaseAdmin() {
+  if (!_supabaseAdmin) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    }
+    _supabaseAdmin = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+  return _supabaseAdmin;
+}
 
 export interface CreateOnboardingUserRequest {
   email: string;
@@ -25,13 +35,21 @@ export interface CreateOnboardingUserRequest {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // Verify we have the service role key
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('[ONBOARDING USER] Missing SUPABASE_SERVICE_ROLE_KEY');
+    // Rate limit by IP
+    const ip = getClientIp(request);
+    const rateLimitResult = applyRateLimit('create-onboarding-user', ip, 5, 60000);
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
+        { error: 'Too many requests. Please wait a moment.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.retryAfter / 1000)) } }
       );
+    }
+
+    let supabaseAdmin: ReturnType<typeof createClient>;
+    try {
+      supabaseAdmin = getSupabaseAdmin();
+    } catch {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
     // Parse request
@@ -60,85 +78,81 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Check if user already exists
-    const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-    const userExists = existingUser?.users?.some(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
+    const normalizedEmail = email.toLowerCase();
 
-    if (userExists) {
-      // User already exists - send a different email or handle gracefully
-      return NextResponse.json(
-        { error: 'An account with this email already exists. Please sign in.' },
-        { status: 409 }
-      );
-    }
-
+    // Fallback: try creating the user directly — Supabase will reject duplicates
     // Generate a temporary password (user will set their own via verification link)
     const tempPassword = crypto.randomBytes(32).toString('hex');
 
     // Create user without email confirmation (we'll handle verification ourselves)
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: tempPassword,
-      email_confirm: false, // We'll verify via our own flow
+      email_confirm: false,
       user_metadata: {
         first_name: firstName,
         onboarding_in_progress: true,
       },
     });
 
-    if (createError || !newUser.user) {
-      console.error('[ONBOARDING USER] Failed to create user:', createError);
+    if (createError) {
+      // Supabase returns a specific error for duplicate emails
+      if (createError.message?.includes('already been registered') || createError.message?.includes('duplicate')) {
+        return NextResponse.json(
+          { error: 'An account with this email already exists. Please sign in.' },
+          { status: 409 }
+        );
+      }
+      console.error('[ONBOARDING USER] Failed to create user:', createError.message);
       return NextResponse.json(
         { error: 'Failed to create account' },
         { status: 500 }
       );
     }
 
+    if (!newUser.user) {
+      return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
+    }
+
     const userId = newUser.user.id;
 
     // Create profile with health data
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: profileError } = await (supabaseAdmin.from('profiles') as any)
       .upsert({
         id: userId,
         tier: 'free',
         onboarding_completed: false,
         health_conditions: profileData.healthConditions || [],
-        medications: profileData.medications?.map(m => ({ name: m, dosage: '', frequency: '' })) || [],
-        supplements: profileData.supplements?.map(s => ({ name: s, dosage: '', frequency: '' })) || [],
+        medications: profileData.medications?.map((m: string) => ({ name: m, dosage: '', frequency: '' })) || [],
+        supplements: profileData.supplements?.map((s: string) => ({ name: s, dosage: '', frequency: '' })) || [],
         health_notes: profileData.primaryConcern ? `Primary concern: ${profileData.primaryConcern}` : null,
       });
 
     if (profileError) {
-      console.error('[ONBOARDING USER] Failed to create profile:', profileError);
-      // Continue anyway - profile will be created on first login if needed
+      console.error('[ONBOARDING USER] Failed to create profile:', profileError.message);
     }
 
-    // Generate verification token
-    // We'll use Supabase's magic link feature for this
+    // Generate verification token via Supabase invite link
     const { data: magicLinkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       options: {
         redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/set-password`,
       },
     });
 
     if (magicLinkError || !magicLinkData) {
-      console.error('[ONBOARDING USER] Failed to generate magic link:', magicLinkError);
+      console.error('[ONBOARDING USER] Failed to generate magic link:', magicLinkError?.message);
       return NextResponse.json(
         { error: 'Failed to generate verification link' },
         { status: 500 }
       );
     }
 
-    // Extract the verification URL from the magic link
     const verificationUrl = magicLinkData.properties?.action_link;
 
     if (!verificationUrl) {
-      console.error('[ONBOARDING USER] No action link in magic link response');
       return NextResponse.json(
         { error: 'Failed to generate verification link' },
         { status: 500 }
@@ -155,19 +169,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (!emailResult.success) {
       console.error('[ONBOARDING USER] Failed to send email:', emailResult.error);
-      // Don't fail the whole request - user is created, they just won't get the email
-      // They can still request a new verification email
     }
 
     return NextResponse.json({
       success: true,
-      userId,
       emailSent: emailResult.success,
       message: 'Account created. Check your email to set your password.',
     });
 
   } catch (error) {
-    console.error('[ONBOARDING USER] Unexpected error:', error);
+    console.error('[ONBOARDING USER] Unexpected error:', error instanceof Error ? error.message : error);
     return NextResponse.json(
       { error: 'An unexpected error occurred' },
       { status: 500 }

@@ -150,3 +150,13 @@ export interface GenerateProtocolResponse {
   protocol: GeneratedProtocol;
   consultationId: string;
 }
+
+// Type guard for Claude-generated protocol (new format with products)
+export function isClaudeProtocol(data: unknown): data is GeneratedProtocol {
+  if (typeof data !== 'object' || data === null) return false;
+  if (!('summary' in data) || !('recommendations' in data)) return false;
+  const recs = (data as { recommendations: unknown }).recommendations;
+  if (!Array.isArray(recs) || recs.length === 0) return false;
+  const first = recs[0];
+  return typeof first === 'object' && first !== null && 'products' in first;
+}

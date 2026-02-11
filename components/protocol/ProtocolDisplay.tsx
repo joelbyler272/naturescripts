@@ -96,7 +96,7 @@ export function ProtocolDisplay({ protocol, showTitle = true }: ProtocolDisplayP
             Your Wellness Protocol
           </h1>
           <p className="text-muted-foreground">
-            Created on {new Date(protocol.created_at).toLocaleDateString('en-US', {
+            Created on {new Date(protocol.created_at || Date.now()).toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',

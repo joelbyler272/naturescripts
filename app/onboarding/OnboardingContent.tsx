@@ -28,7 +28,7 @@ function OnboardingInner() {
 
       {/* Chat area */}
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <OnboardingChat initialQuery={initialQuery ? decodeURIComponent(initialQuery) : undefined} />
+        <OnboardingChat initialQuery={initialQuery} />
       </main>
     </div>
   );
@@ -38,7 +38,7 @@ export function OnboardingContent() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <Loader2 className="w-8 h-8 animate-spin text-accent" aria-label="Loading" />
       </div>
     }>
       <OnboardingInner />

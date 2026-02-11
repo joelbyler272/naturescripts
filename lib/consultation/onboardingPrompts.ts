@@ -82,99 +82,6 @@ This typically happens after 5-6 exchanges.`;
 }
 
 /**
- * System prompt for extracting structured data from onboarding conversation
- * Used after conversation to pull out profile data for saving
- */
-export function buildProfileExtractionPrompt(conversationHistory: ConversationMessage[]): string {
-  const conversationText = conversationHistory
-    .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-    .join('\n');
-
-  return `Based on this conversation, extract the user's information. Return ONLY a valid JSON object with no additional text or markdown.
-
-Conversation:
-${conversationText}
-
-Extract this structure:
-{
-  "firstName": "their first name or null",
-  "email": "their email address or null",
-  "primaryConcern": "main health concern in a few words",
-  "concernDuration": "how long they've had this issue or null",
-  "otherSymptoms": ["array of other symptoms mentioned"],
-  "healthConditions": ["array of health conditions, empty if none mentioned"],
-  "medications": ["array of medications, empty if none mentioned"],
-  "supplements": ["array of supplements, empty if none mentioned"]
-}
-
-Rules:
-- Use null for missing/unknown values, not empty strings
-- Use empty arrays [] for lists with no items
-- Extract exact names for medications/supplements when possible
-- Be conservative - only include what was clearly stated
-
-Respond with ONLY the JSON object.`;
-}
-
-/**
- * Check if the conversation has collected all required onboarding data
- */
-export function hasCollectedRequiredData(conversationHistory: ConversationMessage[]): {
-  hasName: boolean;
-  hasConcernDetails: boolean;
-  hasAskedConditions: boolean;
-  hasAskedMedications: boolean;
-  hasEmail: boolean;
-  isComplete: boolean;
-} {
-  const assistantMessages = conversationHistory
-    .filter(m => m.role === 'assistant')
-    .map(m => m.content.toLowerCase());
-  
-  const userMessages = conversationHistory
-    .filter(m => m.role === 'user')
-    .map(m => m.content.toLowerCase());
-
-  // Check what's been asked/collected
-  const hasAskedName = assistantMessages.some(m => 
-    m.includes('first name') || m.includes('your name')
-  );
-  const hasName = hasAskedName && userMessages.length >= 2;
-
-  const hasAskedDuration = assistantMessages.some(m =>
-    m.includes('how long') || m.includes('when did')
-  );
-  const hasConcernDetails = hasAskedDuration && userMessages.length >= 3;
-
-  const hasAskedConditions = assistantMessages.some(m =>
-    m.includes('health condition') || m.includes('prior condition')
-  );
-
-  const hasAskedMedications = assistantMessages.some(m =>
-    m.includes('medication') || m.includes('supplement')
-  );
-
-  const hasAskedEmail = assistantMessages.some(m =>
-    m.includes('email')
-  );
-  
-  // Check for email pattern in user messages
-  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-  const hasEmail = userMessages.some(m => emailPattern.test(m));
-
-  const isComplete = hasName && hasConcernDetails && hasAskedConditions && hasAskedMedications && hasEmail;
-
-  return {
-    hasName,
-    hasConcernDetails,
-    hasAskedConditions,
-    hasAskedMedications,
-    hasEmail,
-    isComplete
-  };
-}
-
-/**
  * Extract email from conversation
  */
 export function extractEmailFromConversation(conversationHistory: ConversationMessage[]): string | null {
@@ -205,7 +112,7 @@ export function extractNameFromConversation(conversationHistory: ConversationMes
     const nameResponse = userMessages[1].content.trim();
     
     // If it's short (likely just a name), use it
-    if (nameResponse.length < 30 && !nameResponse.includes(' ') || nameResponse.split(' ').length <= 3) {
+    if (nameResponse.length < 30 && (!nameResponse.includes(' ') || nameResponse.split(' ').length <= 3)) {
       // Take first word if multiple words, capitalize properly
       const firstName = nameResponse.split(' ')[0];
       return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
@@ -215,21 +122,3 @@ export function extractNameFromConversation(conversationHistory: ConversationMes
   return null;
 }
 
-/**
- * Legacy function for backwards compatibility
- */
-export function extractProfileDataFromConversation(
-  conversationHistory: ConversationMessage[]
-): {
-  firstName: string | null;
-  healthConditions: string[];
-  medications: string[];
-  supplements: string[];
-} {
-  return {
-    firstName: extractNameFromConversation(conversationHistory),
-    healthConditions: [],
-    medications: [],
-    supplements: []
-  };
-}

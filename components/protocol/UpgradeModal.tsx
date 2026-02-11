@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Sparkles, Check, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,6 @@ import { routes } from '@/lib/constants/routes';
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  protocolTitle?: string;
 }
 
 const PRO_BENEFITS = [
@@ -21,18 +20,30 @@ const PRO_BENEFITS = [
   'Access to consultation history',
 ];
 
-export function UpgradeModal({ isOpen, onClose, protocolTitle }: UpgradeModalProps) {
+export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       // Small delay for animation
-      setTimeout(() => setIsVisible(true), 10);
+      const timer = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(timer);
     } else {
       setIsVisible(false);
     }
   }, [isOpen]);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 
@@ -48,7 +59,9 @@ export function UpgradeModal({ isOpen, onClose, protocolTitle }: UpgradeModalPro
   };
 
   return (
-    <div 
+    <div
+      role="dialog"
+      aria-modal="true"
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
         isVisible ? 'bg-black/50 backdrop-blur-sm' : 'bg-transparent'
       }`}
@@ -67,6 +80,7 @@ export function UpgradeModal({ isOpen, onClose, protocolTitle }: UpgradeModalPro
           
           <button
             onClick={onClose}
+            aria-label="Close"
             className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />

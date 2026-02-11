@@ -22,7 +22,7 @@ interface OnboardingChatProps {
 
 function createMessage(role: 'user' | 'assistant', content: string): ConversationMessage {
   return {
-    id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     role,
     content,
     timestamp: new Date().toISOString()
@@ -40,6 +40,19 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [completionState, setCompletionState] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
   const [existingUserError, setExistingUserError] = useState<boolean>(false);
+
+  const onboardingStateRef = useRef(onboardingState);
+  const mountedRef = useRef(true);
+
+  // Keep onboardingStateRef in sync
+  useEffect(() => {
+    onboardingStateRef.current = onboardingState;
+  }, [onboardingState]);
+
+  // Track mounted state for cleanup
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Auto-scroll
   useEffect(() => {
@@ -76,14 +89,16 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    // Process through state machine
+    // Process through state machine (use ref to avoid stale closure)
     const result = processOnboardingMessage({
       message: content,
-      state: onboardingState,
+      state: onboardingStateRef.current,
     });
 
     // Small delay to feel natural
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
+
+    if (!mountedRef.current) return;
 
     if (result.needsApiCall && result.apiCallType === 'clarifying') {
       // Make the ONE clarifying question API call
@@ -95,6 +110,8 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
             state: result.newState,
           }),
         });
+
+        if (!mountedRef.current) return;
 
         if (response.ok) {
           const data = await response.json();
@@ -108,6 +125,7 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
         }
       } catch (error) {
         logger.error('Clarifying question API error:', error);
+        if (!mountedRef.current) return;
         const fallbackQuestion = `Thanks for sharing that, ${result.newState.firstName}. Is there anything that seems to trigger it or make it worse?`;
         const assistantMessage = createMessage('assistant', fallbackQuestion);
         setMessages(prev => [...prev, assistantMessage]);
@@ -142,17 +160,17 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        if (data.existingUser) {
+        const errorData = await response.json();
+        if (errorData.existingUser) {
           setExistingUserError(true);
           setCompletionState('error');
           return;
         }
-        throw new Error(data.error || 'Failed to complete onboarding');
+        throw new Error(errorData.error || 'Failed to complete onboarding');
       }
 
+      const data = await response.json();
       setGeneratedProtocol(data.protocol);
       setOnboardingState(prev => ({ ...prev, step: 'complete' }));
       setCompletionState('done');

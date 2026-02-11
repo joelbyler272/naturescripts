@@ -114,6 +114,8 @@ export default function LandingPage() {
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleStartConsultation()}
                     placeholder="I'm exhausted all the time, bloated after meals, can't sleep..."
+                    maxLength={500}
+                    aria-label="Describe your health concern"
                     className="h-14 flex-1 bg-transparent px-6 text-[15px] text-background placeholder:text-background/40 focus:outline-none"
                   />
                   <button
@@ -371,14 +373,15 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {conditions.map((condition, index) => (
-              <div
+              <button
                 key={index}
+                type="button"
                 onClick={() => router.push(`${routes.onboarding}?q=${encodeURIComponent(condition.name)}`)}
                 className="group bg-white hover:bg-secondary/40 border border-border/40 hover:border-border rounded-2xl p-6 text-center transition-all duration-200 cursor-pointer"
               >
                 <span className="text-3xl mb-4 block">{condition.icon}</span>
                 <span className="text-sm font-medium text-foreground">{condition.name}</span>
-              </div>
+              </button>
             ))}
           </div>
 

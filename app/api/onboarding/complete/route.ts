@@ -7,29 +7,61 @@ import { buildProtocolSystemPrompt } from '@/lib/consultation/prompts';
 import { sendVerificationEmail } from '@/lib/email/resend';
 import { OnboardingState, getProfileData, buildProtocolContext } from '@/lib/onboarding/stateMachine';
 import { HealthContext, GeneratedProtocol } from '@/lib/consultation/types';
+import { validateConversationHistory } from '@/lib/utils/validation';
+import { applyRateLimit, getClientIp } from '@/lib/utils/rateLimit';
 import { getLocalDateString } from '@/lib/utils/date';
 import crypto from 'crypto';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+// Lazy admin client to avoid crash if env vars missing at module load
+let _supabaseAdmin: ReturnType<typeof createClient> | null = null;
+function getSupabaseAdmin() {
+  if (!_supabaseAdmin) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    }
+    _supabaseAdmin = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+  return _supabaseAdmin;
+}
 
 interface OnboardingCompleteRequest {
   email: string;
   state: OnboardingState;
-  conversationHistory: Array<{ role: string; content: string }>;
+  conversationHistory: unknown;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Rate limit by IP (restrictive — this is an expensive endpoint)
+    const ip = getClientIp(request);
+    const rateLimitResult = applyRateLimit('onboarding-complete', ip, 3, 60000);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a moment.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.retryAfter / 1000)) } }
+      );
+    }
+
+    let supabaseAdmin: ReturnType<typeof createClient>;
+    try {
+      supabaseAdmin = getSupabaseAdmin();
+    } catch {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const body: OnboardingCompleteRequest = await request.json();
-    const { email, state, conversationHistory } = body;
+    // Parse request body
+    let body: OnboardingCompleteRequest;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+
+    const { email, state } = body;
 
     if (!email || !state) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -41,71 +73,56 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
-    console.log('[ONBOARDING] ====== START ======');
-    console.log('[ONBOARDING] Email:', email);
-
-    // Check if user exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'Account exists', existingUser: true },
-        { status: 409 }
-      );
-    }
+    // Validate conversation history
+    const validatedHistory = validateConversationHistory(body.conversationHistory || []);
 
     // Get profile data from state machine
     const profileData = getProfileData(state);
-    console.log('[ONBOARDING] Profile firstName:', profileData.firstName);
-    console.log('[ONBOARDING] Primary concern:', profileData.primaryConcern);
 
-    // ==========================================
-    // STEP 1: Create user account
-    // ==========================================
-    console.log('[ONBOARDING] Step 1: Creating user...');
+    // STEP 1: Create user account (Supabase will reject duplicate emails)
+    const normalizedEmail = email.toLowerCase();
     const tempPassword = crypto.randomBytes(32).toString('hex');
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: tempPassword,
       email_confirm: false,
       user_metadata: { first_name: profileData.firstName, onboarding_in_progress: true },
     });
 
-    if (createError || !newUser.user) {
-      console.error('[ONBOARDING] ❌ User creation FAILED:', createError);
+    if (createError) {
+      if (createError.message?.includes('already been registered') || createError.message?.includes('duplicate')) {
+        return NextResponse.json(
+          { error: 'Account exists', existingUser: true },
+          { status: 409 }
+        );
+      }
+      console.error('[ONBOARDING] User creation failed:', createError.message);
+      return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
+    }
+
+    if (!newUser.user) {
       return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
     }
 
     const userId = newUser.user.id;
-    console.log('[ONBOARDING] Step 1 DONE - User ID:', userId);
 
-    // ==========================================
     // STEP 2: Create profile
-    // ==========================================
-    console.log('[ONBOARDING] Step 2: Creating profile...');
-    const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: profileError } = await (supabaseAdmin.from('profiles') as any).upsert({
       id: userId,
       tier: 'free',
       onboarding_completed: false,
       health_conditions: profileData.healthConditions,
-      medications: profileData.medications.map(m => ({ name: m, dosage: '', frequency: '' })),
+      medications: profileData.medications.map((m: string) => ({ name: m, dosage: '', frequency: '' })),
       supplements: [],
       health_notes: profileData.primaryConcern ? `Primary concern: ${profileData.primaryConcern}` : null,
     });
 
     if (profileError) {
-      console.error('[ONBOARDING] Profile warning:', profileError);
-    } else {
-      console.log('[ONBOARDING] Step 2 DONE - Profile created');
+      console.error('[ONBOARDING] Profile creation warning:', profileError.message);
     }
 
-    // ==========================================
     // STEP 3: Generate protocol (ONE API call)
-    // ==========================================
-    console.log('[ONBOARDING] Step 3: Generating protocol with Claude...');
     const healthContext: HealthContext = {
       health_conditions: profileData.healthConditions,
       medications: profileData.medications.map(m => ({ name: m, dosage: '', frequency: '' })),
@@ -129,30 +146,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```\n?/g, '');
       }
       protocol = JSON.parse(jsonStr);
-      console.log('[ONBOARDING] Step 3 DONE - Protocol generated, title:', protocol.title, ', recommendations:', protocol.recommendations?.length || 0);
-    } catch (parseError) {
-      console.error('[ONBOARDING] Protocol parse error:', parseError);
+    } catch {
+      console.error('[ONBOARDING] Protocol parse error — using fallback');
       protocol = {
         title: 'Health Support',
         summary: 'Based on our conversation, here are wellness recommendations for you.',
-        recommendations: [],
+        recommendations: [
+          {
+            name: 'General Wellness',
+            type: 'other' as const,
+            dosage: 'N/A',
+            timing: 'N/A',
+            rationale: 'We encountered an issue generating your detailed protocol. Please try a new consultation for personalized recommendations.',
+            products: [],
+          }
+        ],
         disclaimer: 'Please consult with a healthcare provider before starting any new supplement regimen.'
       };
     }
 
-    // ==========================================
-    // STEP 4: Save consultation
-    // ==========================================
-    console.log('[ONBOARDING] Step 4: Saving consultation...');
-    
-    const formattedConversation = conversationHistory.map(msg => ({
+    // STEP 4: Save consultation (use validated history)
+    const formattedConversation = validatedHistory.map(msg => ({
       role: msg.role,
       content: msg.content,
       timestamp: new Date().toISOString()
     }));
 
-    const { data: consultation, error: consultError } = await supabaseAdmin
-      .from('consultations')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: consultation, error: consultError } = await (supabaseAdmin.from('consultations') as any)
       .insert({
         user_id: userId,
         initial_input: profileData.primaryConcern || 'Onboarding consultation',
@@ -165,69 +186,54 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .single();
 
     if (consultError) {
-      console.error('[ONBOARDING] ❌ Consultation save FAILED:', consultError);
-    } else {
-      console.log('[ONBOARDING] Step 4 DONE - Consultation ID:', consultation?.id);
+      console.error('[ONBOARDING] Consultation save failed:', consultError.message);
     }
 
     const consultationId = consultation?.id;
 
-    // ==========================================
-    // STEP 5: Increment daily usage (counts as 1 of 3 free)
-    // ==========================================
-    console.log('[ONBOARDING] Step 5: Incrementing daily usage...');
+    // STEP 5: Increment daily usage
     const today = getLocalDateString();
-    
-    const { error: usageError } = await supabaseAdmin
-      .from('daily_usage')
-      .upsert(
-        { 
-          user_id: userId, 
-          date: today, 
-          consultation_count: 1 
-        },
-        { 
-          onConflict: 'user_id,date',
-          ignoreDuplicates: false 
-        }
-      );
 
-    if (usageError) {
-      console.error('[ONBOARDING] Daily usage warning:', usageError);
-    } else {
-      console.log('[ONBOARDING] Step 5 DONE - Daily usage incremented');
+    // Try RPC first, fall back to upsert
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rpcResult = await (supabaseAdmin.rpc as any)('increment_daily_usage', {
+      p_user_id: userId,
+      p_date: today,
+    });
+
+    if (rpcResult.error) {
+      // Fallback: simple upsert if RPC doesn't exist
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: upsertError } = await (supabaseAdmin.from('daily_usage') as any)
+        .upsert(
+          { user_id: userId, date: today, consultation_count: 1 },
+          { onConflict: 'user_id,date', ignoreDuplicates: false }
+        );
+      if (upsertError) {
+        console.error('[ONBOARDING] Daily usage warning:', upsertError.message || upsertError);
+      }
     }
 
-    // ==========================================
     // STEP 6: Send verification email WITH consultation ID
-    // ==========================================
-    console.log('[ONBOARDING] Step 6: Generating invite link...');
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    
-    const redirectUrl = consultationId 
+
+    const redirectUrl = consultationId
       ? `${appUrl}/auth/callback?type=invite&consultation=${consultationId}`
       : `${appUrl}/auth/callback?type=invite`;
-    
-    console.log('[ONBOARDING] Redirect URL for invite:', redirectUrl);
-    
+
     const { data: inviteLinkData, error: inviteError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'invite',
-      email: email.toLowerCase(),
-      options: { 
-        redirectTo: redirectUrl
-      },
+      email: normalizedEmail,
+      options: { redirectTo: redirectUrl },
     });
 
     if (inviteError) {
-      console.error('[ONBOARDING] ❌ Invite link error:', inviteError);
-    } else {
-      console.log('[ONBOARDING] Step 6 DONE - Invite link generated');
+      console.error('[ONBOARDING] Invite link error:', inviteError.message);
     }
 
     let emailSent = false;
     if (inviteLinkData?.properties?.action_link) {
       try {
-        console.log('[ONBOARDING] Sending email...');
         await sendVerificationEmail({
           to: email,
           firstName: profileData.firstName,
@@ -235,28 +241,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           protocolSummary: protocol.summary,
         });
         emailSent = true;
-        console.log('[ONBOARDING] ✅ Email sent successfully');
       } catch (emailError) {
-        console.error('[ONBOARDING] ❌ Email send error:', emailError);
+        console.error('[ONBOARDING] Email send error:', emailError instanceof Error ? emailError.message : emailError);
       }
     }
 
-    console.log('[ONBOARDING] ====== COMPLETE ======');
-
     return NextResponse.json({
       success: true,
-      userId,
-      consultationId,
-      protocol,
       firstName: profileData.firstName,
       emailSent,
-      message: emailSent 
+      message: emailSent
         ? `Thanks ${profileData.firstName}! Check your email at ${email} to set your password and view your protocol.`
-        : `Your protocol is ready, ${profileData.firstName}! We had trouble sending the email - please try signing in with your email.`,
+        : `Your protocol is ready, ${profileData.firstName}! We had trouble sending the email — please try signing in with your email.`,
     });
 
   } catch (error) {
-    console.error('[ONBOARDING] ❌ Unexpected error:', error);
+    console.error('[ONBOARDING] Unexpected error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }

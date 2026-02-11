@@ -61,6 +61,7 @@ function extractFirstName(message: string): string {
     name = name.replace(prefix, '');
   }
   const firstName = name.split(/\s+/)[0].replace(/[^a-zA-Z]/g, '');
+  if (!firstName) return 'Friend';
   return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
 }
 
@@ -107,9 +108,11 @@ export function processOnboardingMessage(
     }
     
     case 'ask_duration': {
+      // Store the full response as duration context — the clarifying question
+      // API call will help tease out more specific details
       return {
         reply: '', // Will be replaced by API response
-        newState: { ...state, step: 'clarifying', duration: msg, otherSymptoms: msg },
+        newState: { ...state, step: 'clarifying', duration: msg },
         needsApiCall: true,
         apiCallType: 'clarifying',
       };
@@ -209,14 +212,14 @@ Rules:
 export function buildProtocolContext(state: OnboardingState): string {
   return `User Profile for Protocol Generation:
 
-Name: ${state.firstName}
-Primary Concern: ${state.primaryConcern}
-Duration & Context: ${state.duration}
+Name: ${state.firstName || 'Unknown'}
+Primary Concern: ${state.primaryConcern || 'Not specified'}
+Duration & Other Symptoms: ${state.duration || 'Not specified'}
 Additional Details: ${state.clarifyingAnswer || 'None provided'}
 Health Conditions: ${state.healthConditions || 'None mentioned'}
 Current Medications/Supplements: ${state.medications || 'None mentioned'}
 
-Please generate a personalized natural health protocol addressing their ${state.primaryConcern}.`;
+Please generate a personalized natural health protocol addressing their ${state.primaryConcern || 'health concern'}.`;
 }
 
 // Validate if state is ready for protocol generation

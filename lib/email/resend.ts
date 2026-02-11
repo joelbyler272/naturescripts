@@ -2,7 +2,41 @@
 import { Resend } from 'resend';
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+const fromEmail = process.env.RESEND_FROM_EMAIL;
+
+if (!fromEmail && process.env.NODE_ENV === 'production') {
+  console.warn('[RESEND] RESEND_FROM_EMAIL not set — emails will use sandbox address in non-production');
+}
+
+const resolvedFromEmail = fromEmail || 'onboarding@resend.dev';
+
+/** Escape HTML special characters to prevent XSS in email templates */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Sanitize a URL to prevent javascript: and data: URI injection */
+function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return '#';
+    }
+    return url;
+  } catch {
+    return '#';
+  }
+}
+
+/** Strip newlines from a string to prevent email header injection */
+function sanitizeHeaderValue(str: string): string {
+  return str.replace(/[\r\n]/g, '');
+}
 
 // Initialize Resend client (lazy to allow for missing API key in dev)
 let resendClient: Resend | null = null;
@@ -36,12 +70,15 @@ export async function sendVerificationEmail({
   try {
     const resend = getResendClient();
 
+    const safeFirstName = sanitizeHeaderValue(firstName);
+    const safeUrl = sanitizeUrl(verificationUrl);
+
     const { error } = await resend.emails.send({
-      from: `NatureScripts <${fromEmail}>`,
+      from: `NatureScripts <${resolvedFromEmail}>`,
       to: [to],
-      subject: `${firstName}, your personalized protocol is ready`,
-      html: generateVerificationEmailHtml({ firstName, verificationUrl, protocolSummary }),
-      text: generateVerificationEmailText({ firstName, verificationUrl, protocolSummary }),
+      subject: `${safeFirstName}, your personalized protocol is ready`,
+      html: generateVerificationEmailHtml({ firstName, verificationUrl: safeUrl, protocolSummary }),
+      text: generateVerificationEmailText({ firstName, verificationUrl: safeUrl, protocolSummary }),
     });
 
     if (error) {
@@ -67,6 +104,10 @@ function generateVerificationEmailHtml({
   verificationUrl, 
   protocolSummary 
 }: Omit<SendVerificationEmailParams, 'to'>): string {
+  const safeFirstName = escapeHtml(firstName);
+  const safeUrl = sanitizeUrl(verificationUrl);
+  const safeSummary = protocolSummary ? escapeHtml(protocolSummary) : null;
+
   // SVG logo inline (leaf icon + text)
   const logoSvg = `<svg width="160" height="32" viewBox="0 0 160 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M16 4C16 4 8 8 8 16C8 20 10 24 16 28C22 24 24 20 24 16C24 8 16 4 16 4Z" fill="#408d59"/>
@@ -98,20 +139,20 @@ function generateVerificationEmailHtml({
           <tr>
             <td style="padding: 40px;">
               <h2 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 22px; font-weight: 600;">
-                Hi ${firstName}, your protocol is ready!
+                Hi ${safeFirstName}, your protocol is ready!
               </h2>
               
               <p style="margin: 0 0 24px 0; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
                 Thank you for sharing your health concerns with us. We've created a personalized natural health protocol just for you.
               </p>
               
-              ${protocolSummary ? `
+              ${safeSummary ? `
               <div style="background-color: #f8faf8; border-left: 4px solid #408d59; padding: 16px 20px; margin: 0 0 24px 0; border-radius: 0 8px 8px 0;">
                 <p style="margin: 0; color: #2d5a3d; font-size: 14px; font-weight: 500;">
                   Protocol Preview:
                 </p>
                 <p style="margin: 8px 0 0 0; color: #4a4a4a; font-size: 14px; line-height: 1.5;">
-                  ${protocolSummary}
+                  ${safeSummary}
                 </p>
               </div>
               ` : ''}
@@ -124,7 +165,7 @@ function generateVerificationEmailHtml({
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center">
-                    <a href="${verificationUrl}" style="display: inline-block; background-color: #408d59; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                    <a href="${safeUrl}" style="display: inline-block; background-color: #408d59; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                       Set Password & View Protocol
                     </a>
                   </td>
@@ -160,20 +201,21 @@ function generateVerificationEmailHtml({
 /**
  * Generate plain text email (fallback)
  */
-function generateVerificationEmailText({ 
-  firstName, 
-  verificationUrl, 
-  protocolSummary 
+function generateVerificationEmailText({
+  firstName,
+  verificationUrl,
+  protocolSummary
 }: Omit<SendVerificationEmailParams, 'to'>): string {
+  const safeUrl = sanitizeUrl(verificationUrl);
   let text = `Hi ${firstName},\n\n`;
   text += `Your personalized natural health protocol is ready!\n\n`;
-  
+
   if (protocolSummary) {
     text += `Protocol Preview: ${protocolSummary}\n\n`;
   }
-  
+
   text += `To access your full protocol and save it to your account, please set up your password:\n\n`;
-  text += `${verificationUrl}\n\n`;
+  text += `${safeUrl}\n\n`;
   text += `This link will expire in 24 hours.\n\n`;
   text += `---\n`;
   text += `NatureScripts - Personalized natural health protocols\n`;
