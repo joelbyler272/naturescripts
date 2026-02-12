@@ -49,8 +49,9 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     onboardingStateRef.current = onboardingState;
   }, [onboardingState]);
 
-  // Track mounted state for cleanup
+  // Track mounted state for cleanup (must set true in body for React StrictMode)
   useEffect(() => {
+    mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
@@ -93,6 +94,13 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     const result = processOnboardingMessage({
       message: content,
       state: onboardingStateRef.current,
+    });
+
+    console.log('STATE MACHINE RESULT:', {
+      step: result.newState.step,
+      reply: result.reply,
+      needsApiCall: result.needsApiCall,
+      apiCallType: result.apiCallType,
     });
 
     // Small delay to feel natural
