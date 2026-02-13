@@ -38,7 +38,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // Rate limit by IP (restrictive — this is an expensive endpoint)
     const ip = getClientIp(request);
-    const rateLimitResult = applyRateLimit('onboarding-complete', ip, 3, 60000);
+    const rateLimitResult = applyRateLimit('onboarding-complete', ip, 5, 60000);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please wait a moment.' },
@@ -79,9 +79,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Get profile data from state machine
     const profileData = getProfileData(state);
 
-    // STEP 1: Create user account (Supabase will reject duplicate emails)
+    // STEP 1: Create user account (or reuse if previous attempt failed mid-onboarding)
     const normalizedEmail = email.toLowerCase();
     const tempPassword = crypto.randomBytes(32).toString('hex');
+    let userId: string;
+
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
       password: tempPassword,
@@ -91,20 +93,39 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (createError) {
       if (createError.message?.includes('already been registered') || createError.message?.includes('duplicate')) {
-        return NextResponse.json(
-          { error: 'Account exists', existingUser: true },
-          { status: 409 }
-        );
+        // Check if this is a retry (user created on a previous failed attempt).
+        // Look up the existing user to check their onboarding_in_progress metadata.
+        let existingUser: { id: string; user_metadata?: Record<string, unknown> } | null = null;
+        let page = 1;
+        while (!existingUser) {
+          const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 50 });
+          if (listError || !listData?.users?.length) break;
+          const found = listData.users.find(u => u.email === normalizedEmail);
+          if (found) { existingUser = found; break; }
+          if (listData.users.length < 50) break; // last page
+          page++;
+        }
+
+        if (existingUser?.user_metadata?.onboarding_in_progress === true) {
+          // Previous attempt created the user but failed later — reuse this user
+          console.log('[ONBOARDING] Reusing user from previous failed attempt:', existingUser.id);
+          userId = existingUser.id;
+        } else {
+          // Genuinely existing completed account
+          return NextResponse.json(
+            { error: 'Account exists', existingUser: true },
+            { status: 409 }
+          );
+        }
+      } else {
+        console.error('[ONBOARDING] User creation failed:', createError.message);
+        return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
       }
-      console.error('[ONBOARDING] User creation failed:', createError.message);
+    } else if (!newUser.user) {
       return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
+    } else {
+      userId = newUser.user.id;
     }
-
-    if (!newUser.user) {
-      return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
-    }
-
-    const userId = newUser.user.id;
 
     // STEP 2: Create profile
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -245,6 +266,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         console.error('[ONBOARDING] Email send error:', emailError instanceof Error ? emailError.message : emailError);
       }
     }
+
+    // STEP 7: Mark onboarding as complete so retries won't reuse this user
+    await supabaseAdmin.auth.admin.updateUser(userId, {
+      user_metadata: { first_name: profileData.firstName, onboarding_in_progress: false },
+    });
 
     return NextResponse.json({
       success: true,
