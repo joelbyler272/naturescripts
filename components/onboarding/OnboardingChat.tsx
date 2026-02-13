@@ -13,7 +13,7 @@ import {
   getProfileData
 } from '@/lib/onboarding/stateMachine';
 import { logger } from '@/lib/utils/logger';
-import { Mail, CheckCircle, Loader2 } from 'lucide-react';
+import { Mail, CheckCircle, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 
 interface OnboardingChatProps {
@@ -203,8 +203,6 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     } catch (error) {
       logger.error('Protocol generation error:', error);
       setCompletionState('error');
-      const errorMessage = createMessage('assistant', "I had trouble creating your protocol. Please try again.");
-      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsGenerating(false);
     }
@@ -268,6 +266,29 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
             <p className="text-sm text-muted-foreground text-center max-w-md">
               This usually takes about 15-30 seconds. Hang tight!
             </p>
+          </div>
+        )}
+
+        {/* Error with retry button */}
+        {completionState === 'error' && !existingUserError && (
+          <div className="flex flex-col items-center pt-6 pb-4">
+            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-amber-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Something went wrong
+            </h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+              We had trouble creating your protocol. This is usually temporary — please try again.
+            </p>
+            <button
+              onClick={() => handleGenerateProtocolWithState(onboardingState)}
+              disabled={isGenerating}
+              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </button>
           </div>
         )}
 
