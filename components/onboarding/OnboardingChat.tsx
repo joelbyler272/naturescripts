@@ -164,7 +164,9 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     setIsTyping(false);
   };
 
-  // Generate protocol (accepts optional state to avoid stale closures when auto-triggered)
+  // Generate protocol with automatic retries for transient errors
+  const MAX_RETRIES = 3;
+
   const handleGenerateProtocolWithState = async (stateOverride?: OnboardingState) => {
     const currentState = stateOverride || onboardingState;
     if (!isReadyForProtocol(currentState)) return;
@@ -172,39 +174,50 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     setIsGenerating(true);
     setCompletionState('creating');
 
-    try {
-      const profileData = getProfileData(currentState);
+    const profileData = getProfileData(currentState);
 
-      const response = await fetch('/api/onboarding/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: profileData.email,
-          state: currentState,
-          conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
-        }),
-      });
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await fetch('/api/onboarding/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: profileData.email,
+            state: currentState,
+            conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.existingUser) {
-          setExistingUserError(true);
-          setCompletionState('error');
-          return;
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (errorData.existingUser) {
+            setExistingUserError(true);
+            setCompletionState('error');
+            setIsGenerating(false);
+            return;
+          }
+          throw new Error(errorData.error || 'Failed to complete onboarding');
         }
-        throw new Error(errorData.error || 'Failed to complete onboarding');
+
+        const data = await response.json();
+        setGeneratedProtocol(data.protocol);
+        setOnboardingState(prev => ({ ...prev, step: 'complete' }));
+        setCompletionState('done');
+        setIsGenerating(false);
+        return; // Success — exit
+
+      } catch (error) {
+        logger.error(`Protocol generation attempt ${attempt}/${MAX_RETRIES} failed:`, error);
+
+        if (attempt < MAX_RETRIES) {
+          // Wait before retrying (2s, then 4s)
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+        } else {
+          // All retries exhausted
+          setCompletionState('error');
+          setIsGenerating(false);
+        }
       }
-
-      const data = await response.json();
-      setGeneratedProtocol(data.protocol);
-      setOnboardingState(prev => ({ ...prev, step: 'complete' }));
-      setCompletionState('done');
-
-    } catch (error) {
-      logger.error('Protocol generation error:', error);
-      setCompletionState('error');
-    } finally {
-      setIsGenerating(false);
     }
   };
 
