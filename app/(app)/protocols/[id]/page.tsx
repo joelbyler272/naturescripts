@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { Consultation, Protocol } from '@/types';
 import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice, isClaudeProtocol } from '@/lib/consultation/types';
 import { routes } from '@/lib/constants/routes';
-import { sanitizeProductUrl } from '@/lib/utils/urlValidation';
+import { getProductUrl } from '@/lib/utils/urlValidation';
 import { WelcomeWalkthrough } from '@/components/protocol/WelcomeWalkthrough';
 import { UpgradeModal } from '@/components/protocol/UpgradeModal';
 import {
@@ -57,6 +57,7 @@ function ProtocolPageContent() {
   const [retrying, setRetrying] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [tourCompleted, setTourCompleted] = useState(false);
 
   // Check for welcome param
   useEffect(() => {
@@ -67,6 +68,7 @@ function ProtocolPageContent() {
 
   const handleWelcomeComplete = useCallback(() => {
     setShowWelcome(false);
+    setTourCompleted(true);
     // Remove the welcome param from URL
     router.replace(`/protocols/${params.id}`, { scroll: false });
     // Show upgrade modal after a short delay
@@ -75,6 +77,25 @@ function ProtocolPageContent() {
     }, 500);
     return () => clearTimeout(timer);
   }, [router, params.id]);
+
+  // Intercept navigation links after tour completes — show upgrade modal instead
+  useEffect(() => {
+    if (!tourCompleted || showUpgradeModal) return;
+
+    const handleLinkClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement).closest('a[href]');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      // Intercept internal navigation (not product links)
+      if (href && href.startsWith('/') && !showUpgradeModal) {
+        e.preventDefault();
+        setShowUpgradeModal(true);
+      }
+    };
+
+    document.addEventListener('click', handleLinkClick, true);
+    return () => document.removeEventListener('click', handleLinkClick, true);
+  }, [tourCompleted, showUpgradeModal]);
 
   const loadProtocol = useCallback(async () => {
     if (!params.id || typeof params.id !== 'string') {
@@ -257,7 +278,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 
       {/* Recommendations with Product Cards */}
       {protocol.recommendations && protocol.recommendations.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-8" data-tour-section="recommendations">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
             <Leaf className="w-4 h-4 text-accent" />
             Recommendations
@@ -272,7 +293,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 
       {/* Dietary Shifts (Pro only) */}
       {protocol.dietary_shifts && protocol.dietary_shifts.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-8" data-tour-section="dietary-shifts">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
             <Utensils className="w-4 h-4 text-accent" />
             Dietary Shifts
@@ -301,7 +322,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 
       {/* Lifestyle Practices (Pro only) */}
       {protocol.lifestyle_practices && protocol.lifestyle_practices.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-8" data-tour-section="lifestyle-practices">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
             <Activity className="w-4 h-4 text-accent" />
             Lifestyle Practices
@@ -349,7 +370,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 }
 
 // Recommendation Card with Product Links
-function RecommendationCard({ recommendation, index }: { recommendation: Recommendation; index: number }) {
+function RecommendationCard({ recommendation, index }: { recommendation: Recommendation; index: number; }) {
   const typeLabels: Record<string, string> = {
     herb: '🌿 Herb',
     vitamin: '💊 Vitamin',
@@ -373,7 +394,7 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
 
       <p className="text-sm text-foreground/80 mb-4">{recommendation.rationale}</p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4" {...(index === 0 ? { 'data-tour-section': 'dosage-timing' } : {})}>
         <div className="flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 text-accent mt-0.5" />
           <div>
@@ -399,20 +420,21 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
 
       {/* Product Links */}
       {recommendation.products && recommendation.products.length > 0 && (
-        <div className="pt-4 border-t border-border/30">
+        <div className="pt-4 border-t border-border/30" {...(index === 0 ? { 'data-tour-section': 'shopping-links' } : {})}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1">
             <ShoppingCart className="w-3 h-3" />
             Shop Now
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {recommendation.products.map((product: ProductLink, pIndex: number) => (
-              product.url ? (
+            {recommendation.products.map((product: ProductLink, pIndex: number) => {
+              const href = getProductUrl(product);
+              return href !== '#' ? (
               <a
                 key={pIndex}
-                href={sanitizeProductUrl(product.url)}
+                href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors group"
+                className="flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors group cursor-pointer"
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground truncate">{product.brand}</p>
@@ -448,8 +470,8 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
                   </span>
                 </div>
               </div>
-              )
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

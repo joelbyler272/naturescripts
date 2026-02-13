@@ -13,7 +13,7 @@ import {
   getProfileData
 } from '@/lib/onboarding/stateMachine';
 import { logger } from '@/lib/utils/logger';
-import { ArrowRight, Mail, CheckCircle, Loader2 } from 'lucide-react';
+import { Mail, CheckCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface OnboardingChatProps {
@@ -31,6 +31,7 @@ function createMessage(role: 'user' | 'assistant', content: string): Conversatio
 
 export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -55,9 +56,17 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Auto-scroll
+  // Auto-scroll to bottom of messages container
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (container) {
+      requestAnimationFrame(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth',
+        });
+      });
+    }
   }, [messages, isTyping]);
 
   // Initialize
@@ -138,6 +147,13 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
         const assistantMessage = createMessage('assistant', fallbackQuestion);
         setMessages(prev => [...prev, assistantMessage]);
       }
+    } else if (result.newState.step === 'ready') {
+      // Email captured — skip the "I have everything" message and auto-generate
+      setOnboardingState(result.newState);
+      setIsTyping(false);
+      // Auto-trigger protocol generation
+      handleGenerateProtocolWithState(result.newState);
+      return;
     } else if (result.reply) {
       // Use hardcoded response
       const assistantMessage = createMessage('assistant', result.reply);
@@ -148,22 +164,23 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     setIsTyping(false);
   };
 
-  // Generate protocol
-  const handleGenerateProtocol = async () => {
-    if (!isReadyForProtocol(onboardingState)) return;
+  // Generate protocol (accepts optional state to avoid stale closures when auto-triggered)
+  const handleGenerateProtocolWithState = async (stateOverride?: OnboardingState) => {
+    const currentState = stateOverride || onboardingState;
+    if (!isReadyForProtocol(currentState)) return;
 
     setIsGenerating(true);
     setCompletionState('creating');
 
     try {
-      const profileData = getProfileData(onboardingState);
-      
+      const profileData = getProfileData(currentState);
+
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: profileData.email,
-          state: onboardingState,
+          state: currentState,
           conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
         }),
       });
@@ -193,12 +210,11 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     }
   };
 
-  const isReady = isReadyForProtocol(onboardingState);
-  const isChatDisabled = isTyping || isGenerating || completionState === 'done' || isReady;
+  const isChatDisabled = isTyping || isGenerating || completionState === 'done' || completionState === 'creating';
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] bg-white rounded-xl border border-border/50 overflow-hidden">
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4" style={{ overflowAnchor: 'auto' }}>
         {messages.map((message) => (
           <ChatMessage key={message.id} role={message.role} content={message.content} />
         ))}
@@ -240,26 +256,18 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
           </div>
         )}
 
-        {/* Generate button */}
-        {isReady && !generatedProtocol && !existingUserError && completionState !== 'done' && (
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={handleGenerateProtocol}
-              disabled={isGenerating}
-              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating your protocol...
-                </>
-              ) : (
-                <>
-                  Generate my protocol
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+        {/* Auto-generating protocol indicator */}
+        {isGenerating && completionState === 'creating' && (
+          <div className="flex flex-col items-center pt-6 pb-4">
+            <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4">
+              <Loader2 className="w-8 h-8 text-accent animate-spin" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Creating your personalized protocol...
+            </h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md">
+              This usually takes about 15-30 seconds. Hang tight!
+            </p>
           </div>
         )}
 
@@ -271,7 +279,7 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
         disabled={isChatDisabled}
         placeholder={
           completionState === 'done' ? "Check your email to access your protocol" :
-          isReady ? "Click the button above to generate your protocol" :
+          completionState === 'creating' ? "Creating your personalized protocol..." :
           "Share more details..."
         }
       />

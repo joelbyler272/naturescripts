@@ -97,23 +97,16 @@ export async function sendVerificationEmail({
 }
 
 /**
- * Generate HTML email template with NatureScripts logo
+ * Generate HTML email template with NatureScripts branding
  */
-function generateVerificationEmailHtml({ 
-  firstName, 
-  verificationUrl, 
-  protocolSummary 
+function generateVerificationEmailHtml({
+  firstName,
+  verificationUrl,
+  protocolSummary
 }: Omit<SendVerificationEmailParams, 'to'>): string {
   const safeFirstName = escapeHtml(firstName);
   const safeUrl = sanitizeUrl(verificationUrl);
   const safeSummary = protocolSummary ? escapeHtml(protocolSummary) : null;
-
-  // SVG logo inline (leaf icon + text)
-  const logoSvg = `<svg width="160" height="32" viewBox="0 0 160 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16 4C16 4 8 8 8 16C8 20 10 24 16 28C22 24 24 20 24 16C24 8 16 4 16 4Z" fill="#408d59"/>
-    <path d="M16 8C16 8 12 11 12 16C12 19 13.5 22 16 24C18.5 22 20 19 20 16C20 11 16 8 16 8Z" fill="#5ba872"/>
-    <text x="36" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="#408d59">NatureScripts</text>
-  </svg>`;
 
   return `
 <!DOCTYPE html>
@@ -123,72 +116,111 @@ function generateVerificationEmailHtml({
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Your Protocol is Ready</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f4;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #fafaf8;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #fafaf8;">
     <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          <!-- Header with Logo -->
+      <td align="center" style="padding: 40px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 560px;">
+
+          <!-- Logo -->
           <tr>
-            <td style="background-color: #408d59; padding: 32px 40px; text-align: center;">
-              ${logoSvg}
-            </td>
-          </tr>
-          
-          <!-- Content -->
-          <tr>
-            <td style="padding: 40px;">
-              <h2 style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 22px; font-weight: 600;">
-                Hi ${safeFirstName}, your protocol is ready!
-              </h2>
-              
-              <p style="margin: 0 0 24px 0; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-                Thank you for sharing your health concerns with us. We've created a personalized natural health protocol just for you.
-              </p>
-              
-              ${safeSummary ? `
-              <div style="background-color: #f8faf8; border-left: 4px solid #408d59; padding: 16px 20px; margin: 0 0 24px 0; border-radius: 0 8px 8px 0;">
-                <p style="margin: 0; color: #2d5a3d; font-size: 14px; font-weight: 500;">
-                  Protocol Preview:
-                </p>
-                <p style="margin: 8px 0 0 0; color: #4a4a4a; font-size: 14px; line-height: 1.5;">
-                  ${safeSummary}
-                </p>
-              </div>
-              ` : ''}
-              
-              <p style="margin: 0 0 24px 0; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-                To access your full protocol and save it to your account, please set up your password:
-              </p>
-              
-              <!-- CTA Button -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <td align="center" style="padding: 0 0 32px 0;">
+              <table role="presentation" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td align="center">
-                    <a href="${safeUrl}" style="display: inline-block; background-color: #408d59; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                      Set Password & View Protocol
-                    </a>
+                  <td style="vertical-align: middle; padding-right: 8px;">
+                    <div style="width: 28px; height: 28px; background-color: #408d59; border-radius: 8px; text-align: center; line-height: 28px;">
+                      <span style="color: #ffffff; font-size: 16px;">&#9752;</span>
+                    </div>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    <span style="font-family: Georgia, 'Times New Roman', serif; font-size: 22px; color: #18181b; font-weight: 600;">Nature</span><span style="font-family: Georgia, 'Times New Roman', serif; font-size: 22px; color: #408d59; font-weight: 300;">Scripts</span>
                   </td>
                 </tr>
               </table>
-              
-              <p style="margin: 24px 0 0 0; color: #888888; font-size: 14px; line-height: 1.5;">
-                This link will expire in 24 hours. If you didn't request this, you can safely ignore this email.
-              </p>
             </td>
           </tr>
-          
+
+          <!-- Main Card -->
+          <tr>
+            <td>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e4e4e7;">
+
+                <!-- Green accent bar -->
+                <tr>
+                  <td style="height: 4px; background-color: #408d59; font-size: 0; line-height: 0;">&nbsp;</td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 36px 16px 36px;">
+                    <h1 style="margin: 0 0 8px 0; color: #18181b; font-size: 24px; font-weight: 600; line-height: 1.3;">
+                      Your protocol is ready, ${safeFirstName}!
+                    </h1>
+                    <p style="margin: 0 0 28px 0; color: #71717a; font-size: 15px; line-height: 1.6;">
+                      We've created a personalized natural health plan based on what you shared with us. Set your password to view your full protocol.
+                    </p>
+                  </td>
+                </tr>
+
+                ${safeSummary ? `
+                <!-- Protocol Preview -->
+                <tr>
+                  <td style="padding: 0 36px 28px 36px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8faf8; border-radius: 12px; border: 1px solid #d1e7d8;">
+                      <tr>
+                        <td style="padding: 20px 24px;">
+                          <p style="margin: 0 0 6px 0; color: #408d59; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Protocol Preview
+                          </p>
+                          <p style="margin: 0; color: #3f3f46; font-size: 14px; line-height: 1.6;">
+                            ${safeSummary}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                ` : ''}
+
+                <!-- CTA Button -->
+                <tr>
+                  <td style="padding: 0 36px 12px 36px;" align="center">
+                    <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+                      <tr>
+                        <td align="center" style="border-radius: 12px; background-color: #408d59;">
+                          <a href="${safeUrl}" style="display: block; padding: 16px 32px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; text-align: center;">
+                            Set Password &amp; View Protocol &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 0 36px 36px 36px;">
+                    <p style="margin: 0; color: #a1a1aa; font-size: 13px; line-height: 1.5; text-align: center;">
+                      This link expires in 24 hours. If you didn't request this, you can safely ignore this email.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
           <!-- Footer -->
           <tr>
-            <td style="background-color: #f8f8f8; padding: 24px 40px; border-top: 1px solid #eeeeee;">
-              <p style="margin: 0; color: #888888; font-size: 12px; text-align: center;">
-                © ${new Date().getFullYear()} NatureScripts. Personalized natural health protocols.
+            <td style="padding: 28px 16px 0 16px; text-align: center;">
+              <p style="margin: 0 0 6px 0; color: #a1a1aa; font-size: 12px;">
+                &copy; ${new Date().getFullYear()} NatureScripts &middot; Personalized natural health protocols
               </p>
-              <p style="margin: 8px 0 0 0; color: #888888; font-size: 12px; text-align: center;">
-                This is not medical advice. Always consult a healthcare provider.
+              <p style="margin: 0; color: #a1a1aa; font-size: 11px;">
+                This is not medical advice. Always consult a healthcare provider before starting any new supplement regimen.
               </p>
             </td>
           </tr>
+
         </table>
       </td>
     </tr>

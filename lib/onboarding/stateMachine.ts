@@ -74,13 +74,18 @@ function extractEmail(message: string): string | null {
 
 // Check for skip/none responses
 function isSkipResponse(message: string): boolean {
+  const cleaned = message.trim().toLowerCase();
   const skipPatterns = [
-    /^(no|none|nope|nothing|n\/a|na|not really|don'?t have any|i don'?t|skip)$/i,
-    /^(no,?\s)?(none|nothing|not really)/i,
-    /don'?t (have|take|use) (any|none)/i,
+    /^(no|none|nope|nah|nothing|n\/a|na|not really|don'?t have any|i don'?t|skip|0|nil|zip|zilch)$/i,
+    /^(no,?\s?)?(none|nothing|not really|nope|nah)/i,
+    /don'?t (have|take|use) (any|none|anything)/i,
     /^not? (that i know|sure|certain)/i,
+    /^(i'?m\s+)?(not|no)\s+(taking|on|using)/i,
+    /^(all\s+)?good/i,
+    /^(i'?m\s+)?healthy/i,
+    /^no\s+(health\s+)?(conditions?|meds?|medications?|supplements?|issues?|problems?)/i,
   ];
-  return skipPatterns.some(p => p.test(message.trim()));
+  return skipPatterns.some(p => p.test(cleaned));
 }
 
 // Main state machine transition function
@@ -205,7 +210,8 @@ Rules:
 - Keep it conversational and warm
 - Use their name once
 - 1-2 sentences max
-- Don't repeat what they already told you`;
+- Don't repeat what they already told you
+- NEVER start with sympathetic phrases like "I'm sorry to hear", "That sounds difficult", "I understand how frustrating", etc. Be warm but direct.`;
 }
 
 // Build summary of collected data for protocol generation
@@ -227,6 +233,13 @@ export function isReadyForProtocol(state: OnboardingState): boolean {
   return state.step === 'ready' && state.firstName !== null && state.primaryConcern !== null && state.email !== null;
 }
 
+// Check if a raw answer should be treated as empty/none
+function isEmptyAnswer(value: string | null): boolean {
+  if (!value) return true;
+  if (value === 'None mentioned') return true;
+  return isSkipResponse(value);
+}
+
 // Get collected profile data for saving
 export function getProfileData(state: OnboardingState) {
   return {
@@ -235,7 +248,7 @@ export function getProfileData(state: OnboardingState) {
     primaryConcern: state.primaryConcern || '',
     duration: state.duration || '',
     clarifyingAnswer: state.clarifyingAnswer || '',
-    healthConditions: state.healthConditions === 'None mentioned' ? [] : [state.healthConditions || ''].filter(Boolean),
-    medications: state.medications === 'None mentioned' ? [] : [state.medications || ''].filter(Boolean),
+    healthConditions: isEmptyAnswer(state.healthConditions) ? [] : [state.healthConditions!].filter(Boolean),
+    medications: isEmptyAnswer(state.medications) ? [] : [state.medications!].filter(Boolean),
   };
 }
