@@ -118,32 +118,40 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     if (!mountedRef.current) return;
 
     if (result.needsApiCall && result.apiCallType === 'clarifying') {
-      // Make the ONE clarifying question API call
-      try {
-        const response = await fetch('/api/onboarding/clarify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            state: result.newState,
-          }),
-        });
+      // Make the ONE clarifying question API call (with retry for transient errors)
+      let clarifySuccess = false;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const response = await fetch('/api/onboarding/clarify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              state: result.newState,
+            }),
+          });
 
-        if (!mountedRef.current) return;
+          if (!mountedRef.current) return;
 
-        if (response.ok) {
-          const data = await response.json();
-          const assistantMessage = createMessage('assistant', data.question);
-          setMessages(prev => [...prev, assistantMessage]);
-        } else {
-          // Fallback to a generic question
-          const fallbackQuestion = `That's helpful context, ${result.newState.firstName}. Is there anything that seems to make it better or worse?`;
-          const assistantMessage = createMessage('assistant', fallbackQuestion);
-          setMessages(prev => [...prev, assistantMessage]);
+          if (response.ok) {
+            const data = await response.json();
+            const assistantMessage = createMessage('assistant', data.question);
+            setMessages(prev => [...prev, assistantMessage]);
+            clarifySuccess = true;
+            break;
+          }
+          // Non-OK response — retry if transient (5xx)
+          if (response.status < 500) break;
+          if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+        } catch (error) {
+          logger.error(`Clarifying question attempt ${attempt}/3 failed:`, error);
+          if (!mountedRef.current) return;
+          if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 2000));
         }
-      } catch (error) {
-        logger.error('Clarifying question API error:', error);
-        if (!mountedRef.current) return;
-        const fallbackQuestion = `Thanks for sharing that, ${result.newState.firstName}. Is there anything that seems to trigger it or make it worse?`;
+      }
+      if (!clarifySuccess) {
+        // Build a specific fallback using what the user actually told us
+        const concern = result.newState.primaryConcern?.toLowerCase() || 'that';
+        const fallbackQuestion = `${result.newState.firstName}, have you noticed anything that tends to make your ${concern} better or worse — like certain activities, foods, or time of day?`;
         const assistantMessage = createMessage('assistant', fallbackQuestion);
         setMessages(prev => [...prev, assistantMessage]);
       }

@@ -110,6 +110,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           // Previous attempt created the user but failed later — reuse this user
           console.log('[ONBOARDING] Reusing user from previous failed attempt:', existingUser.id);
           userId = existingUser.id;
+
+          // Check if a completed consultation already exists (previous attempt may have
+          // succeeded all the way through but crashed at the very end, e.g. updateUserById)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: existingConsult } = await (supabaseAdmin.from('consultations') as any)
+            .select('id')
+            .eq('user_id', userId)
+            .eq('status', 'completed')
+            .limit(1)
+            .single();
+
+          if (existingConsult) {
+            console.log('[ONBOARDING] Consultation already exists, marking complete and returning');
+            // Mark complete (the previous attempt likely crashed before this)
+            await supabaseAdmin.auth.admin.updateUserById(userId, {
+              user_metadata: { first_name: profileData.firstName, onboarding_in_progress: false },
+            });
+            return NextResponse.json({
+              success: true,
+              firstName: profileData.firstName,
+              emailSent: true,
+              message: `Thanks ${profileData.firstName}! Check your email at ${email} to set your password and view your protocol.`,
+            });
+          }
         } else {
           // Genuinely existing completed account
           return NextResponse.json(
@@ -268,7 +292,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // STEP 7: Mark onboarding as complete so retries won't reuse this user
-    await supabaseAdmin.auth.admin.updateUser(userId, {
+    await supabaseAdmin.auth.admin.updateUserById(userId, {
       user_metadata: { first_name: profileData.firstName, onboarding_in_progress: false },
     });
 

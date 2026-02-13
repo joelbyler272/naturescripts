@@ -17,7 +17,6 @@ interface TourStep {
   title: string;
   description: string;
   targetSelector?: string; // data-tour-section value to highlight
-  tooltipPosition?: 'top' | 'bottom';
 }
 
 const STEPS: TourStep[] = [
@@ -33,7 +32,6 @@ const STEPS: TourStep[] = [
     title: 'Your Recommendations',
     description: 'These are your personalized supplement recommendations. Each one includes the supplement name, why it helps with your concern, and exactly how much to take.',
     targetSelector: 'recommendations',
-    tooltipPosition: 'bottom',
   },
   {
     id: 'timing',
@@ -41,7 +39,6 @@ const STEPS: TourStep[] = [
     title: 'Dosage & Timing',
     description: 'Each recommendation includes specific dosage and when to take it. Taking supplements at the right time can make them more effective.',
     targetSelector: 'dosage-timing',
-    tooltipPosition: 'bottom',
   },
   {
     id: 'shopping',
@@ -49,7 +46,6 @@ const STEPS: TourStep[] = [
     title: 'Shopping Links',
     description: 'Click to purchase from trusted sources like Amazon and iHerb. We\'ve handpicked quality products for each recommendation.',
     targetSelector: 'shopping-links',
-    tooltipPosition: 'top',
   },
   {
     id: 'complete',
@@ -115,29 +111,50 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
       };
       setSpotlight(spotlightRect);
 
-      // Position tooltip
-      const viewportRect = rect;
-      const tooltipWidth = Math.min(360, window.innerWidth - 32);
-      const tooltipLeft = Math.max(
+      // Position tooltip to the right of the element, or left if no room
+      const tooltipWidth = 320;
+      const tooltipHeight = 200; // approximate
+      const gap = 16;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // Vertically center tooltip against the highlighted element
+      const tooltipTop = Math.max(
         16,
         Math.min(
-          viewportRect.left + viewportRect.width / 2 - tooltipWidth / 2,
-          window.innerWidth - tooltipWidth - 16
+          rect.top + rect.height / 2 - tooltipHeight / 2,
+          vh - tooltipHeight - 16
         )
       );
 
-      if (step.tooltipPosition === 'top') {
+      const spaceRight = vw - rect.right;
+      const spaceLeft = rect.left;
+
+      if (spaceRight >= tooltipWidth + gap + 16) {
+        // Place to the right
         setTooltipStyle({
           position: 'fixed',
-          top: `${viewportRect.top - 16}px`,
-          left: `${tooltipLeft}px`,
+          top: `${tooltipTop}px`,
+          left: `${rect.right + gap}px`,
           width: `${tooltipWidth}px`,
-          transform: 'translateY(-100%)',
+        });
+      } else if (spaceLeft >= tooltipWidth + gap + 16) {
+        // Place to the left
+        setTooltipStyle({
+          position: 'fixed',
+          top: `${tooltipTop}px`,
+          left: `${rect.left - tooltipWidth - gap}px`,
+          width: `${tooltipWidth}px`,
         });
       } else {
+        // Not enough side room — fallback to bottom, centered
+        const tooltipLeft = Math.max(
+          16,
+          Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, vw - tooltipWidth - 16)
+        );
         setTooltipStyle({
           position: 'fixed',
-          top: `${viewportRect.bottom + 16}px`,
+          top: `${rect.bottom + gap}px`,
           left: `${tooltipLeft}px`,
           width: `${tooltipWidth}px`,
         });
@@ -145,7 +162,7 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
     }, 400);
 
     return () => clearTimeout(positionTimeout);
-  }, [currentStep, step.targetSelector, step.tooltipPosition]);
+  }, [currentStep, step.targetSelector]);
 
   const handleNext = () => {
     if (isLastStep) {
