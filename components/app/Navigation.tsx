@@ -13,21 +13,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { User, Settings, LogOut } from "lucide-react"
+import { User, Settings, LogOut, Menu, X } from "lucide-react"
+import { useState } from "react"
 import { routes } from "@/lib/constants/routes"
 
 interface NavigationProps {
   isAuthenticated?: boolean
   userTier?: "free" | "pro"
+  onSignOut?: () => void
 }
 
 export function Navigation({
   isAuthenticated = false,
-  userTier = "free"
+  userTier = "free",
+  onSignOut
 }: NavigationProps) {
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/')
+  const isActive = (path: string) => pathname === path || (path !== '/' && pathname.startsWith(path + '/'))
 
   // Authenticated navigation (with user dropdown)
   if (isAuthenticated) {
@@ -37,7 +41,8 @@ export function Navigation({
           <div className="flex justify-between items-center h-16">
             <Logo />
 
-            <div className="flex items-center space-x-6">
+            {/* Desktop nav */}
+            <div className="hidden md:flex items-center space-x-6">
               <Link
                 href={routes.dashboard}
                 className={cn(
@@ -76,7 +81,7 @@ export function Navigation({
               {/* User Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
+                  <Button variant="ghost" size="icon" className="rounded-full" aria-label="User menu">
                     <User className="w-5 h-5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -96,14 +101,88 @@ export function Navigation({
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer text-destructive">
+                  <DropdownMenuItem className="cursor-pointer text-destructive" onClick={onSignOut}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            {/* Mobile hamburger */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
           </div>
+
+          {/* Mobile menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-border/50 py-3 space-y-1">
+              <Link
+                href={routes.dashboard}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "block px-2 py-2 text-sm rounded-md transition-colors",
+                  isActive(routes.dashboard) ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Dashboard
+              </Link>
+              <Link
+                href={routes.remedies}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "block px-2 py-2 text-sm rounded-md transition-colors",
+                  isActive(routes.remedies) ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Remedy Database
+              </Link>
+              <Link
+                href={routes.library}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "block px-2 py-2 text-sm rounded-md transition-colors",
+                  isActive(routes.library) ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Library
+              </Link>
+              <Link
+                href={routes.settings}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "block px-2 py-2 text-sm rounded-md transition-colors",
+                  isActive(routes.settings) ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Settings
+              </Link>
+              {userTier === "free" && (
+                <Link
+                  href={routes.upgrade}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Upgrade to Pro
+                </Link>
+              )}
+              {onSignOut && (
+                <button
+                  onClick={() => { setMobileMenuOpen(false); onSignOut(); }}
+                  className="block w-full text-left px-2 py-2 text-sm text-destructive hover:bg-secondary/50 rounded-md transition-colors"
+                >
+                  Sign Out
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </nav>
     )
@@ -145,10 +224,10 @@ export function Navigation({
               Sign In
             </Link>
             <Link
-              href={routes.signUp}
+              href={routes.onboarding}
               className="text-sm px-4 py-2 rounded-full bg-foreground text-background hover:bg-foreground/90 transition-colors"
             >
-              Get Started
+              Start Consultation
             </Link>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { createClient } from './client';
 import { Consultation, Message, Protocol } from '@/types';
+import { Medication, Supplement } from '@/lib/consultation/types';
 import { logger } from '@/lib/utils/logger';
 import { getLocalDateString } from '@/lib/utils/date';
 
@@ -51,22 +52,10 @@ export async function updateUserProfile(userId: string, updates: {
 // HEALTH PROFILE FUNCTIONS
 // ============================================
 
-interface MedicationEntry {
-  name: string;
-  dosage: string;
-  frequency: string;
-}
-
-interface SupplementEntry {
-  name: string;
-  dosage: string;
-  frequency: string;
-}
-
 export async function updateHealthProfile(userId: string, updates: {
   health_conditions?: string[];
-  medications?: MedicationEntry[];
-  supplements?: SupplementEntry[];
+  medications?: Medication[];
+  supplements?: Supplement[];
   health_notes?: string;
 }) {
   const supabase = createClient();

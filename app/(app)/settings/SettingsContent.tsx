@@ -11,15 +11,22 @@ import { getUserProfile, resetDailyUsage, clearAllConsultations, toggleUserTier,
 import { isDevUser } from '@/lib/constants/devAccess';
 import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/utils/logger';
+import { DeleteAccountModal } from '@/components/settings/DeleteAccountModal';
 import {
   User, CreditCard, Shield, AlertTriangle, Loader2, Check,
   RotateCcw, Wrench, Trash2, ArrowUpDown, Heart, Plus, X
 } from 'lucide-react';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
+import { Medication, Supplement } from '@/lib/consultation/types';
 
 // Common weak passwords to check against
-const COMMON_PASSWORDS = ['123456', 'password', 'qwerty', '123456789', 'abc123', 'password1'];
+const COMMON_PASSWORDS = [
+  '123456', 'password', 'qwerty', '123456789', 'abc123', 'password1',
+  'letmein', 'iloveyou', 'admin', 'welcome', 'monkey', 'dragon',
+  'master', 'login', 'passw0rd', 'trustno1', 'shadow', 'sunshine',
+  'princess', 'football'
+];
 
 // Common health conditions for suggestions
 const SUGGESTED_CONDITIONS = [
@@ -27,22 +34,9 @@ const SUGGESTED_CONDITIONS = [
   'Joint Pain', 'Allergies', 'High Blood Pressure', 'Diabetes', 'Thyroid Issues'
 ];
 
-interface MedicationEntry {
-  name: string;
-  dosage: string;
-  frequency: string;
-}
-
-interface SupplementEntry {
-  name: string;
-  dosage: string;
-  frequency: string;
-}
-
-const supabase = createClient();
-
 export function SettingsContent() {
   const { user } = useAuth();
+  const [supabase] = useState(() => createClient());
 
   // Profile state
   const [firstName, setFirstName] = useState('');
@@ -57,8 +51,8 @@ export function SettingsContent() {
   // Health profile state
   const [healthConditions, setHealthConditions] = useState<string[]>([]);
   const [newCondition, setNewCondition] = useState('');
-  const [medications, setMedications] = useState<MedicationEntry[]>([]);
-  const [supplements, setSupplements] = useState<SupplementEntry[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [supplements, setSupplements] = useState<Supplement[]>([]);
   const [healthNotes, setHealthNotes] = useState('');
   const [healthSaving, setHealthSaving] = useState(false);
   const [healthSaved, setHealthSaved] = useState(false);
@@ -81,6 +75,9 @@ export function SettingsContent() {
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
+  // Delete account modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const isDev = isDevUser(user?.email);
 
   useEffect(() => {
@@ -94,7 +91,8 @@ export function SettingsContent() {
       getUserProfile(user.id)
         .then((profile) => {
           if (profile) {
-            setUserTier(profile.tier as 'free' | 'pro');
+            const tier = ['free', 'pro'].includes(profile.tier) ? profile.tier as 'free' | 'pro' : 'free';
+            setUserTier(tier);
             setHealthConditions(profile.health_conditions || []);
             setMedications(profile.medications || []);
             setSupplements(profile.supplements || []);
@@ -149,7 +147,7 @@ export function SettingsContent() {
     setMedications([...medications, { name: '', dosage: '', frequency: '' }]);
   };
 
-  const handleUpdateMedication = (index: number, field: keyof MedicationEntry, value: string) => {
+  const handleUpdateMedication = (index: number, field: keyof Medication, value: string) => {
     setMedications(medications.map((med, i) =>
       i === index ? { ...med, [field]: value } : med
     ));
@@ -163,7 +161,7 @@ export function SettingsContent() {
     setSupplements([...supplements, { name: '', dosage: '', frequency: '' }]);
   };
 
-  const handleUpdateSupplement = (index: number, field: keyof SupplementEntry, value: string) => {
+  const handleUpdateSupplement = (index: number, field: keyof Supplement, value: string) => {
     setSupplements(supplements.map((supp, i) =>
       i === index ? { ...supp, [field]: value } : supp
     ));
@@ -340,7 +338,7 @@ export function SettingsContent() {
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="lastName" className="text-sm font-medium text-foreground">
-                    Last Name
+                    Last Name <span className="text-muted-foreground text-xs">(optional)</span>
                   </label>
                   <Input
                     id="lastName"
@@ -414,7 +412,7 @@ export function SettingsContent() {
                     value={newCondition}
                     onChange={(e) => setNewCondition(e.target.value)}
                     placeholder="Add a condition..."
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddCondition()}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCondition(); } }}
                   />
                   <Button variant="outline" onClick={handleAddCondition}>
                     <Plus className="w-4 h-4" />
@@ -449,7 +447,7 @@ export function SettingsContent() {
                 ) : (
                   <div className="space-y-3">
                     {medications.map((med, index) => (
-                      <div key={index} className="flex gap-2 items-start">
+                      <div key={`med-${med.name || index}`} className="flex gap-2 items-start">
                         <Input
                           placeholder="Medication name"
                           value={med.name}
@@ -496,7 +494,7 @@ export function SettingsContent() {
                 ) : (
                   <div className="space-y-3">
                     {supplements.map((supp, index) => (
-                      <div key={index} className="flex gap-2 items-start">
+                      <div key={`supp-${supp.name || index}`} className="flex gap-2 items-start">
                         <Input
                           placeholder="Supplement name"
                           value={supp.name}
@@ -537,7 +535,7 @@ export function SettingsContent() {
                   value={healthNotes}
                   onChange={(e) => setHealthNotes(e.target.value)}
                   placeholder="Any allergies, sensitivities, or other health information..."
-                  className="w-full min-h-[100px] px-3 py-2 border border-input rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  className="flex w-full min-h-[100px] rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm resize-none"
                 />
               </div>
 
@@ -589,32 +587,22 @@ export function SettingsContent() {
                 </Link>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={handleManageSubscription}
-                      disabled={managingSubscription}
-                    >
-                      {managingSubscription ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Opening...</>
-                      ) : (
-                        'Manage Subscription'
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="text-destructive"
-                      onClick={handleManageSubscription}
-                      disabled={managingSubscription}
-                    >
-                      Cancel Subscription
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleManageSubscription}
+                    disabled={managingSubscription}
+                  >
+                    {managingSubscription ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Opening...</>
+                    ) : (
+                      'Manage Subscription'
+                    )}
+                  </Button>
                   {subscriptionError && (
                     <p className="text-xs text-destructive">{subscriptionError}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Both options open Stripe&apos;s secure portal to manage your subscription.
+                    Opens Stripe&apos;s secure portal where you can update or cancel your subscription.
                   </p>
                 </div>
               )}
@@ -782,17 +770,26 @@ export function SettingsContent() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-3">
-                Permanently delete your account and all associated data.
+                Permanently delete your account and all associated data. This action cannot be undone.
               </p>
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => alert('Account deletion is not yet available. Please contact support.')}
-              >Delete My Account</Button>
+                onClick={() => setShowDeleteModal(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete My Account
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Account Modal */}
+      <DeleteAccountModal 
+        isOpen={showDeleteModal} 
+        onClose={() => setShowDeleteModal(false)} 
+      />
     </div>
   );
 }

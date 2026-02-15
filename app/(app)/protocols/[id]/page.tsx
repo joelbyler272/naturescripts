@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getConsultation } from '@/lib/supabase/database';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Consultation, Protocol } from '@/types';
-import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice } from '@/lib/consultation/types';
+import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice, isClaudeProtocol } from '@/lib/consultation/types';
 import { routes } from '@/lib/constants/routes';
-import { sanitizeProductUrl } from '@/lib/utils/urlValidation';
+import { getProductUrl } from '@/lib/utils/urlValidation';
+import { WelcomeWalkthrough } from '@/components/protocol/WelcomeWalkthrough';
+import { UpgradeModal } from '@/components/protocol/UpgradeModal';
 import {
   ArrowLeft,
   Leaf,
@@ -24,16 +26,6 @@ import {
   Activity,
   ShoppingCart,
 } from 'lucide-react';
-
-// Type guard for Claude-generated protocol (new format)
-function isClaudeProtocol(data: unknown): data is NewGeneratedProtocol {
-  if (typeof data !== 'object' || data === null) return false;
-  if (!('summary' in data) || !('recommendations' in data)) return false;
-  const recs = (data as { recommendations: unknown }).recommendations;
-  if (!Array.isArray(recs) || recs.length === 0) return false;
-  const first = recs[0];
-  return typeof first === 'object' && first !== null && 'products' in first;
-}
 
 // Type guard for old template-based protocol
 function isLegacyProtocol(data: unknown): data is { primaryConcern: string; summary?: string; recommendations?: unknown[]; lifestyleTips?: string[]; warnings?: string[] } {
@@ -54,13 +46,80 @@ function isOldProtocolShape(data: unknown): data is Protocol {
   );
 }
 
-export default function ProtocolPage() {
+function ProtocolPageContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { user } = useAuth();
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [pendingNavHref, setPendingNavHref] = useState<string | null>(null);
+  const [tourCompleted, setTourCompleted] = useState(false);
+  const [upgradeShown, setUpgradeShown] = useState(false);
+
+  // Check for welcome param
+  useEffect(() => {
+    if (searchParams.get('welcome') === 'true') {
+      setShowWelcome(true);
+    }
+    // Check if upgrade was already shown in a previous session
+    if (typeof window !== 'undefined' && localStorage.getItem('ns_upgrade_shown') === 'true') {
+      setUpgradeShown(true);
+    }
+  }, [searchParams]);
+
+  const handleWelcomeComplete = useCallback(() => {
+    setShowWelcome(false);
+    setTourCompleted(true);
+    // Remove the welcome param from URL
+    router.replace(`/protocols/${params.id}`, { scroll: false });
+  }, [router, params.id]);
+
+  // Intercept first internal navigation after tour — show upgrade modal, then navigate
+  useEffect(() => {
+    if (!tourCompleted || upgradeShown) return;
+
+    const handleLinkClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement).closest('a[href]');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      // Only intercept internal navigation (not product links)
+      if (href && href.startsWith('/') && !showUpgradeModal) {
+        e.preventDefault();
+        setPendingNavHref(href);
+        setShowUpgradeModal(true);
+      }
+    };
+
+    document.addEventListener('click', handleLinkClick, true);
+    return () => document.removeEventListener('click', handleLinkClick, true);
+  }, [tourCompleted, upgradeShown, showUpgradeModal]);
+
+  const markUpgradeShown = useCallback(() => {
+    setShowUpgradeModal(false);
+    setUpgradeShown(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ns_upgrade_shown', 'true');
+    }
+  }, []);
+
+  const handleUpgradeClose = useCallback(() => {
+    markUpgradeShown();
+    // Navigate to where the user was trying to go
+    if (pendingNavHref) {
+      router.push(pendingNavHref);
+      setPendingNavHref(null);
+    }
+  }, [pendingNavHref, router, markUpgradeShown]);
+
+  const handleUpgradeAction = useCallback(() => {
+    markUpgradeShown();
+    router.push(routes.upgrade);
+  }, [router, markUpgradeShown]);
 
   const loadProtocol = useCallback(async () => {
     if (!params.id || typeof params.id !== 'string') {
@@ -76,6 +135,7 @@ export default function ProtocolPage() {
       const data = await getConsultation(params.id, user.id);
       setConsultation(data);
     } catch (err) {
+      console.error('Failed to load protocol:', err);
       setError('Failed to load protocol. Please try again.');
     } finally {
       setLoading(false);
@@ -92,6 +152,8 @@ export default function ProtocolPage() {
     setLoading(true);
     loadProtocol();
   };
+
+  const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
 
   if (loading) {
     return (
@@ -148,15 +210,60 @@ export default function ProtocolPage() {
 
   // Check if it's a Claude-generated protocol (new format with products)
   if (isClaudeProtocol(protocolData)) {
-    return <ClaudeProtocolView consultation={consultation} protocol={protocolData} />;
+    return (
+      <>
+        {showWelcome && (
+          <WelcomeWalkthrough 
+            firstName={firstName} 
+            onComplete={handleWelcomeComplete} 
+          />
+        )}
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={handleUpgradeClose}
+          onUpgrade={handleUpgradeAction}
+        />
+        <ClaudeProtocolView consultation={consultation} protocol={protocolData} />
+      </>
+    );
   }
 
   // Fall back to legacy display for old protocols
-  return <LegacyProtocolView consultation={consultation} protocolData={protocolData} />;
+  return (
+    <>
+      {showWelcome && (
+        <WelcomeWalkthrough 
+          firstName={firstName} 
+          onComplete={handleWelcomeComplete} 
+        />
+      )}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+      />
+      <LegacyProtocolView consultation={consultation} protocolData={protocolData} />
+    </>
+  );
+}
+
+export default function ProtocolPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center py-24 gap-2">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    }>
+      <ProtocolPageContent />
+    </Suspense>
+  );
 }
 
 // New Claude Protocol View with Product Cards
 function ClaudeProtocolView({ consultation, protocol }: { consultation: Consultation; protocol: NewGeneratedProtocol }) {
+  // Generate a title from summary if not provided
+  const displayTitle = protocol.title || 'Your Personalized Protocol';
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <Link
@@ -177,7 +284,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
             · {new Date(consultation.created_at).toLocaleDateString()}
           </span>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground mb-3">Your Personalized Protocol</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-3">{displayTitle}</h1>
         <p className="text-muted-foreground">{protocol.summary}</p>
       </div>
 
@@ -189,7 +296,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 
       {/* Recommendations with Product Cards */}
       {protocol.recommendations && protocol.recommendations.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-8" data-tour-section="recommendations">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
             <Leaf className="w-4 h-4 text-accent" />
             Recommendations
@@ -204,7 +311,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 
       {/* Dietary Shifts (Pro only) */}
       {protocol.dietary_shifts && protocol.dietary_shifts.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-8" data-tour-section="dietary-shifts">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
             <Utensils className="w-4 h-4 text-accent" />
             Dietary Shifts
@@ -233,7 +340,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 
       {/* Lifestyle Practices (Pro only) */}
       {protocol.lifestyle_practices && protocol.lifestyle_practices.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-8" data-tour-section="lifestyle-practices">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
             <Activity className="w-4 h-4 text-accent" />
             Lifestyle Practices
@@ -281,7 +388,7 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 }
 
 // Recommendation Card with Product Links
-function RecommendationCard({ recommendation, index }: { recommendation: Recommendation; index: number }) {
+function RecommendationCard({ recommendation, index }: { recommendation: Recommendation; index: number; }) {
   const typeLabels: Record<string, string> = {
     herb: '🌿 Herb',
     vitamin: '💊 Vitamin',
@@ -305,7 +412,7 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
 
       <p className="text-sm text-foreground/80 mb-4">{recommendation.rationale}</p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4" {...(index === 0 ? { 'data-tour-section': 'dosage-timing' } : {})}>
         <div className="flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 text-accent mt-0.5" />
           <div>
@@ -331,19 +438,21 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
 
       {/* Product Links */}
       {recommendation.products && recommendation.products.length > 0 && (
-        <div className="pt-4 border-t border-border/30">
+        <div className="pt-4 border-t border-border/30" {...(index === 0 ? { 'data-tour-section': 'shopping-links' } : {})}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1">
             <ShoppingCart className="w-3 h-3" />
             Shop Now
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {recommendation.products.map((product: ProductLink, pIndex: number) => (
+            {recommendation.products.map((product: ProductLink, pIndex: number) => {
+              const href = getProductUrl(product);
+              return href !== '#' ? (
               <a
                 key={pIndex}
-                href={sanitizeProductUrl(product.url)}
+                href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors group"
+                className="flex items-center justify-between p-3 bg-secondary/50 hover:bg-secondary rounded-lg transition-colors group cursor-pointer"
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground truncate">{product.brand}</p>
@@ -360,7 +469,27 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
                   <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-accent transition-colors" />
                 </div>
               </a>
-            ))}
+              ) : (
+              <div
+                key={pIndex}
+                className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{product.brand}</p>
+                  <p className="text-xs text-muted-foreground truncate">{product.name}</p>
+                </div>
+                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded ${
+                    product.source === 'amazon' ? 'bg-orange-100 text-orange-700' :
+                    product.source === 'iherb' ? 'bg-green-100 text-green-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {product.source === 'amazon' ? 'Amazon' : product.source === 'iherb' ? 'iHerb' : product.source}
+                  </span>
+                </div>
+              </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -373,7 +502,6 @@ function LegacyProtocolView({ consultation, protocolData }: { consultation: Cons
   const isLegacy = isLegacyProtocol(protocolData);
   const isOld = isOldProtocolShape(protocolData);
 
-  // Extract data based on format
   let title = consultation.initial_input?.slice(0, 60) || 'Health Protocol';
   let summary = '';
   let recommendations: { herb: string; botanicalName?: string; dosage: string; timing: string; reason: string }[] = [];
@@ -426,7 +554,7 @@ function LegacyProtocolView({ consultation, protocolData }: { consultation: Cons
             · {new Date(consultation.created_at).toLocaleDateString()}
           </span>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground mb-2">{title} Protocol</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-2">{title}</h1>
         {summary && <p className="text-muted-foreground">{summary}</p>}
       </div>
 

@@ -1,14 +1,15 @@
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
-import { Leaf, User } from 'lucide-react';
+import Image from 'next/image';
 
 export interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: string;
+  userInitial?: string;
 }
 
-export const ChatMessage = memo(function ChatMessage({ role, content }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ role, content, userInitial }: ChatMessageProps) {
   const isAssistant = role === 'assistant';
 
   return (
@@ -21,14 +22,16 @@ export const ChatMessage = memo(function ChatMessage({ role, content }: ChatMess
       {/* Avatar */}
       <div
         className={cn(
-          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-          isAssistant ? 'bg-accent' : 'bg-foreground/10'
+          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden',
+          isAssistant ? 'bg-white border border-border/50' : 'bg-accent'
         )}
       >
         {isAssistant ? (
-          <Leaf className="w-4 h-4 text-white" />
+          <Image src="/icon.svg" alt="NS" width={22} height={22} className="rounded-sm" />
         ) : (
-          <User className="w-4 h-4 text-foreground/70" />
+          <span className="text-sm font-semibold text-white leading-none">
+            {userInitial || '?'}
+          </span>
         )}
       </div>
 

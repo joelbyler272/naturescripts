@@ -69,6 +69,15 @@ export default function LandingPage() {
     },
   ]
 
+  // Handle starting consultation - redirect to onboarding flow
+  const handleStartConsultation = () => {
+    if (query.trim()) {
+      router.push(`${routes.onboarding}?q=${encodeURIComponent(query.trim())}`)
+    } else {
+      router.push(routes.onboarding)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <Navigation isAuthenticated={false} />
@@ -103,18 +112,15 @@ export default function LandingPage() {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleStartConsultation()}
                     placeholder="I'm exhausted all the time, bloated after meals, can't sleep..."
+                    maxLength={500}
+                    aria-label="Describe your health concern"
                     className="h-14 flex-1 bg-transparent px-6 text-[15px] text-background placeholder:text-background/40 focus:outline-none"
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                      if (query.trim()) {
-                        router.push(`/consultation?q=${encodeURIComponent(query.trim())}`)
-                      } else {
-                        router.push('/consultation')
-                      }
-                    }}
+                    onClick={handleStartConsultation}
                     aria-label="Start consultation"
                     className="h-14 shrink-0 rounded-full px-8 text-[15px] font-medium text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
                     style={{ backgroundColor: colors.sage.DEFAULT }}
@@ -126,7 +132,7 @@ export default function LandingPage() {
 
               <div className="mt-5 flex items-center justify-between px-4">
                 <p className="text-xs text-muted-foreground/50">
-                  No diagnosis. Safety-checked for herb-drug interactions.
+                  No account needed. No diagnosis. Safety-checked for herb-drug interactions.
                 </p>
                 <span className="text-xs tabular-nums text-muted-foreground/40">
                   {query.trim().length}/500
@@ -367,13 +373,15 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {conditions.map((condition, index) => (
-              <div
+              <button
                 key={index}
+                type="button"
+                onClick={() => router.push(`${routes.onboarding}?q=${encodeURIComponent(condition.name)}`)}
                 className="group bg-white hover:bg-secondary/40 border border-border/40 hover:border-border rounded-2xl p-6 text-center transition-all duration-200 cursor-pointer"
               >
                 <span className="text-3xl mb-4 block">{condition.icon}</span>
                 <span className="text-sm font-medium text-foreground">{condition.name}</span>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -396,7 +404,7 @@ export default function LandingPage() {
                 modern nutritional science, and holistic wellness practices — all filtered through safety-first principles.
               </p>
               <Link
-                href={routes.consultation}
+                href={routes.onboarding}
                 className="inline-flex items-center gap-2 text-base font-medium transition-opacity hover:opacity-80"
                 style={{ color: colors.sage.light }}
               >
@@ -489,10 +497,10 @@ export default function LandingPage() {
             Ready to discover your natural path to better health?
           </h2>
           <p className="text-white/60 text-lg mb-12 max-w-xl mx-auto">
-            Get your personalized protocol in minutes. No account required to start.
+            Get your personalized protocol in minutes. No account needed to start.
           </p>
           <Link
-            href={routes.consultation}
+            href={routes.onboarding}
             className="inline-flex items-center gap-3 rounded-full px-10 py-5 text-lg font-medium text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-[0_8px_30px_rgba(64,141,89,0.4)]"
             style={{ backgroundColor: colors.sage.DEFAULT }}
           >

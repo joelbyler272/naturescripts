@@ -76,18 +76,19 @@ export interface LegacyGeneratedProtocol {
 // Protocol Types
 
 export interface GeneratedProtocol {
-  id: string;
+  id?: string;
+  title?: string; // 1-4 word title like "Sleep Support" or "Knee Pain Relief"
   summary: string;
   recommendations: Recommendation[];
   dietary_shifts?: DietaryShift[];
   lifestyle_practices?: LifestylePractice[];
   tracking_suggestions?: TrackingSuggestion[];
   disclaimer: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface Recommendation {
-  id: string;
+  id?: string;
   name: string;
   type: 'herb' | 'vitamin' | 'mineral' | 'supplement' | 'essential_oil' | 'other';
   dosage: string;
@@ -100,27 +101,27 @@ export interface Recommendation {
 export interface ProductLink {
   name: string;
   brand: string;
-  url: string;
+  url?: string;
   price?: string;
   source: 'amazon' | 'iherb' | 'other';
 }
 
 export interface DietaryShift {
-  id: string;
+  id?: string;
   action: 'add' | 'reduce' | 'avoid';
   item: string;
   rationale: string;
 }
 
 export interface LifestylePractice {
-  id: string;
+  id?: string;
   practice: string;
   timing?: string;
   rationale: string;
 }
 
 export interface TrackingSuggestion {
-  id: string;
+  id?: string;
   metric: string;
   frequency: 'daily' | 'weekly';
   description: string;
@@ -148,4 +149,14 @@ export interface GenerateProtocolRequest {
 export interface GenerateProtocolResponse {
   protocol: GeneratedProtocol;
   consultationId: string;
+}
+
+// Type guard for Claude-generated protocol (new format with products)
+export function isClaudeProtocol(data: unknown): data is GeneratedProtocol {
+  if (typeof data !== 'object' || data === null) return false;
+  if (!('summary' in data) || !('recommendations' in data)) return false;
+  const recs = (data as { recommendations: unknown }).recommendations;
+  if (!Array.isArray(recs) || recs.length === 0) return false;
+  const first = recs[0];
+  return typeof first === 'object' && first !== null && 'products' in first;
 }

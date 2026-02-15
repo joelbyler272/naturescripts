@@ -1,7 +1,7 @@
 'use client';
 
 import { Recommendation, ProductLink } from '@/lib/consultation/types';
-import { sanitizeProductUrl } from '@/lib/utils/urlValidation';
+import { getProductUrl } from '@/lib/utils/urlValidation';
 import { ExternalLink, Clock, AlertCircle, Leaf, Pill, Droplets } from 'lucide-react';
 
 interface RecommendationCardProps {
@@ -27,10 +27,13 @@ const sourceLabels: Record<string, { label: string; color: string }> = {
 
 function ProductButton({ product }: { product: ProductLink }) {
   const source = sourceLabels[product.source] || sourceLabels.other;
+  const href = getProductUrl(product);
+
+  if (href === '#') return null;
 
   return (
     <a
-      href={sanitizeProductUrl(product.url)}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${source.color}`}

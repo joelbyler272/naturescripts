@@ -27,6 +27,13 @@ export function ChatInput({ onSend, disabled = false, placeholder }: ChatInputPr
     }
   }, [input]);
 
+  // Auto-focus on mount and re-focus when input becomes enabled (after AI responds)
+  useEffect(() => {
+    if (!disabled && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [disabled]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !disabled) {
@@ -50,7 +57,7 @@ export function ChatInput({ onSend, disabled = false, placeholder }: ChatInputPr
     <form onSubmit={handleSubmit} className="p-4 border-t border-border/30 bg-white">
       <div
         className={cn(
-          'relative flex items-end bg-secondary/30 rounded-xl border transition-all duration-200',
+          'relative flex items-center bg-secondary/30 rounded-xl border transition-all duration-200',
           isFocused
             ? 'border-accent shadow-[0_0_0_3px_rgba(107,142,127,0.1)]'
             : 'border-transparent hover:border-border/50'
@@ -67,6 +74,11 @@ export function ChatInput({ onSend, disabled = false, placeholder }: ChatInputPr
           placeholder={placeholder || 'Type your message...'}
           disabled={disabled}
           rows={1}
+          autoComplete="on"
+          autoCorrect="on"
+          autoCapitalize="sentences"
+          spellCheck={true}
+          data-gramm="true"
           aria-label="Message input"
           aria-describedby="chat-input-help"
           className={cn(
@@ -80,7 +92,7 @@ export function ChatInput({ onSend, disabled = false, placeholder }: ChatInputPr
           disabled={!input.trim() || disabled}
           aria-label="Send message"
           className={cn(
-            'mr-2 mb-2 w-11 h-11 rounded-lg flex items-center justify-center transition-all flex-shrink-0',
+            'mr-2 w-11 h-11 rounded-lg flex items-center justify-center transition-all flex-shrink-0',
             input.trim() && !disabled
               ? 'bg-accent text-white hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent/50'
               : 'bg-secondary/50 text-muted-foreground'
