@@ -55,18 +55,34 @@ GRANT EXECUTE ON FUNCTION public.delete_user_account(UUID) TO authenticated;
 -- Properly increments consultation_count on conflict
 -- ============================================
 
-CREATE OR REPLACE FUNCTION public.increment_daily_usage(p_user_id UUID, p_date DATE)
-RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION public.increment_daily_usage(p_user_id UUID)
+RETURNS TABLE(consultation_count INTEGER, can_consult BOOLEAN) AS $$
+DECLARE
+  v_count INTEGER;
+  v_tier TEXT;
+  v_limit INTEGER;
 BEGIN
+  -- Get user's tier
+  SELECT tier INTO v_tier FROM public.profiles WHERE id = p_user_id;
+
+  -- Set limit based on tier (pro = unlimited represented as 999999)
+  v_limit := CASE WHEN v_tier = 'pro' THEN 999999 ELSE 3 END;
+
+  -- Upsert daily usage
   INSERT INTO public.daily_usage (user_id, date, consultation_count)
-  VALUES (p_user_id, p_date, 1)
+  VALUES (p_user_id, CURRENT_DATE, 1)
   ON CONFLICT (user_id, date)
-  DO UPDATE SET consultation_count = daily_usage.consultation_count + 1;
+  DO UPDATE SET
+    consultation_count = daily_usage.consultation_count + 1,
+    updated_at = NOW()
+  RETURNING daily_usage.consultation_count INTO v_count;
+
+  RETURN QUERY SELECT v_count, v_count <= v_limit;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION public.increment_daily_usage(UUID, DATE) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_daily_usage(UUID, DATE) TO service_role;
+GRANT EXECUTE ON FUNCTION public.increment_daily_usage(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_daily_usage(UUID) TO service_role;
 
 -- ============================================
 -- RLS POLICIES FOR DELETE OPERATIONS

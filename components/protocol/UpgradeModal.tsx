@@ -118,7 +118,7 @@ export function UpgradeModal({ isOpen, onClose, onUpgrade }: UpgradeModalProps) 
                 Recommended
               </div>
               <h3 className="text-base font-semibold text-foreground mb-1">Pro</h3>
-              <p className="text-xs text-muted-foreground mb-4">$9.99/month</p>
+              <p className="text-xs text-muted-foreground mb-4">$9/month</p>
 
               <ul className="space-y-2.5 mb-5">
                 {PRO_FEATURES.map((feature, i) => (
