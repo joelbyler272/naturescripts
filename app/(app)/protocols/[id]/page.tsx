@@ -71,11 +71,7 @@ function ProtocolPageContent() {
     setTourCompleted(true);
     // Remove the welcome param from URL
     router.replace(`/protocols/${params.id}`, { scroll: false });
-    // Show upgrade modal after a short delay
-    const timer = setTimeout(() => {
-      setShowUpgradeModal(true);
-    }, 500);
-    return () => clearTimeout(timer);
+    // Don't show upgrade modal yet — it appears when the user navigates away
   }, [router, params.id]);
 
   // Intercept navigation links after tour completes — show upgrade modal instead
@@ -183,13 +179,6 @@ function ProtocolPageContent() {
       </div>
     );
   }
-
-  // Get protocol title for upgrade modal
-  const protocolTitle = isClaudeProtocol(protocolData) 
-    ? protocolData.title 
-    : isLegacyProtocol(protocolData) 
-      ? protocolData.primaryConcern 
-      : undefined;
 
   // Check if it's a Claude-generated protocol (new format with products)
   if (isClaudeProtocol(protocolData)) {

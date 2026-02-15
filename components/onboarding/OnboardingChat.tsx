@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage } from '@/components/consultation/ChatMessage';
 import { ChatInput } from '@/components/consultation/ChatInput';
 import { TypingIndicator } from '@/components/consultation/TypingIndicator';
-import { ConversationMessage, GeneratedProtocol } from '@/lib/consultation/types';
+import { ConversationMessage } from '@/lib/consultation/types';
 import { 
   OnboardingState, 
   createInitialState, 
@@ -13,7 +13,7 @@ import {
   getProfileData
 } from '@/lib/onboarding/stateMachine';
 import { logger } from '@/lib/utils/logger';
-import { Mail, CheckCircle, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Mail, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 
 interface OnboardingChatProps {
@@ -38,7 +38,6 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
   const [onboardingState, setOnboardingState] = useState<OnboardingState>(createInitialState());
   const [isTyping, setIsTyping] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [completionState, setCompletionState] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
   const [existingUserError, setExistingUserError] = useState<boolean>(false);
 
@@ -207,8 +206,13 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
           throw new Error(errorData.error || 'Failed to complete onboarding');
         }
 
-        const data = await response.json();
-        setGeneratedProtocol(data.protocol);
+        await response.json();
+        // Add a chat message confirming the email was sent
+        const doneMessage = createMessage(
+          'assistant',
+          `Great news, ${currentState.firstName}! Your personalized protocol is ready. I've sent an email to ${currentState.email} with a link to set your password and view your full protocol. Check your inbox (and spam folder) to get started!`
+        );
+        setMessages(prev => [...prev, doneMessage]);
         setOnboardingState(prev => ({ ...prev, step: 'complete' }));
         setCompletionState('done');
         setIsGenerating(false);
@@ -235,7 +239,12 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
     <div className="flex flex-col h-[calc(100vh-10rem)] bg-white rounded-xl border border-border/50 overflow-hidden">
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4" style={{ overflowAnchor: 'auto' }}>
         {messages.map((message) => (
-          <ChatMessage key={message.id} role={message.role} content={message.content} />
+          <ChatMessage
+            key={message.id}
+            role={message.role}
+            content={message.content}
+            userInitial={onboardingState.firstName ? onboardingState.firstName.charAt(0).toUpperCase() : undefined}
+          />
         ))}
 
         {isTyping && <TypingIndicator />}
@@ -256,24 +265,7 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
           </div>
         )}
 
-        {/* Protocol ready */}
-        {completionState === 'done' && generatedProtocol && (
-          <div className="flex flex-col items-center pt-6 pb-4">
-            <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="w-8 h-8 text-accent" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Your protocol is ready, {onboardingState.firstName}!
-            </h3>
-            <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-              We've sent an email to <span className="font-medium text-foreground">{onboardingState.email}</span> with a link to set your password and access your full protocol.
-            </p>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-4 py-2 rounded-lg">
-              <Mail className="w-4 h-4" />
-              Check your inbox (and spam folder)
-            </div>
-          </div>
-        )}
+        {/* Protocol ready — message is shown as a chat bubble above */}
 
         {/* Auto-generating protocol indicator */}
         {isGenerating && completionState === 'creating' && (

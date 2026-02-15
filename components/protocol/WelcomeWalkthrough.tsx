@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, ChevronLeft, Sparkles, Leaf, Clock, ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Leaf, Clock, ShoppingCart, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -13,7 +13,7 @@ interface WelcomeWalkthroughProps {
 
 interface TourStep {
   id: string;
-  icon: typeof Sparkles;
+  icon: typeof Leaf;
   title: string;
   description: string;
   targetSelector?: string; // data-tour-section value to highlight
@@ -22,7 +22,7 @@ interface TourStep {
 const STEPS: TourStep[] = [
   {
     id: 'welcome',
-    icon: Sparkles,
+    icon: Leaf,
     title: 'Welcome to your protocol!',
     description: "We've created a personalized natural health plan based on what you shared with us. Let me show you around.",
   },
@@ -182,6 +182,8 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
     setIsExiting(true);
     timerRef.current = setTimeout(() => {
       setIsVisible(false);
+      // Scroll to the top of the protocol page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       onComplete();
     }, 300);
   };
@@ -219,23 +221,7 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
           "relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-300 transition-all",
           isExiting && "opacity-0 scale-95"
         )}>
-          {/* Progress dots */}
-          <div className="flex justify-center gap-1.5 mb-6">
-            {STEPS.map((_, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-colors",
-                  index === currentStep ? "bg-accent" : index < currentStep ? "bg-accent/40" : "bg-border"
-                )}
-              />
-            ))}
-          </div>
-
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Icon className="w-8 h-8 text-accent" />
-            </div>
             <h2 className="text-xl font-semibold text-foreground mb-2">
               {step.id === 'welcome' ? `Welcome to your protocol, ${firstName}!` : step.title}
             </h2>
@@ -265,12 +251,15 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
             </Button>
           </div>
 
-          <button
-            onClick={handleSkip}
-            className="w-full mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Skip tour
-          </button>
+          {/* Skip tour only on non-last modal steps */}
+          {!isLastStep && (
+            <button
+              onClick={handleSkip}
+              className="w-full mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Skip tour
+            </button>
+          )}
         </div>
       </div>,
       document.body
