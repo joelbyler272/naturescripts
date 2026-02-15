@@ -1,17 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, AlertCircle } from 'lucide-react';
 
 export function ExportButtons() {
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleExport = async (format: 'jsonl' | 'json') => {
     setLoading(format);
-    
+    setError(null);
+
     try {
       const response = await fetch(`/api/admin/export/training-data?format=${format}`);
-      
+
       if (!response.ok) {
         throw new Error('Export failed');
       }
@@ -26,16 +28,22 @@ export function ExportButtons() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Export failed. Please try again.');
+    } catch {
+      setError('Export failed. Please try again.');
     } finally {
       setLoading(null);
     }
   };
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="space-y-3">
+      {error && (
+        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-3">
       <button
         onClick={() => handleExport('jsonl')}
         disabled={loading !== null}
@@ -61,6 +69,7 @@ export function ExportButtons() {
         )}
         Download JSON
       </button>
+      </div>
     </div>
   );
 }

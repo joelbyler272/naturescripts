@@ -2,10 +2,14 @@
 // Configure via ADMIN_EMAILS environment variable (comma-separated list)
 // Example: ADMIN_EMAILS=admin@example.com,owner@example.com
 // Falls back to DEV_EMAILS if ADMIN_EMAILS is not set
+//
+// IMPORTANT: These use server-only env vars (no NEXT_PUBLIC_ prefix)
+// so admin emails are never exposed in the client-side JS bundle.
+// This file must only be imported from server components or API routes.
 
 function getAdminEmails(): string[] {
-  // First check for dedicated admin emails
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS;
+  // First check for dedicated admin emails (server-only)
+  const adminEmails = process.env.ADMIN_EMAILS;
   if (adminEmails) {
     return adminEmails
       .split(',')
@@ -13,8 +17,8 @@ function getAdminEmails(): string[] {
       .filter(email => email.length > 0);
   }
 
-  // Fall back to dev emails
-  const devEmails = process.env.NEXT_PUBLIC_DEV_EMAILS;
+  // Fall back to dev emails (server-only)
+  const devEmails = process.env.DEV_EMAILS;
   if (devEmails) {
     return devEmails
       .split(',')

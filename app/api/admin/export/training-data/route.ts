@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isAdminUser } from '@/lib/constants/adminAccess';
 import { getTrainingData } from '@/lib/admin/queries';
+import { logger } from '@/lib/utils/logger';
+
+const MAX_EXPORT_LIMIT = 1000;
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +19,8 @@ export async function GET(request: NextRequest) {
     // Get format from query params
     const searchParams = request.nextUrl.searchParams;
     const format = searchParams.get('format') || 'jsonl';
-    const limit = parseInt(searchParams.get('limit') || '1000', 10);
+    const rawLimit = parseInt(searchParams.get('limit') || '1000', 10);
+    const limit = Math.min(Math.max(1, rawLimit), MAX_EXPORT_LIMIT);
 
     // Fetch anonymized training data
     const trainingData = await getTrainingData(limit);
@@ -66,7 +70,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Export error:', error);
+    logger.error('Export error:', error);
     return NextResponse.json({ error: 'Export failed' }, { status: 500 });
   }
 }
