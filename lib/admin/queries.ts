@@ -22,69 +22,36 @@ export interface AdminStats {
 export async function getAdminStats(): Promise<AdminStats> {
   try {
     const supabase = createServiceClient();
-    
+
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).toISOString();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-    // Total users
-    const { count: totalUsers } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true });
-
-    // New users today
-    const { count: newUsersToday } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', startOfToday);
-
-    // New users this week
-    const { count: newUsersThisWeek } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', startOfWeek);
-
-    // New users this month
-    const { count: newUsersThisMonth } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', startOfMonth);
-
-    // Total consultations
-    const { count: totalConsultations } = await supabase
-      .from('consultations')
-      .select('*', { count: 'exact', head: true });
-
-    // Consultations today
-    const { count: consultationsToday } = await supabase
-      .from('consultations')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', startOfToday);
-
-    // Consultations this week
-    const { count: consultationsThisWeek } = await supabase
-      .from('consultations')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', startOfWeek);
-
-    // Protocols generated (completed consultations with protocol_data)
-    const { count: protocolsGenerated } = await supabase
-      .from('consultations')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'completed')
-      .not('protocol_data', 'is', null);
-
-    // Users by tier
-    const { count: freeUsers } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('tier', 'free');
-
-    const { count: proUsers } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('tier', 'pro');
+    // Run all count queries in parallel instead of sequentially
+    const [
+      { count: totalUsers },
+      { count: newUsersToday },
+      { count: newUsersThisWeek },
+      { count: newUsersThisMonth },
+      { count: totalConsultations },
+      { count: consultationsToday },
+      { count: consultationsThisWeek },
+      { count: protocolsGenerated },
+      { count: freeUsers },
+      { count: proUsers },
+    ] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfToday),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfWeek),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth),
+      supabase.from('consultations').select('*', { count: 'exact', head: true }),
+      supabase.from('consultations').select('*', { count: 'exact', head: true }).gte('created_at', startOfToday),
+      supabase.from('consultations').select('*', { count: 'exact', head: true }).gte('created_at', startOfWeek),
+      supabase.from('consultations').select('*', { count: 'exact', head: true }).eq('status', 'completed').not('protocol_data', 'is', null),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'free'),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'pro'),
+    ]);
 
     return {
       totalUsers: totalUsers ?? 0,
@@ -129,42 +96,47 @@ export async function getUsers(limit = 50, offset = 0): Promise<UserListItem[]> 
   try {
     const supabase = createServiceClient();
 
-    // Get profiles
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, tier, created_at')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // Run profile fetch and consultation count aggregation in parallel
+    const [profilesResult, consultationCountsResult, authResult] = await Promise.all([
+      // Get profiles
+      supabase
+        .from('profiles')
+        .select('id, first_name, last_name, tier, created_at')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1),
+      // Get all consultation counts grouped by user_id in a single query
+      supabase
+        .from('consultations')
+        .select('user_id'),
+      // Get emails from auth.users (paginate to handle > 50 users)
+      supabase.auth.admin.listUsers({ perPage: 1000 }),
+    ]);
 
-    if (error) {
-      logger.error('Error fetching users:', error);
+    if (profilesResult.error) {
+      logger.error('Error fetching users:', profilesResult.error);
       return [];
     }
 
-    // Get emails from auth.users
-    const { data: authData } = await supabase.auth.admin.listUsers();
+    // Build email map from auth data
     const emailMap = new Map<string, string>();
-    if (authData?.users) {
-      authData.users.forEach(u => emailMap.set(u.id, u.email || ''));
+    if (authResult.data?.users) {
+      authResult.data.users.forEach(u => emailMap.set(u.id, u.email || ''));
     }
 
-    // Get consultation counts for each user
-    const usersWithCounts = await Promise.all(
-      (profiles || []).map(async (profile) => {
-        const { count } = await supabase
-          .from('consultations')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', profile.id);
+    // Build consultation count map from aggregated query
+    const countMap = new Map<string, number>();
+    if (consultationCountsResult.data) {
+      consultationCountsResult.data.forEach((row: { user_id: string }) => {
+        countMap.set(row.user_id, (countMap.get(row.user_id) || 0) + 1);
+      });
+    }
 
-        return {
-          ...profile,
-          email: emailMap.get(profile.id) || '',
-          consultation_count: count ?? 0,
-        } as UserListItem;
-      })
-    );
-
-    return usersWithCounts;
+    // Combine profiles with email and consultation counts (no N+1 queries)
+    return (profilesResult.data || []).map((profile) => ({
+      ...profile,
+      email: emailMap.get(profile.id) || '',
+      consultation_count: countMap.get(profile.id) || 0,
+    } as UserListItem));
   } catch (error) {
     logger.error('Error fetching users:', error);
     return [];

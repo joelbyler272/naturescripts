@@ -62,7 +62,8 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 STRIPE_PRO_PRICE_ID=price_xxx
 
 # Optional
-NEXT_PUBLIC_DEV_EMAILS=dev@example.com
+DEV_EMAILS=dev@example.com
+ADMIN_EMAILS=admin@example.com
 ```
 
 ### Database Setup

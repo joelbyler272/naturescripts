@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { logger } from '@/lib/utils/logger';
 
-// Claude API Pricing (as of 2024)
+// Claude API Pricing
 const CLAUDE_PRICING: Record<string, { input: number; output: number }> = {
   'claude-sonnet-4-20250514': {
     input: 3.00 / 1_000_000,
@@ -154,18 +154,19 @@ export async function getApiUsageStats(): Promise<UsageSummary> {
       { requests: 0, cost: 0 }
     );
 
-    // All time stats
-    const { data: allTimeData } = await supabase
-      .from('api_usage')
-      .select('total_cost');
+    // All time stats — use count query + sum only total_cost column
+    const [
+      { count: allTimeCount },
+      { data: allTimeCostData },
+    ] = await Promise.all([
+      supabase.from('api_usage').select('*', { count: 'exact', head: true }),
+      supabase.from('api_usage').select('total_cost'),
+    ]);
 
-    const allTimeStats = (allTimeData || []).reduce(
-      (acc, row) => ({
-        requests: acc.requests + 1,
-        cost: acc.cost + Number(row.total_cost),
-      }),
-      { requests: 0, cost: 0 }
+    const allTimeCost = (allTimeCostData || []).reduce(
+      (acc, row) => acc + Number(row.total_cost), 0
     );
+    const allTimeStats = { requests: allTimeCount ?? 0, cost: allTimeCost };
 
     // Daily usage for charts (last 30 days) - manual aggregation
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
