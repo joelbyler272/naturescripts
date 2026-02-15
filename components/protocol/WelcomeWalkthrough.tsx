@@ -182,9 +182,11 @@ export function WelcomeWalkthrough({ firstName, onComplete }: WelcomeWalkthrough
     setIsExiting(true);
     timerRef.current = setTimeout(() => {
       setIsVisible(false);
-      // Scroll to the top of the protocol page
-      window.scrollTo({ top: 0, behavior: 'smooth' });
       onComplete();
+      // Scroll to the top of the protocol page after overlay is gone
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
     }, 300);
   };
 

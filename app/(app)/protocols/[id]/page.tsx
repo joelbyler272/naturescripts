@@ -57,12 +57,18 @@ function ProtocolPageContent() {
   const [retrying, setRetrying] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [pendingNavHref, setPendingNavHref] = useState<string | null>(null);
   const [tourCompleted, setTourCompleted] = useState(false);
+  const [upgradeShown, setUpgradeShown] = useState(false);
 
   // Check for welcome param
   useEffect(() => {
     if (searchParams.get('welcome') === 'true') {
       setShowWelcome(true);
+    }
+    // Check if upgrade was already shown in a previous session
+    if (typeof window !== 'undefined' && localStorage.getItem('ns_upgrade_shown') === 'true') {
+      setUpgradeShown(true);
     }
   }, [searchParams]);
 
@@ -71,27 +77,49 @@ function ProtocolPageContent() {
     setTourCompleted(true);
     // Remove the welcome param from URL
     router.replace(`/protocols/${params.id}`, { scroll: false });
-    // Don't show upgrade modal yet — it appears when the user navigates away
   }, [router, params.id]);
 
-  // Intercept navigation links after tour completes — show upgrade modal instead
+  // Intercept first internal navigation after tour — show upgrade modal, then navigate
   useEffect(() => {
-    if (!tourCompleted || showUpgradeModal) return;
+    if (!tourCompleted || upgradeShown) return;
 
     const handleLinkClick = (e: MouseEvent) => {
       const link = (e.target as HTMLElement).closest('a[href]');
       if (!link) return;
       const href = link.getAttribute('href');
-      // Intercept internal navigation (not product links)
+      // Only intercept internal navigation (not product links)
       if (href && href.startsWith('/') && !showUpgradeModal) {
         e.preventDefault();
+        setPendingNavHref(href);
         setShowUpgradeModal(true);
       }
     };
 
     document.addEventListener('click', handleLinkClick, true);
     return () => document.removeEventListener('click', handleLinkClick, true);
-  }, [tourCompleted, showUpgradeModal]);
+  }, [tourCompleted, upgradeShown, showUpgradeModal]);
+
+  const markUpgradeShown = useCallback(() => {
+    setShowUpgradeModal(false);
+    setUpgradeShown(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ns_upgrade_shown', 'true');
+    }
+  }, []);
+
+  const handleUpgradeClose = useCallback(() => {
+    markUpgradeShown();
+    // Navigate to where the user was trying to go
+    if (pendingNavHref) {
+      router.push(pendingNavHref);
+      setPendingNavHref(null);
+    }
+  }, [pendingNavHref, router, markUpgradeShown]);
+
+  const handleUpgradeAction = useCallback(() => {
+    markUpgradeShown();
+    router.push(routes.upgrade);
+  }, [router, markUpgradeShown]);
 
   const loadProtocol = useCallback(async () => {
     if (!params.id || typeof params.id !== 'string') {
@@ -192,7 +220,8 @@ function ProtocolPageContent() {
         )}
         <UpgradeModal
           isOpen={showUpgradeModal}
-          onClose={() => setShowUpgradeModal(false)}
+          onClose={handleUpgradeClose}
+          onUpgrade={handleUpgradeAction}
         />
         <ClaudeProtocolView consultation={consultation} protocol={protocolData} />
       </>
