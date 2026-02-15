@@ -104,12 +104,14 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
       state: onboardingStateRef.current,
     });
 
-    console.log('STATE MACHINE RESULT:', {
-      step: result.newState.step,
-      reply: result.reply,
-      needsApiCall: result.needsApiCall,
-      apiCallType: result.apiCallType,
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('STATE MACHINE RESULT:', {
+        step: result.newState.step,
+        reply: result.reply,
+        needsApiCall: result.needsApiCall,
+        apiCallType: result.apiCallType,
+      });
+    }
 
     // Small delay to feel natural
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));

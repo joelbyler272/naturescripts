@@ -9,6 +9,7 @@ import { OnboardingState, getProfileData, buildProtocolContext } from '@/lib/onb
 import { HealthContext, GeneratedProtocol } from '@/lib/consultation/types';
 import { validateConversationHistory } from '@/lib/utils/validation';
 import { applyRateLimit, getClientIp } from '@/lib/utils/rateLimit';
+import { logger } from '@/lib/utils/logger';
 import crypto from 'crypto';
 
 // Lazy admin client to avoid crash if env vars missing at module load
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         if (existingUser?.user_metadata?.onboarding_in_progress === true) {
           // Previous attempt created the user but failed later — reuse this user
-          console.log('[ONBOARDING] Reusing user from previous failed attempt:', existingUser.id);
+          logger.info('[ONBOARDING] Reusing user from previous failed attempt:', existingUser.id);
           userId = existingUser.id;
 
           // Check if a completed consultation already exists (previous attempt may have
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             .single();
 
           if (existingConsult) {
-            console.log('[ONBOARDING] Consultation already exists, marking complete and returning');
+            logger.info('[ONBOARDING] Consultation already exists, marking complete and returning');
             // Mark complete (the previous attempt likely crashed before this)
             await supabaseAdmin.auth.admin.updateUserById(userId, {
               user_metadata: { first_name: profileData.firstName, onboarding_in_progress: false },
