@@ -9,7 +9,6 @@ import { OnboardingState, getProfileData, buildProtocolContext } from '@/lib/onb
 import { HealthContext, GeneratedProtocol } from '@/lib/consultation/types';
 import { validateConversationHistory } from '@/lib/utils/validation';
 import { applyRateLimit, getClientIp } from '@/lib/utils/rateLimit';
-import { getLocalDateString } from '@/lib/utils/date';
 import crypto from 'crypto';
 
 // Lazy admin client to avoid crash if env vars missing at module load
@@ -236,27 +235,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const consultationId = consultation?.id;
 
-    // STEP 5: Increment daily usage
-    const today = getLocalDateString();
-
-    // Try RPC first, fall back to upsert
+    // STEP 5: Increment daily usage via RPC (uses CURRENT_DATE in Postgres
+    // which is consistent with check_can_consult)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rpcResult = await (supabaseAdmin.rpc as any)('increment_daily_usage', {
       p_user_id: userId,
-      p_date: today,
     });
 
     if (rpcResult.error) {
-      // Fallback: simple upsert if RPC doesn't exist
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: upsertError } = await (supabaseAdmin.from('daily_usage') as any)
-        .upsert(
-          { user_id: userId, date: today, consultation_count: 1 },
-          { onConflict: 'user_id,date', ignoreDuplicates: false }
-        );
-      if (upsertError) {
-        console.error('[ONBOARDING] Daily usage warning:', upsertError.message || upsertError);
-      }
+      console.error('[ONBOARDING] Daily usage increment warning:', rpcResult.error.message || rpcResult.error);
     }
 
     // STEP 6: Send verification email WITH consultation ID
