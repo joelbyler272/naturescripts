@@ -232,47 +232,46 @@ export async function getUserGrowthData(daysBack: number = 30): Promise<UserGrow
   try {
     const supabase = createServiceClient();
 
-    // Get all users with their creation dates
-    const { data: users } = await supabase
-      .from('profiles')
-      .select('created_at')
-      .order('created_at', { ascending: true });
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - daysBack);
+    const startDateISO = startDate.toISOString();
 
-    if (!users || users.length === 0) return [];
+    // Run both queries in parallel:
+    // 1. Count of users created BEFORE the date range (baseline for cumulative total)
+    // 2. Users created WITHIN the date range (only these need full rows)
+    const [baselineResult, rangeResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .lt('created_at', startDateISO),
+      supabase
+        .from('profiles')
+        .select('created_at')
+        .gte('created_at', startDateISO)
+        .order('created_at', { ascending: true }),
+    ]);
 
-    // Group by date and calculate cumulative totals
+    let cumulativeTotal = baselineResult.count ?? 0;
+    const usersInRange = rangeResult.data || [];
+
+    // Group users in range by date
     const usersByDate = new Map<string, number>();
-    
-    users.forEach(user => {
+    usersInRange.forEach(user => {
       const date = user.created_at.split('T')[0];
       usersByDate.set(date, (usersByDate.get(date) || 0) + 1);
     });
 
-    // Generate data for the last N days
+    // Build the daily data
     const result: UserGrowthData[] = [];
-    const today = new Date();
-    let cumulativeTotal = 0;
-
-    // First, count all users before our date range
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - daysBack);
-    
-    users.forEach(user => {
-      const userDate = new Date(user.created_at);
-      if (userDate < startDate) {
-        cumulativeTotal++;
-      }
-    });
-
-    // Now build the daily data
     for (let i = daysBack; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      
+
       const newUsers = usersByDate.get(dateStr) || 0;
       cumulativeTotal += newUsers;
-      
+
       result.push({
         date: dateStr,
         totalUsers: cumulativeTotal,
