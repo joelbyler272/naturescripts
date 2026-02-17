@@ -1,9 +1,12 @@
 // Emails allowed to see Dev Tools in Settings.
 // Configure via DEV_EMAILS environment variable (comma-separated list)
 // Example: DEV_EMAILS=admin@example.com,dev@example.com
+//
+// IMPORTANT: Uses server-only env var (no NEXT_PUBLIC_ prefix).
+// The isDev check must be done server-side and passed as a prop.
 
 function getDevEmails(): string[] {
-  const envEmails = process.env.NEXT_PUBLIC_DEV_EMAILS;
+  const envEmails = process.env.DEV_EMAILS;
   if (!envEmails) return [];
 
   return envEmails

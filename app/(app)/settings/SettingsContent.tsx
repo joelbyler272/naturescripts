@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { getUserProfile, resetDailyUsage, clearAllConsultations, toggleUserTier, updateHealthProfile } from '@/lib/supabase/database';
-import { isDevUser } from '@/lib/constants/devAccess';
 import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/utils/logger';
 import { DeleteAccountModal } from '@/components/settings/DeleteAccountModal';
@@ -34,7 +33,11 @@ const SUGGESTED_CONDITIONS = [
   'Joint Pain', 'Allergies', 'High Blood Pressure', 'Diabetes', 'Thyroid Issues'
 ];
 
-export function SettingsContent() {
+interface SettingsContentProps {
+  isDev?: boolean;
+}
+
+export function SettingsContent({ isDev: isDevProp = false }: SettingsContentProps) {
   const { user } = useAuth();
   const [supabase] = useState(() => createClient());
 
@@ -78,7 +81,7 @@ export function SettingsContent() {
   // Delete account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const isDev = isDevUser(user?.email);
+  const isDev = isDevProp;
 
   useEffect(() => {
     if (user) {

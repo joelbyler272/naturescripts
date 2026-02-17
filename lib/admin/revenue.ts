@@ -42,11 +42,11 @@ export async function getRevenueStats(): Promise<RevenueStats | null> {
   }
 
   try {
-    // Get all active subscriptions for MRR
-    const subscriptions = await stripe.subscriptions.list({
+    // Get all subscriptions (auto-paginate to handle >100)
+    const allSubscriptions = await stripe.subscriptions.list({
       status: 'all',
       limit: 100,
-    });
+    }).autoPagingToArray({ limit: 10000 });
 
     let mrr = 0;
     let activeCount = 0;
@@ -58,12 +58,10 @@ export async function getRevenueStats(): Promise<RevenueStats | null> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    for (const sub of subscriptions.data) {
-      // Count by status
+    for (const sub of allSubscriptions) {
       switch (sub.status) {
         case 'active':
           activeCount++;
-          // Calculate MRR from active subscriptions
           if (sub.items.data[0]?.price?.unit_amount) {
             const amount = sub.items.data[0].price.unit_amount / 100;
             const interval = sub.items.data[0].price.recurring?.interval;
@@ -76,7 +74,6 @@ export async function getRevenueStats(): Promise<RevenueStats | null> {
           break;
         case 'canceled':
           canceledCount++;
-          // Check if canceled this month
           if (sub.canceled_at && new Date(sub.canceled_at * 1000) >= startOfMonth) {
             canceledThisMonth++;
           }
@@ -90,16 +87,16 @@ export async function getRevenueStats(): Promise<RevenueStats | null> {
       }
     }
 
-    // Get total revenue from balance transactions
-    const balanceTransactions = await stripe.balanceTransactions.list({
+    // Get total revenue from balance transactions (auto-paginate)
+    const allBalanceTransactions = await stripe.balanceTransactions.list({
       limit: 100,
       type: 'charge',
-    });
+    }).autoPagingToArray({ limit: 10000 });
 
     let totalRevenue = 0;
-    for (const txn of balanceTransactions.data) {
+    for (const txn of allBalanceTransactions) {
       if (txn.type === 'charge' && txn.status === 'available') {
-        totalRevenue += txn.net / 100; // Convert from cents
+        totalRevenue += txn.net / 100;
       }
     }
 
