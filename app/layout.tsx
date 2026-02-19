@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import localFont from "next/font/local"
 import { AuthProvider } from "@/lib/auth/AuthContext"
+import { PostHogProvider } from "@/components/providers/PostHogProvider"
 import "./globals.css"
 
 const geistMono = localFont({
@@ -84,7 +85,9 @@ export default function RootLayout({
     <html lang="en" className={geistMono.variable}>
       <body className="font-sans antialiased">
         <AuthProvider>
-          {children}
+          <PostHogProvider>
+            {children}
+          </PostHogProvider>
         </AuthProvider>
       </body>
     </html>

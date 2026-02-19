@@ -12,6 +12,7 @@ import { logger } from '@/lib/utils/logger';
 import { CHAT_LIMITS } from '@/lib/utils/validation';
 import { ArrowRight, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { trackConsultationStarted, trackProtocolGenerated, trackLimitReached } from '@/lib/analytics/events';
 
 interface ChatInterfaceProps {
   initialQuery?: string;
@@ -62,7 +63,8 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
         const usageStatus = await checkCanConsult(user.id);
 
         if (!usageStatus.canConsult) {
-          setUsageError('You have reached your daily limit of 3 consultations. Upgrade to Pro for unlimited access.');
+          trackLimitReached(usageStatus.tier, usageStatus.currentCount);
+          setUsageError('You have reached your weekly limit of 5 consultations. Upgrade to Pro for unlimited access.');
           return;
         }
 
@@ -75,6 +77,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
 
         if (consultation) {
           consultationId.current = consultation.id;
+          trackConsultationStarted(userTier);
         }
       } catch (error) {
         logger.error('Failed to initialize consultation:', error);
@@ -193,6 +196,9 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
       const data = await response.json();
       setGeneratedProtocol(data.protocol);
 
+      const userTier = (user?.user_metadata?.tier as 'free' | 'pro') || 'free';
+      trackProtocolGenerated(userTier);
+
       const successMessage = createMessage(
         'assistant',
         `Your protocol is ready! I've created ${data.protocol.recommendations.length} personalized recommendation${data.protocol.recommendations.length > 1 ? 's' : ''} based on our conversation.`
@@ -229,7 +235,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
         <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8 text-amber-600" />
         </div>
-        <h2 className="text-xl font-semibold text-foreground mb-2">Daily Limit Reached</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-2">Weekly Limit Reached</h2>
         <p className="text-muted-foreground mb-6 max-w-md">{usageError}</p>
         <div className="flex gap-3">
           <Link

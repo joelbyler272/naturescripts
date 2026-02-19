@@ -261,7 +261,7 @@ export const MOCK_FAQ = [
   },
   {
     question: "What's the difference between Free and Pro?",
-    answer: 'Free tier gives you 3 consultations per day and access to the herbal database. Pro ($9/month) includes unlimited consultations, progress tracking with charts, and personalized insights based on your history.',
+    answer: 'Free tier gives you 5 consultations per week and access to the herbal database. Pro ($12.99/month) includes unlimited consultations, progress tracking with charts, and personalized insights based on your history.',
   },
   {
     question: 'How accurate are the recommendations?',

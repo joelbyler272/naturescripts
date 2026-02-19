@@ -22,13 +22,13 @@ export function DailyLimitBanner({
           <div>
             <p className="font-medium text-sm text-charcoal">
               {isAtLimit
-                ? 'Daily consultation limit reached'
-                : `${remaining} of ${consultationsLimit} consultations remaining today`}
+                ? 'Weekly consultation limit reached'
+                : `${remaining} of ${consultationsLimit} consultations remaining this week`}
             </p>
             <p className="text-xs text-charcoal/60 mt-1">
               {isAtLimit
                 ? 'Upgrade to Pro for unlimited consultations'
-                : 'Free tier resets daily at midnight'}
+                : 'Free tier resets weekly on Monday'}
             </p>
           </div>
         </div>

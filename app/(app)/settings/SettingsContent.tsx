@@ -577,7 +577,7 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
                 <div>
                   <p className="font-semibold text-foreground">Current Plan</p>
                   <p className="text-sm text-muted-foreground">
-                    {userTier === 'pro' ? 'Pro — $9/month' : 'Free — $0/month'}
+                    {userTier === 'pro' ? 'Pro — $12.99/month' : 'Free — $0/month'}
                   </p>
                 </div>
                 <Badge variant={userTier === 'pro' ? 'secondary' : 'outline'}>

@@ -240,7 +240,7 @@ export async function getActiveConsultation(userId: string) {
 export interface UsageStatus {
   canConsult: boolean;
   currentCount: number;
-  dailyLimit: number;
+  weeklyLimit: number;
   tier: 'free' | 'pro';
 }
 
@@ -252,9 +252,9 @@ export async function checkCanConsult(userId: string): Promise<UsageStatus> {
 
   if (error) {
     logger.error('Error checking usage:', error);
-    // SECURITY: On DB failure, deny access to prevent bypassing daily limits
+    // SECURITY: On DB failure, deny access to prevent bypassing weekly limits
     // This is a fail-closed approach - users can retry when DB is back up
-    return { canConsult: false, currentCount: 0, dailyLimit: 3, tier: 'free' };
+    return { canConsult: false, currentCount: 0, weeklyLimit: 5, tier: 'free' };
   }
 
   // Validate that we got a valid response
@@ -262,13 +262,13 @@ export async function checkCanConsult(userId: string): Promise<UsageStatus> {
   if (!result) {
     logger.error('No data returned from check_can_consult RPC');
     // SECURITY: On empty response, deny access
-    return { canConsult: false, currentCount: 0, dailyLimit: 3, tier: 'free' };
+    return { canConsult: false, currentCount: 0, weeklyLimit: 5, tier: 'free' };
   }
 
   return {
     canConsult: result.can_consult ?? false,
     currentCount: result.current_count ?? 0,
-    dailyLimit: result.daily_limit ?? 3,
+    weeklyLimit: result.weekly_limit ?? 5,
     tier: result.tier ?? 'free',
   };
 }
