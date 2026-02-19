@@ -694,8 +694,8 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Reset Daily Usage</p>
-                    <p className="text-xs text-muted-foreground">Sets today&apos;s consultation count back to 0</p>
+                    <p className="text-sm font-medium text-foreground">Reset Weekly Usage</p>
+                    <p className="text-xs text-muted-foreground">Sets this week&apos;s consultation count back to 0</p>
                   </div>
                   <Button
                     onClick={handleResetUsage}
