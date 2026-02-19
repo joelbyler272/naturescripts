@@ -19,9 +19,9 @@ export function DailyLimitBanner({ consultationsUsed, consultationsLimit }: Dail
         <div className="flex items-center space-x-3">
           <AlertTriangle className="w-5 h-5 text-amber-600" />
           <div>
-            <p className="font-medium text-amber-900">Daily limit reached</p>
+            <p className="font-medium text-amber-900">Weekly limit reached</p>
             <p className="text-sm text-amber-700">
-              You've used all {consultationsLimit} free consultations today.
+              You've used all {consultationsLimit} free consultations this week.
             </p>
           </div>
         </div>
@@ -39,7 +39,7 @@ export function DailyLimitBanner({ consultationsUsed, consultationsLimit }: Dail
     <div className="bg-muted/50 border border-border rounded-lg p-4 flex items-center justify-between">
       <div>
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{remaining}</span> of {consultationsLimit} free consultations remaining today
+          <span className="font-medium text-foreground">{remaining}</span> of {consultationsLimit} free consultations remaining this week
         </p>
       </div>
       <Link

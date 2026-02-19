@@ -12,6 +12,7 @@ import { HEALTH_SUGGESTIONS } from '@/lib/constants/suggestions';
 import { routes } from '@/lib/constants/routes';
 import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { trackUpgradeClicked, trackLimitReached } from '@/lib/analytics/events';
 
 const TIPS = [
   "Ashwagandha is best absorbed when taken with food",
@@ -88,6 +89,13 @@ export function DashboardContent() {
     setCurrentTip(TIPS[index]);
   }, []);
 
+  // Track limit reached event
+  useEffect(() => {
+    if (isAtLimit && !usageLoading) {
+      trackLimitReached(usage.tier, usage.currentCount);
+    }
+  }, [isAtLimit, usageLoading, usage.tier, usage.currentCount]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && !isAtLimit) {
@@ -139,10 +147,11 @@ export function DashboardContent() {
                     "text-sm",
                     isAtLimit ? "text-destructive font-medium" : "text-muted-foreground"
                   )}>
-                    {usage.currentCount}/{usage.dailyLimit} today
+                    {usage.currentCount}/{usage.weeklyLimit} this week
                   </p>
                   <Link
                     href={routes.upgrade}
+                    onClick={() => trackUpgradeClicked('dashboard_usage_counter')}
                     className="text-xs text-accent hover:text-accent/80 transition-colors"
                   >
                     Go unlimited &rarr;
@@ -159,10 +168,10 @@ export function DashboardContent() {
         <div className="mb-6 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-800">Daily limit reached</p>
+            <p className="text-sm font-medium text-amber-800">Weekly limit reached</p>
             <p className="text-sm text-amber-700 mt-1">
-              You&apos;ve used all {usage.dailyLimit} free consultations for today.
-              <Link href={routes.upgrade} className="underline ml-1">Upgrade to Pro</Link> for unlimited.
+              You&apos;ve used all {usage.weeklyLimit} free consultations for this week.
+              <Link href={routes.upgrade} onClick={() => trackUpgradeClicked('dashboard_limit_banner')} className="underline ml-1">Upgrade to Pro</Link> for unlimited.
             </p>
           </div>
         </div>
@@ -187,7 +196,7 @@ export function DashboardContent() {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               disabled={isAtLimit}
-              placeholder={isAtLimit ? "Daily limit reached" : "Describe how you're feeling..."}
+              placeholder={isAtLimit ? "Weekly limit reached" : "Describe how you're feeling..."}
               className="flex-1 px-4 sm:px-5 py-3 sm:py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm sm:text-base disabled:cursor-not-allowed"
             />
             <button

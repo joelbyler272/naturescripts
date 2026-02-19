@@ -3,13 +3,15 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Crown, Sparkles, Loader2 } from 'lucide-react';
+import { Check, Crown, Loader2 } from 'lucide-react';
+import { trackUpgradeClicked } from '@/lib/analytics/events';
 
 export function UpgradeContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleUpgrade = async () => {
+    trackUpgradeClicked('upgrade_page');
     setIsLoading(true);
     setError(null);
 
@@ -35,7 +37,7 @@ export function UpgradeContent() {
   };
   const features = {
     free: [
-      '3 consultations per day',
+      '5 consultations per week',
       'Basic herbal protocols',
       'Remedy database access',
       'Community support',
@@ -55,10 +57,6 @@ export function UpgradeContent() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="text-center mb-8 sm:mb-12">
-        <div className="inline-flex items-center space-x-2 bg-accent/10 text-accent px-4 py-2 rounded-full text-sm font-medium mb-4">
-          <Sparkles className="w-4 h-4" />
-          <span>Limited Time: First month 50% off</span>
-        </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3 sm:mb-4">Upgrade to Pro</h1>
         <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
           Unlock unlimited consultations and advanced features for your natural health journey
@@ -102,11 +100,8 @@ export function UpgradeContent() {
             </CardTitle>
             <CardDescription>For serious health optimization</CardDescription>
             <div className="mt-4">
-              <span className="text-3xl sm:text-4xl font-bold">$9</span>
+              <span className="text-3xl sm:text-4xl font-bold">$12.99</span>
               <span className="text-muted-foreground">/month</span>
-              <p className="text-sm text-muted-foreground mt-1">
-                <span className="line-through">$18</span> - 50% off first month
-              </p>
             </div>
           </CardHeader>
           <CardContent>

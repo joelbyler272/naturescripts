@@ -4,14 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { checkCanConsult, incrementDailyUsage, UsageStatus } from '@/lib/supabase/database';
 
-const FREE_TIER_LIMIT = 3;
+const FREE_TIER_LIMIT = 5;
 
 export function useUsageLimits() {
   const { user } = useAuth();
   const [usage, setUsage] = useState<UsageStatus>({
     canConsult: true,
     currentCount: 0,
-    dailyLimit: FREE_TIER_LIMIT,
+    weeklyLimit: FREE_TIER_LIMIT,
     tier: 'free',
   });
   const [loading, setLoading] = useState(true);
@@ -46,13 +46,13 @@ export function useUsageLimits() {
 
     // Check if user can consult before incrementing
     if (!usage.canConsult) {
-      setError('Daily limit reached');
+      setError('Weekly limit reached');
       return false;
     }
 
     try {
       const result = await incrementDailyUsage(user.id);
-      
+
       setUsage(prev => ({
         ...prev,
         currentCount: result.count,
@@ -73,7 +73,7 @@ export function useUsageLimits() {
   }, [refreshUsage]);
 
   // Computed values
-  const remainingConsultations = Math.max(0, usage.dailyLimit - usage.currentCount);
+  const remainingConsultations = Math.max(0, usage.weeklyLimit - usage.currentCount);
   const isPro = usage.tier === 'pro';
   const isAtLimit = !usage.canConsult && !isPro;
 
@@ -82,12 +82,12 @@ export function useUsageLimits() {
     usage,
     loading,
     error,
-    
+
     // Computed
     remainingConsultations,
     isPro,
     isAtLimit,
-    
+
     // Actions
     refreshUsage,
     useConsultation,
