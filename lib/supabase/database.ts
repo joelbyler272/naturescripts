@@ -2,7 +2,7 @@ import { createClient } from './client';
 import { Consultation, Message, Protocol } from '@/types';
 import { Medication, Supplement } from '@/lib/consultation/types';
 import { logger } from '@/lib/utils/logger';
-import { getLocalDateString } from '@/lib/utils/date';
+import { getLocalDateString, getWeekStartDate } from '@/lib/utils/date';
 
 // ============================================
 // PROFILE FUNCTIONS
@@ -328,29 +328,33 @@ export async function getDailyUsage(userId: string): Promise<number> {
 // DEV TOOLS
 // ============================================
 
-// Reset uses UPDATE (not DELETE) because daily_usage has no DELETE RLS policy.
-export async function resetDailyUsage(userId: string): Promise<boolean> {
+// Reset weekly usage by clearing all daily_usage records for the current week.
+export async function resetWeeklyUsage(userId: string): Promise<boolean> {
   if (process.env.NODE_ENV !== 'development') {
     throw new Error('Dev tools are only available in development mode');
   }
   const supabase = createClient();
 
-  // Use local date so reset applies to user's current day
-  const today = getLocalDateString();
+  // Get start of current ISO week (Monday)
+  const weekStart = getWeekStartDate();
 
+  // Update all records from this week to 0
   const { error } = await supabase
     .from('daily_usage')
     .update({ consultation_count: 0 })
     .eq('user_id', userId)
-    .eq('date', today);
+    .gte('date', weekStart);
 
   if (error) {
-    logger.error('Error resetting daily usage:', error);
+    logger.error('Error resetting weekly usage:', error);
     return false;
   }
 
   return true;
 }
+
+// Legacy alias for backwards compatibility
+export const resetDailyUsage = resetWeeklyUsage;
 
 // Delete all consultations for a user (for testing fresh flows).
 // Uses UPDATE to mark as abandoned since there may not be a DELETE policy.
