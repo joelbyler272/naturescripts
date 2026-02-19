@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateProtocolPdf } from '@/lib/pdf/generateProtocolPdf';
 import { GeneratedProtocol } from '@/lib/consultation/types';
+import { logger } from '@/lib/utils/logger';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const consultationId = searchParams.get('id');
 
-    if (!consultationId) {
-      return NextResponse.json({ error: 'Missing consultation ID' }, { status: 400 });
+    if (!consultationId || !UUID_REGEX.test(consultationId)) {
+      return NextResponse.json({ error: 'Invalid consultation ID' }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -66,7 +69,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('PDF generation error:', error);
+    logger.error('PDF generation error:', error);
     return NextResponse.json(
       { error: 'Failed to generate PDF' },
       { status: 500 }

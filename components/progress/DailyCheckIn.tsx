@@ -57,6 +57,7 @@ export function DailyCheckIn() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [energy, setEnergy] = useState<number | null>(null);
   const [mood, setMood] = useState<number | null>(null);
   const [sleep, setSleep] = useState<number | null>(null);
@@ -100,6 +101,7 @@ export function DailyCheckIn() {
     if (!user) return;
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
 
     const input: ProgressLogInput = {
       energy_level: energy || undefined,
@@ -114,6 +116,8 @@ export function DailyCheckIn() {
     if (result) {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+    } else {
+      setSaveError('Failed to save. Please try again.');
     }
   };
 
@@ -208,6 +212,11 @@ export function DailyCheckIn() {
             className="w-full min-h-[80px] px-3 py-2 text-sm rounded-lg border border-input bg-transparent resize-none"
           />
         </div>
+
+        {/* Error Message */}
+        {saveError && (
+          <p className="text-sm text-destructive">{saveError}</p>
+        )}
 
         {/* Save Button */}
         <Button

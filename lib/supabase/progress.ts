@@ -113,7 +113,11 @@ export async function getRecentProgress(
   
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
-  const startDateStr = startDate.toISOString().split('T')[0];
+  // Use local timezone formatting to match getLocalDateString() used elsewhere
+  const year = startDate.getFullYear();
+  const month = String(startDate.getMonth() + 1).padStart(2, '0');
+  const day = String(startDate.getDate()).padStart(2, '0');
+  const startDateStr = `${year}-${month}-${day}`;
 
   const { data, error } = await supabase
     .from('progress_logs')
