@@ -94,61 +94,66 @@ export async function generateProtocolPdf(
   // === RECOMMENDATIONS ===
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Recommendations (${protocol.recommendations.length})`, MARGINS.left, y);
-  y += 10;
 
-  protocol.recommendations.forEach((rec: Recommendation, index: number) => {
-    checkPageBreak(40);
-
-    // Recommendation box
-    doc.setFillColor(...COLORS.light);
-    doc.roundedRect(MARGINS.left, y - 4, contentWidth, 35, 3, 3, 'F');
-
-    // Number badge
-    doc.setFillColor(...COLORS.accent);
-    doc.circle(MARGINS.left + 8, y + 4, 6, 'F');
-    doc.setTextColor(255, 255, 255);
+  if (!protocol.recommendations || protocol.recommendations.length === 0) {
+    doc.text('Recommendations', MARGINS.left, y);
+    y += 10;
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(String(index + 1), MARGINS.left + 8, y + 6, { align: 'center' });
-
-    // Name
-    doc.setTextColor(...COLORS.text);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(rec.name, MARGINS.left + 18, y + 5);
-
-    // Type & Category
-    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...COLORS.muted);
-    doc.text(`${rec.type.toUpperCase()} • ${rec.category}`, MARGINS.left + 18, y + 11);
+    doc.text('No recommendations available.', MARGINS.left, y);
+    y += 10;
+  } else {
+    doc.text(`Recommendations (${protocol.recommendations.length})`, MARGINS.left, y);
+    y += 10;
 
-    // Dosage
-    doc.setFontSize(10);
-    doc.setTextColor(...COLORS.text);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Dosage: ${rec.dosage}`, MARGINS.left + 18, y + 18);
+    protocol.recommendations.forEach((rec: Recommendation, index: number) => {
+      checkPageBreak(40);
 
-    // Timing
-    doc.text(`Timing: ${rec.timing}`, MARGINS.left + 18, y + 24);
+      // Recommendation box
+      doc.setFillColor(...COLORS.light);
+      doc.roundedRect(MARGINS.left, y - 4, contentWidth, 35, 3, 3, 'F');
 
-    // Duration
-    if (rec.duration) {
-      doc.text(`Duration: ${rec.duration}`, MARGINS.left + 18, y + 30);
-    }
+      // Number badge
+      doc.setFillColor(...COLORS.accent);
+      doc.circle(MARGINS.left + 8, y + 4, 6, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(index + 1), MARGINS.left + 8, y + 6, { align: 'center' });
 
-    y += 42;
+      // Name
+      doc.setTextColor(...COLORS.text);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(rec.name, MARGINS.left + 18, y + 5);
 
-    // Rationale (if space)
-    if (rec.rationale) {
-      checkPageBreak(15);
-      doc.setFontSize(9);
+      // Type
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
       doc.setTextColor(...COLORS.muted);
-      addWrappedText(`Why: ${rec.rationale}`, MARGINS.left + 4, contentWidth - 8, 5);
-      y += 5;
-    }
-  });
+      doc.text(rec.type.replace('_', ' ').toUpperCase(), MARGINS.left + 18, y + 11);
+
+      // Dosage
+      doc.setFontSize(10);
+      doc.setTextColor(...COLORS.text);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Dosage: ${rec.dosage}`, MARGINS.left + 18, y + 18);
+
+      // Timing
+      doc.text(`Timing: ${rec.timing}`, MARGINS.left + 18, y + 24);
+
+      y += 38;
+
+      // Rationale (if space)
+      if (rec.rationale) {
+        checkPageBreak(15);
+        doc.setFontSize(9);
+        doc.setTextColor(...COLORS.muted);
+        addWrappedText(`Why: ${rec.rationale}`, MARGINS.left + 4, contentWidth - 8, 5);
+        y += 5;
+      }
+    });
+  }
 
   // === DIETARY SHIFTS ===
   if (protocol.dietary_shifts && protocol.dietary_shifts.length > 0) {

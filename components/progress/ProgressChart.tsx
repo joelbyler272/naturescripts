@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { formatDateShort } from '@/lib/utils/date';
 
 interface ChartDataPoint {
@@ -29,24 +29,31 @@ export function ProgressChart() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ChartDataPoint[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadProgress() {
       if (!user) return;
       setLoading(true);
-      const logs = await getRecentProgress(user.id, 14);
-      
-      // Transform to chart data
-      const chartData: ChartDataPoint[] = logs.map((log: ProgressLog) => ({
-        date: log.date,
-        dateDisplay: formatDateShort(log.date),
-        energy: log.energy_level,
-        mood: log.mood_level,
-        sleep: log.sleep_quality,
-      }));
-      
-      setData(chartData);
-      setLoading(false);
+      setError(null);
+      try {
+        const logs = await getRecentProgress(user.id, 14);
+
+        // Transform to chart data
+        const chartData: ChartDataPoint[] = logs.map((log: ProgressLog) => ({
+          date: log.date,
+          dateDisplay: formatDateShort(log.date),
+          energy: log.energy_level,
+          mood: log.mood_level,
+          sleep: log.sleep_quality,
+        }));
+
+        setData(chartData);
+      } catch {
+        setError('Failed to load progress data');
+      } finally {
+        setLoading(false);
+      }
     }
     loadProgress();
   }, [user]);
@@ -56,6 +63,22 @@ export function ProgressChart() {
       <Card>
         <CardContent className="py-12 flex justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Progress Over Time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="py-8 text-center">
+            <AlertCircle className="w-6 h-6 text-destructive mx-auto mb-2" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
         </CardContent>
       </Card>
     );

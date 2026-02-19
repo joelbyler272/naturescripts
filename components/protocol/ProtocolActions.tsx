@@ -42,7 +42,9 @@ export function ProtocolActions({ consultationId, protocolTitle }: ProtocolActio
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `naturescripts-protocol-${consultationId.slice(0, 8)}.pdf`;
+      a.download = protocolTitle
+        ? `naturescripts-${protocolTitle.toLowerCase().replace(/\s+/g, '-')}.pdf`
+        : `naturescripts-protocol-${consultationId.slice(0, 8)}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
