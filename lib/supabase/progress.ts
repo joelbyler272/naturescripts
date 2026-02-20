@@ -46,12 +46,31 @@ export async function getTodayProgress(userId: string): Promise<ProgressLog | nu
 }
 
 /**
+ * Validate a rating value is between 1 and 5 (or undefined)
+ */
+function isValidRating(value: number | undefined): boolean {
+  return value === undefined || (Number.isInteger(value) && value >= 1 && value <= 5);
+}
+
+/**
  * Create or update today's progress log
  */
 export async function upsertProgress(
   userId: string,
   input: ProgressLogInput
 ): Promise<ProgressLog | null> {
+  // Validate rating values are 1-5
+  if (!isValidRating(input.energy_level) || !isValidRating(input.mood_level) || !isValidRating(input.sleep_quality)) {
+    logger.error('Invalid rating value: ratings must be integers between 1 and 5');
+    return null;
+  }
+
+  // Validate symptoms array length
+  if (input.symptoms && input.symptoms.length > 20) {
+    logger.error('Too many symptoms: maximum 20 allowed');
+    return null;
+  }
+
   const supabase = createClient();
   const today = getLocalDateString();
 
@@ -113,11 +132,8 @@ export async function getRecentProgress(
   
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
-  // Use local timezone formatting to match getLocalDateString() used elsewhere
-  const year = startDate.getFullYear();
-  const month = String(startDate.getMonth() + 1).padStart(2, '0');
-  const day = String(startDate.getDate()).padStart(2, '0');
-  const startDateStr = `${year}-${month}-${day}`;
+  // Use en-CA locale for consistent YYYY-MM-DD in local timezone (matches getLocalDateString)
+  const startDateStr = startDate.toLocaleDateString('en-CA');
 
   const { data, error } = await supabase
     .from('progress_logs')

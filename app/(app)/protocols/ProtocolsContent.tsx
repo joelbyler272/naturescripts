@@ -6,6 +6,7 @@ import { ProtocolCard } from '@/components/protocol/ProtocolCard';
 import { useConsultations } from '@/lib/hooks/useConsultations';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { routes } from '@/lib/constants/routes';
+import { USAGE_LIMITS } from '@/lib/constants/limits';
 import { Plus, Loader2, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Lock, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackUpgradeClicked } from '@/lib/analytics/events';
@@ -13,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
 const ITEMS_PER_PAGE = 10;
-const FREE_TIER_LIMIT = 3; // Free users can only see their last 3 protocols
 
 export function ProtocolsContent() {
   const router = useRouter();
@@ -24,10 +24,10 @@ export function ProtocolsContent() {
   // Apply free tier limit
   const accessibleProtocols = useMemo(() => {
     if (isPro) return pastProtocols;
-    return pastProtocols.slice(0, FREE_TIER_LIMIT);
+    return pastProtocols.slice(0, USAGE_LIMITS.FREE_TIER_PROTOCOL_HISTORY);
   }, [pastProtocols, isPro]);
 
-  const lockedCount = pastProtocols.length - FREE_TIER_LIMIT;
+  const lockedCount = pastProtocols.length - USAGE_LIMITS.FREE_TIER_PROTOCOL_HISTORY;
   const hasLockedProtocols = !isPro && lockedCount > 0;
 
   // Calculate paginated protocols
