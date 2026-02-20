@@ -4,11 +4,54 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ProBadge } from '@/components/app/ProBadge';
+import { ProGate } from '@/components/shared/ProGate';
 import { SymptomChart } from '@/components/tracking/SymptomChart';
+import { DailyCheckIn } from '@/components/progress/DailyCheckIn';
+import { ProgressChart } from '@/components/progress/ProgressChart';
 import { MOCK_SYMPTOM_DATA } from '@/lib/data/hardcoded';
 import { Plus, TrendingDown, Activity } from 'lucide-react';
+import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
+import { Loader2 } from 'lucide-react';
 
 export default function TrackingPage() {
+  const { isPro, loading } = useUsageLimits();
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        </div>
+      </div>
+    );
+  }
+
+  // Show Pro gate for free users
+  if (!isPro) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <div className="flex items-center space-x-2 mb-2">
+            <h1 className="text-3xl font-bold text-foreground">Progress Tracking</h1>
+            <ProBadge />
+          </div>
+          <p className="text-muted-foreground">
+            Monitor your symptoms, supplements, and lifestyle changes over time
+          </p>
+        </div>
+        
+        <ProGate
+          feature="Progress Tracking"
+          description="Track your energy, mood, sleep, and symptoms over time. See trends and insights to optimize your wellness protocol."
+          source="tracking_page"
+        >
+          {/* This won't render for free users */}
+          <div />
+        </ProGate>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -20,6 +63,12 @@ export default function TrackingPage() {
         <p className="text-muted-foreground">
           Monitor your symptoms, supplements, and lifestyle changes over time
         </p>
+      </div>
+
+      {/* Daily Check-In and Progress Chart for Pro users */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <DailyCheckIn />
+        <ProgressChart />
       </div>
 
       {/* Tabs */}
