@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Crown, Lock } from 'lucide-react';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { useRouter } from 'next/navigation';
@@ -38,9 +39,23 @@ export function ProGate({
     router.push(routes.upgrade);
   };
 
-  // While loading, show nothing to prevent flash
+  // While loading, show a skeleton to prevent layout shift
   if (loading) {
-    return null;
+    if (compact) {
+      return <Skeleton className="h-12 w-full rounded-lg" />;
+    }
+    return (
+      <Card className="border-2 border-dashed border-border/30">
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center gap-4">
+            <Skeleton className="w-16 h-16 rounded-full" />
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <Skeleton className="h-10 w-40 rounded-lg" />
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   // Pro users see the content

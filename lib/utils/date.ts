@@ -1,17 +1,29 @@
 /**
  * Date utilities for NatureScripts
+ *
+ * Note on timezone strategy: Client-side dates use the user's local timezone
+ * for display and progress tracking. The Supabase DB functions use
+ * `date_trunc('week', CURRENT_DATE)` which uses the server's timezone (UTC by
+ * default in Supabase). For consultation limits this is acceptable because the
+ * check is always done server-side. Progress tracking dates are stored as
+ * plain DATE values keyed to the user's local date.
  */
+
+/**
+ * Format a Date as YYYY-MM-DD in the user's local timezone.
+ * Uses toLocaleDateString('en-CA') which outputs ISO format (YYYY-MM-DD)
+ * and correctly handles DST transitions.
+ */
+function toLocalISODate(date: Date): string {
+  return date.toLocaleDateString('en-CA'); // en-CA always outputs YYYY-MM-DD
+}
 
 /**
  * Get the current date as a YYYY-MM-DD string in the user's local timezone.
  * This ensures daily limits reset at the user's midnight, not UTC midnight.
  */
 export function getLocalDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return toLocalISODate(new Date());
 }
 
 /**
@@ -26,18 +38,16 @@ export function getWeekStartDate(): string {
   const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const monday = new Date(now);
   monday.setDate(now.getDate() - daysToMonday);
-  
-  const year = monday.getFullYear();
-  const month = String(monday.getMonth() + 1).padStart(2, '0');
-  const day = String(monday.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return toLocalISODate(monday);
 }
 
 /**
- * Format a date for display
+ * Format a date for display.
+ * When parsing a YYYY-MM-DD string, appends T00:00:00 to ensure
+ * the date is interpreted in local timezone (not UTC).
  */
 export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
   return d.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -47,10 +57,12 @@ export function formatDate(date: Date | string): string {
 }
 
 /**
- * Format a date as a short string (e.g., "Jan 15")
+ * Format a date as a short string (e.g., "Jan 15").
+ * When parsing a YYYY-MM-DD string, appends T00:00:00 to ensure
+ * the date is interpreted in local timezone (not UTC).
  */
 export function formatDateShort(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
   return d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric'

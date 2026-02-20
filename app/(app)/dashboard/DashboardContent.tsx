@@ -13,7 +13,8 @@ import { HEALTH_SUGGESTIONS } from '@/lib/constants/suggestions';
 import { routes } from '@/lib/constants/routes';
 import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Sparkles, Lock, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { trackUpgradeClicked, trackLimitReached } from '@/lib/analytics/events';
+import { USAGE_LIMITS } from '@/lib/constants/limits';
+import { trackUpgradeClicked } from '@/lib/analytics/events';
 
 const TIPS = [
   "Ashwagandha is best absorbed when taken with food",
@@ -33,7 +34,7 @@ const TIPS = [
   "Elderberry syrup is most effective taken at the first sign of illness",
 ];
 
-const FREE_TIER_PROTOCOL_LIMIT = 3;
+const FREE_TIER_PROTOCOL_LIMIT = USAGE_LIMITS.FREE_TIER_PROTOCOL_HISTORY;
 
 function seededShuffle<T>(arr: T[], seed: number): T[] {
   const copy = [...arr];
@@ -108,13 +109,6 @@ export function DashboardContent() {
     const index = Math.floor(Date.now() / 1000) % TIPS.length;
     setCurrentTip(TIPS[index]);
   }, []);
-
-  // Track limit reached event
-  useEffect(() => {
-    if (isAtLimit && !usageLoading) {
-      trackLimitReached(usage.tier, usage.currentCount);
-    }
-  }, [isAtLimit, usageLoading, usage.tier, usage.currentCount]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

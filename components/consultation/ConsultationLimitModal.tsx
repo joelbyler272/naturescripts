@@ -6,7 +6,7 @@ import { routes } from '@/lib/constants/routes';
 import { useRouter } from 'next/navigation';
 import { Crown, Infinity, FileText, TrendingUp, RefreshCw, Calendar } from 'lucide-react';
 
-interface LimitReachedModalProps {
+interface ConsultationLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentCount: number;
@@ -20,7 +20,12 @@ const PRO_BENEFITS = [
   { icon: TrendingUp, label: 'Progress tracking & charts' },
 ];
 
-export function LimitReachedModal({ isOpen, onClose, currentCount, weeklyLimit }: LimitReachedModalProps) {
+/**
+ * ConsultationLimitModal - Dialog-based modal for the consultation chat flow.
+ * Uses shadcn Dialog component. For the standalone dashboard modal, see
+ * components/shared/LimitReachedModal.tsx which uses a custom portal overlay.
+ */
+export function ConsultationLimitModal({ isOpen, onClose, currentCount, weeklyLimit }: ConsultationLimitModalProps) {
   const router = useRouter();
 
   const handleUpgrade = () => {
