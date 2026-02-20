@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { getUserProfile, resetDailyUsage, clearAllConsultations, toggleUserTier, updateHealthProfile } from '@/lib/supabase/database';
+import { getUserProfile, updateHealthProfile } from '@/lib/supabase/database';
 import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/utils/logger';
 import { DeleteAccountModal } from '@/components/settings/DeleteAccountModal';
+import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import {
   User, CreditCard, Shield, AlertTriangle, Loader2, Check,
-  RotateCcw, Wrench, Trash2, ArrowUpDown, Heart, Plus, X
+  RotateCcw, Wrench, Trash2, ArrowUpDown, Heart, Plus, X, TrendingDown
 } from 'lucide-react';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
@@ -40,6 +41,7 @@ interface SettingsContentProps {
 export function SettingsContent({ isDev: isDevProp = false }: SettingsContentProps) {
   const { user } = useAuth();
   const [supabase] = useState(() => createClient());
+  const { refreshUsage, usage } = useUsageLimits();
 
   // Profile state
   const [firstName, setFirstName] = useState('');
@@ -68,11 +70,8 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Dev tools state
-  const [resettingUsage, setResettingUsage] = useState(false);
-  const [resetUsageDone, setResetUsageDone] = useState(false);
-  const [clearingConsultations, setClearingConsultations] = useState(false);
-  const [clearConsultationsDone, setClearConsultationsDone] = useState(false);
-  const [togglingTier, setTogglingTier] = useState(false);
+  const [devToolsLoading, setDevToolsLoading] = useState<string | null>(null);
+  const [devToolsMessage, setDevToolsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Subscription management state
   const [managingSubscription, setManagingSubscription] = useState(false);
@@ -107,6 +106,13 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
         });
     }
   }, [user]);
+
+  // Sync tier from usage hook
+  useEffect(() => {
+    if (usage.tier) {
+      setUserTier(usage.tier);
+    }
+  }, [usage.tier]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -256,47 +262,42 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
     }
   };
 
-  // Dev tool handlers
-  const handleResetUsage = async () => {
-    if (!user) return;
-    setResettingUsage(true);
-    setResetUsageDone(false);
+  // Dev tool handler - calls API route
+  const handleDevToolAction = async (action: string) => {
+    setDevToolsLoading(action);
+    setDevToolsMessage(null);
+    
     try {
-      await resetDailyUsage(user.id);
-      setResetUsageDone(true);
-      setTimeout(() => setResetUsageDone(false), 3000);
+      const response = await fetch('/api/dev-tools', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Action failed');
+      }
+      
+      // Update local state based on action
+      if (action === 'toggle_tier' && data.newTier) {
+        setUserTier(data.newTier);
+      }
+      
+      // Refresh usage data to reflect changes
+      await refreshUsage();
+      
+      setDevToolsMessage({ type: 'success', text: data.message });
+      setTimeout(() => setDevToolsMessage(null), 3000);
     } catch (err) {
-      logger.error('Failed to reset usage:', err);
+      logger.error(`Dev tool ${action} failed:`, err);
+      setDevToolsMessage({ 
+        type: 'error', 
+        text: err instanceof Error ? err.message : 'Action failed' 
+      });
     } finally {
-      setResettingUsage(false);
-    }
-  };
-
-  const handleClearConsultations = async () => {
-    if (!user) return;
-    setClearingConsultations(true);
-    setClearConsultationsDone(false);
-    try {
-      await clearAllConsultations(user.id);
-      setClearConsultationsDone(true);
-      setTimeout(() => setClearConsultationsDone(false), 3000);
-    } catch (err) {
-      logger.error('Failed to clear consultations:', err);
-    } finally {
-      setClearingConsultations(false);
-    }
-  };
-
-  const handleToggleTier = async () => {
-    if (!user) return;
-    setTogglingTier(true);
-    try {
-      const newTier = await toggleUserTier(user.id, userTier);
-      if (newTier) setUserTier(newTier);
-    } catch (err) {
-      logger.error('Failed to toggle tier:', err);
-    } finally {
-      setTogglingTier(false);
+      setDevToolsLoading(null);
     }
   };
 
@@ -692,22 +693,37 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
                 <CardDescription>Testing utilities — only visible to dev accounts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Status display */}
+                <div className="p-3 bg-amber-100/50 rounded-lg text-xs space-y-1">
+                  <p><strong>Current Tier:</strong> {userTier.toUpperCase()}</p>
+                  <p><strong>Weekly Usage:</strong> {usage.currentCount} / {usage.weeklyLimit}</p>
+                </div>
+
+                {/* Message display */}
+                {devToolsMessage && (
+                  <div className={`p-2 rounded text-xs ${
+                    devToolsMessage.type === 'success' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {devToolsMessage.text}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">Reset Weekly Usage</p>
                     <p className="text-xs text-muted-foreground">Sets this week&apos;s consultation count back to 0</p>
                   </div>
                   <Button
-                    onClick={handleResetUsage}
-                    disabled={resettingUsage}
+                    onClick={() => handleDevToolAction('reset_usage')}
+                    disabled={devToolsLoading !== null}
                     variant="outline"
                     size="sm"
                     className="gap-1.5"
                   >
-                    {resettingUsage ? (
+                    {devToolsLoading === 'reset_usage' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : resetUsageDone ? (
-                      <><Check className="w-3.5 h-3.5" /> Done</>
                     ) : (
                       <><RotateCcw className="w-3.5 h-3.5" /> Reset</>
                     )}
@@ -720,18 +736,36 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
                     <p className="text-xs text-muted-foreground">Marks all as abandoned, clears protocol data</p>
                   </div>
                   <Button
-                    onClick={handleClearConsultations}
-                    disabled={clearingConsultations}
+                    onClick={() => handleDevToolAction('clear_consultations')}
+                    disabled={devToolsLoading !== null}
                     variant="outline"
                     size="sm"
                     className="gap-1.5 text-destructive hover:text-destructive"
                   >
-                    {clearingConsultations ? (
+                    {devToolsLoading === 'clear_consultations' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : clearConsultationsDone ? (
-                      <><Check className="w-3.5 h-3.5" /> Cleared</>
                     ) : (
                       <><Trash2 className="w-3.5 h-3.5" /> Clear</>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-amber-200/50 pt-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Clear Progress Logs</p>
+                    <p className="text-xs text-muted-foreground">Deletes all daily check-ins and progress data</p>
+                  </div>
+                  <Button
+                    onClick={() => handleDevToolAction('clear_progress')}
+                    disabled={devToolsLoading !== null}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-destructive hover:text-destructive"
+                  >
+                    {devToolsLoading === 'clear_progress' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <><TrendingDown className="w-3.5 h-3.5" /> Clear</>
                     )}
                   </Button>
                 </div>
@@ -747,13 +781,13 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
                     <p className="text-xs text-muted-foreground">Switch between free and pro for testing</p>
                   </div>
                   <Button
-                    onClick={handleToggleTier}
-                    disabled={togglingTier}
+                    onClick={() => handleDevToolAction('toggle_tier')}
+                    disabled={devToolsLoading !== null}
                     variant="outline"
                     size="sm"
                     className="gap-1.5"
                   >
-                    {togglingTier ? (
+                    {devToolsLoading === 'toggle_tier' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <><ArrowUpDown className="w-3.5 h-3.5" /> Switch to {userTier === 'free' ? 'Pro' : 'Free'}</>
