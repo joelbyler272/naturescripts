@@ -2,7 +2,7 @@ import { createClient } from './client';
 import { Consultation, Message, Protocol } from '@/types';
 import { Medication, Supplement } from '@/lib/consultation/types';
 import { logger } from '@/lib/utils/logger';
-import { getLocalDateString, getWeekStartDate } from '@/lib/utils/date';
+import { getLocalDateString } from '@/lib/utils/date';
 
 // ============================================
 // PROFILE FUNCTIONS
@@ -321,68 +321,4 @@ export async function getDailyUsage(userId: string): Promise<number> {
   }
 
   return data?.consultation_count ?? 0;
-}
-
-
-// ============================================
-// DEV TOOLS
-// ============================================
-
-// Reset weekly usage by clearing all daily_usage records for the current week.
-export async function resetWeeklyUsage(userId: string): Promise<boolean> {
-  if (process.env.NODE_ENV !== 'development') {
-    throw new Error('Dev tools are only available in development mode');
-  }
-  const supabase = createClient();
-
-  // Get start of current ISO week (Monday)
-  const weekStart = getWeekStartDate();
-
-  // Update all records from this week to 0
-  const { error } = await supabase
-    .from('daily_usage')
-    .update({ consultation_count: 0 })
-    .eq('user_id', userId)
-    .gte('date', weekStart);
-
-  if (error) {
-    logger.error('Error resetting weekly usage:', error);
-    return false;
-  }
-
-  return true;
-}
-
-// Legacy alias for backwards compatibility
-export const resetDailyUsage = resetWeeklyUsage;
-
-// Delete all consultations for a user (for testing fresh flows).
-// Uses UPDATE to mark as abandoned since there may not be a DELETE policy.
-export async function clearAllConsultations(userId: string): Promise<boolean> {
-  if (process.env.NODE_ENV !== 'development') {
-    throw new Error('Dev tools are only available in development mode');
-  }
-  const supabase = createClient();
-
-  const { error } = await supabase
-    .from('consultations')
-    .update({ status: 'abandoned', protocol_data: null })
-    .eq('user_id', userId);
-
-  if (error) {
-    logger.error('Error clearing consultations:', error);
-    return false;
-  }
-
-  return true;
-}
-
-// Toggle tier between free and pro.
-export async function toggleUserTier(userId: string, currentTier: 'free' | 'pro'): Promise<'free' | 'pro' | null> {
-  if (process.env.NODE_ENV !== 'development') {
-    throw new Error('Dev tools are only available in development mode');
-  }
-  const newTier = currentTier === 'free' ? 'pro' : 'free';
-  const result = await updateUserProfile(userId, { tier: newTier });
-  return result ? newTier : null;
 }
