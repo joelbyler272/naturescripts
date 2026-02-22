@@ -60,36 +60,30 @@ export function DashboardContent() {
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
   const isWelcome = searchParams.get('welcome') === 'true';
 
-  // If user came from onboarding (welcome=true), redirect to their protocol
   useEffect(() => {
     if (isWelcome && !consultationsLoading && !hasCheckedWelcome && pastProtocols.length > 0) {
       setHasCheckedWelcome(true);
-      // Redirect to the most recent protocol with welcome flag
       const latestProtocol = pastProtocols[0];
       if (latestProtocol?.id) {
         router.replace(`/protocols/${latestProtocol.id}?welcome=true`);
       }
     } else if (isWelcome && !consultationsLoading && pastProtocols.length === 0) {
-      // No protocols found, just clear the welcome param
       setHasCheckedWelcome(true);
       router.replace('/dashboard');
     }
   }, [isWelcome, consultationsLoading, pastProtocols, hasCheckedWelcome, router]);
 
-  // Pick 3 random suggestions client-side only (changes on refresh)
   useEffect(() => {
     const seed = Math.floor(Date.now() / 1000);
     const shuffled = seededShuffle(HEALTH_SUGGESTIONS, seed);
     setVisibleSuggestions(shuffled.slice(0, 3));
   }, []);
 
-  // Pick 1 random tip client-side only (changes on refresh)
   useEffect(() => {
     const index = Math.floor(Date.now() / 1000) % TIPS.length;
     setCurrentTip(TIPS[index]);
   }, []);
 
-  // Track limit reached event
   useEffect(() => {
     if (isAtLimit && !usageLoading) {
       trackLimitReached(usage.tier, usage.currentCount);
@@ -113,7 +107,6 @@ export function DashboardContent() {
 
   const isLoading = consultationsLoading || usageLoading;
 
-  // Show loading if we're about to redirect
   if (isWelcome && !hasCheckedWelcome) {
     return (
       <div className="w-full flex items-center justify-center py-24">
@@ -245,7 +238,7 @@ export function DashboardContent() {
 
       {/* Tip */}
       {!isLoading && currentTip && (
-        <div className="mb-5 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white/60 border border-border/30 rounded-lg">
+        <div className="mb-5 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white/80 border border-border/40 rounded-lg">
           <Lightbulb className="w-4 h-4 text-accent flex-shrink-0" />
           <p className="text-xs sm:text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Tip:</span> {currentTip}

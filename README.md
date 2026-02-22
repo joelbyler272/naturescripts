@@ -182,6 +182,22 @@ Required Vercel environment variables:
 - All variables from `.env.local.example`
 - Set up Stripe webhook endpoint: `https://your-domain.com/api/stripe/webhook`
 
+## UI/UX Design
+
+This project follows a deliberate design system informed by modern SaaS UI/UX best practices.
+
+**Design foundations:** shadcn/ui component library, Tailwind CSS with oklch color tokens, Lucide icons, system font stack with Georgia serif for brand identity, and a distinctive sage-green (#408D59) accent palette on warm off-white.
+
+**Key principles applied:**
+- **Clarity over decoration** — Every screen has one primary action. No competing CTAs.
+- **Consistent bricks** — All components use the same spacing, radius, and color tokens from CSS variables.
+- **Show the product** — Landing page includes a full protocol mockup so visitors see exactly what they'll get.
+- **Skeleton loading states** — Dashboard, protocols, settings, and detail pages all use skeleton screens to maintain perceived speed.
+- **Ethical friction** — Destructive actions (account deletion) require explicit confirmation modals.
+- **No AI slop** — No purple gradients, no emoji icons in the app shell, no generic AI-picked colors or typography.
+
+A comprehensive UI/UX audit with scored principles, specific issues found, fixes applied, and future recommendations is available in [`docs/UI_UX_AUDIT.md`](docs/UI_UX_AUDIT.md).
+
 ## License
 
 Proprietary - All rights reserved
