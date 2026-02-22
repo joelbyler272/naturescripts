@@ -53,20 +53,8 @@ function FooterLink({ href, label, external }: { href: string; label: string; ex
     <Link
       href={href}
       {...linkProps}
-      className="group flex items-center gap-2.5 text-[15px] text-foreground transition-colors hover:text-accent"
+      className="group flex items-center text-[15px] text-foreground/70 transition-colors hover:text-accent"
     >
-      {/* Chevron arrow - black */}
-      <svg
-        className="w-2 h-2 flex-shrink-0 text-foreground"
-        fill="none"
-        viewBox="0 0 6 10"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M1 1l4 4-4 4" />
-      </svg>
       <span>{label}</span>
     </Link>
   )

@@ -245,7 +245,7 @@ export function DashboardContent() {
 
       {/* Tip */}
       {!isLoading && currentTip && (
-        <div className="mb-5 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white/60 border border-border/30 rounded-lg">
+        <div className="mb-5 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white/80 border border-border/40 rounded-lg">
           <Lightbulb className="w-4 h-4 text-accent flex-shrink-0" />
           <p className="text-xs sm:text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Tip:</span> {currentTip}
