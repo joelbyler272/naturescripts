@@ -7,6 +7,7 @@ import { Navigation } from "@/components/app/Navigation"
 import { Footer } from "@/components/shared/Footer"
 import { routes } from "@/lib/constants/routes"
 import { colors } from "@/lib/constants/colors"
+import { Zap, Leaf, Moon, Brain, Scale, HeartPulse, Dumbbell, Sparkles, CheckCircle2, XCircle } from "lucide-react"
 
 export default function LandingPage() {
   const router = useRouter()
@@ -36,14 +37,14 @@ export default function LandingPage() {
   }, [])
 
   const conditions = [
-    { name: "Fatigue & Low Energy", icon: "⚡" },
-    { name: "Digestive Issues", icon: "🌿" },
-    { name: "Sleep Problems", icon: "🌙" },
-    { name: "Stress & Anxiety", icon: "🧘" },
-    { name: "Hormonal Imbalance", icon: "⚖️" },
-    { name: "Brain Fog", icon: "🧠" },
-    { name: "Joint & Muscle Pain", icon: "💪" },
-    { name: "Skin Conditions", icon: "✨" },
+    { name: "Fatigue & Low Energy", icon: Zap },
+    { name: "Digestive Issues", icon: Leaf },
+    { name: "Sleep Problems", icon: Moon },
+    { name: "Stress & Anxiety", icon: HeartPulse },
+    { name: "Hormonal Imbalance", icon: Scale },
+    { name: "Brain Fog", icon: Brain },
+    { name: "Joint & Muscle Pain", icon: Dumbbell },
+    { name: "Skin Conditions", icon: Sparkles },
   ]
 
   const faqs = [
@@ -102,7 +103,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="mb-14 max-w-xl text-lg md:text-xl font-light leading-relaxed text-muted-foreground tracking-[-0.01em]">
-              Describe what's going on in your body. We analyze patterns and suggest safe, evidence-based natural support.
+              Describe what\u2019s going on in your body. We analyze patterns and suggest safe, evidence-based natural support.
             </p>
 
             {/* Search Bar */}
@@ -116,7 +117,7 @@ export default function LandingPage() {
                     placeholder="I'm exhausted all the time, bloated after meals, can't sleep..."
                     maxLength={500}
                     aria-label="Describe your health concern"
-                    className="h-14 flex-1 bg-transparent px-6 text-[15px] text-background placeholder:text-background/40 focus:outline-none"
+                    className="h-14 flex-1 bg-transparent px-6 text-[15px] text-background placeholder:text-background/55 focus:outline-none"
                   />
                   <button
                     type="button"
@@ -174,10 +175,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="text-center mb-20">
             <h2 className="text-3xl md:text-5xl font-normal text-foreground mb-5 tracking-[-0.02em]">
-              See what you'll receive
+              See what you\u2019ll receive
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              A complete, personalized protocol delivered instantly — herbs, diet, and lifestyle changes tailored to your symptoms.
+              A complete, personalized protocol delivered instantly \u2014 herbs, diet, and lifestyle changes tailored to your symptoms.
             </p>
           </div>
 
@@ -248,19 +249,19 @@ export default function LandingPage() {
                   </div>
                   <ul className="space-y-4">
                     <li className="flex items-start gap-3">
-                      <span className="text-green-500 text-sm">✓</span>
+                      <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
                       <p className="text-sm text-foreground">Increase iron-rich foods: spinach, lentils, grass-fed beef</p>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-green-500 text-sm">✓</span>
+                      <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
                       <p className="text-sm text-foreground">Add vitamin C with iron sources for absorption</p>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-red-400 text-sm">✗</span>
+                      <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                       <p className="text-sm text-foreground">Reduce caffeine after 12pm</p>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-red-400 text-sm">✗</span>
+                      <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                       <p className="text-sm text-foreground">Limit refined sugar and processed foods</p>
                     </li>
                   </ul>
@@ -334,7 +335,7 @@ export default function LandingPage() {
               {
                 step: "01",
                 title: "Describe your symptoms",
-                description: "Tell us what's going on — fatigue, digestion issues, sleep problems, stress, or anything else affecting your wellbeing."
+                description: "Tell us what\u2019s going on \u2014 fatigue, digestion issues, sleep problems, stress, or anything else affecting your wellbeing."
               },
               {
                 step: "02",
@@ -344,7 +345,7 @@ export default function LandingPage() {
               {
                 step: "03",
                 title: "Get your protocol",
-                description: "Receive a personalized plan with specific herbs, diet shifts, and lifestyle practices — delivered instantly."
+                description: "Receive a personalized plan with specific herbs, diet shifts, and lifestyle practices \u2014 delivered instantly."
               }
             ].map((item) => (
               <div key={item.step} className="text-center">
@@ -364,10 +365,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl px-6">
           <div className="text-center mb-20">
             <h2 className="text-3xl md:text-5xl font-normal text-foreground mb-5 tracking-[-0.02em]">
-              Get support for what you're experiencing
+              Get support for what you\u2019re experiencing
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Whether it's a nagging issue or a complex set of symptoms, we can help you find natural approaches.
+              Whether it\u2019s a nagging issue or a complex set of symptoms, we can help you find natural approaches.
             </p>
           </div>
 
@@ -379,14 +380,16 @@ export default function LandingPage() {
                 onClick={() => router.push(`${routes.onboarding}?q=${encodeURIComponent(condition.name)}`)}
                 className="group bg-white hover:bg-secondary/40 border border-border/40 hover:border-border rounded-2xl p-6 text-center transition-all duration-200 cursor-pointer"
               >
-                <span className="text-3xl mb-4 block">{condition.icon}</span>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: `${colors.sage.DEFAULT}12` }}>
+                  <condition.icon className="w-6 h-6" style={{ color: colors.sage.DEFAULT }} />
+                </div>
                 <span className="text-sm font-medium text-foreground">{condition.name}</span>
               </button>
             ))}
           </div>
 
           <p className="text-center text-sm text-muted-foreground mt-10">
-            And many more — just describe what you're experiencing.
+            And many more \u2014 just describe what you\u2019re experiencing.
           </p>
         </div>
       </section>
@@ -401,7 +404,7 @@ export default function LandingPage() {
               </h2>
               <p className="text-background/70 text-lg leading-relaxed mb-10">
                 We believe in addressing root causes, not just masking symptoms. Our protocols draw from traditional herbal medicine, 
-                modern nutritional science, and holistic wellness practices — all filtered through safety-first principles.
+                modern nutritional science, and holistic wellness practices \u2014 all filtered through safety-first principles.
               </p>
               <Link
                 href={routes.onboarding}
@@ -427,7 +430,7 @@ export default function LandingPage() {
                 },
                 {
                   title: "Whole person wellness",
-                  description: "Mind, body, and lifestyle — not just a pill for every problem."
+                  description: "Mind, body, and lifestyle \u2014 not just a pill for every problem."
                 }
               ].map((item, index) => (
                 <div key={index} className="flex gap-5">
