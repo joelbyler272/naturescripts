@@ -60,36 +60,30 @@ export function DashboardContent() {
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
   const isWelcome = searchParams.get('welcome') === 'true';
 
-  // If user came from onboarding (welcome=true), redirect to their protocol
   useEffect(() => {
     if (isWelcome && !consultationsLoading && !hasCheckedWelcome && pastProtocols.length > 0) {
       setHasCheckedWelcome(true);
-      // Redirect to the most recent protocol with welcome flag
       const latestProtocol = pastProtocols[0];
       if (latestProtocol?.id) {
         router.replace(`/protocols/${latestProtocol.id}?welcome=true`);
       }
     } else if (isWelcome && !consultationsLoading && pastProtocols.length === 0) {
-      // No protocols found, just clear the welcome param
       setHasCheckedWelcome(true);
       router.replace('/dashboard');
     }
   }, [isWelcome, consultationsLoading, pastProtocols, hasCheckedWelcome, router]);
 
-  // Pick 3 random suggestions client-side only (changes on refresh)
   useEffect(() => {
     const seed = Math.floor(Date.now() / 1000);
     const shuffled = seededShuffle(HEALTH_SUGGESTIONS, seed);
     setVisibleSuggestions(shuffled.slice(0, 3));
   }, []);
 
-  // Pick 1 random tip client-side only (changes on refresh)
   useEffect(() => {
     const index = Math.floor(Date.now() / 1000) % TIPS.length;
     setCurrentTip(TIPS[index]);
   }, []);
 
-  // Track limit reached event
   useEffect(() => {
     if (isAtLimit && !usageLoading) {
       trackLimitReached(usage.tier, usage.currentCount);
@@ -113,7 +107,6 @@ export function DashboardContent() {
 
   const isLoading = consultationsLoading || usageLoading;
 
-  // Show loading if we're about to redirect
   if (isWelcome && !hasCheckedWelcome) {
     return (
       <div className="w-full flex items-center justify-center py-24">
