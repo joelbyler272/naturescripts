@@ -270,7 +270,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
             {isReadyToGenerate && !generatedProtocol && (
               <button
                 onClick={handleGenerateProtocol}
-                className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
+                className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/50 shadow-[0_4px_20px_rgba(64,141,89,0.3)] hover:shadow-[0_6px_28px_rgba(64,141,89,0.4)] hover:-translate-y-0.5 active:translate-y-0"
               >
                 Generate my protocol
                 <ArrowRight className="w-4 h-4" aria-hidden="true" />
