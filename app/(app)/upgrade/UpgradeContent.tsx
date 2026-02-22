@@ -89,8 +89,8 @@ export function UpgradeContent() {
         </Card>
 
         {/* Pro Tier */}
-        <Card className="border-2 border-accent relative overflow-hidden">
-          <div className="absolute top-0 right-0 bg-accent text-white px-3 sm:px-4 py-1 text-xs sm:text-sm font-medium">
+        <Card className="border-2 border-accent relative overflow-hidden bg-accent/[0.02]">
+          <div className="absolute top-3 right-3 bg-accent text-white px-3 py-1 text-xs font-medium rounded-full">
             RECOMMENDED
           </div>
           <CardHeader>
@@ -100,8 +100,9 @@ export function UpgradeContent() {
             </CardTitle>
             <CardDescription>For serious health optimization</CardDescription>
             <div className="mt-4">
-              <span className="text-3xl sm:text-4xl font-bold">$12.99</span>
+              <span className="text-4xl sm:text-5xl font-bold">$12.99</span>
               <span className="text-muted-foreground">/month</span>
+              <p className="text-xs text-muted-foreground mt-1">Less than a coffee a week</p>
             </div>
           </CardHeader>
           <CardContent>
