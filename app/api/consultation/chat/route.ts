@@ -35,14 +35,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Parse request body
-    let body: { message?: string; conversationHistory?: unknown; consultationId?: string };
+    let body: { message?: string; conversationHistory?: unknown; consultationId?: string; parentProtocolSummary?: string };
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
 
-    const { message, consultationId } = body;
+    const { message, consultationId, parentProtocolSummary } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -106,7 +106,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const exchangeCount = updatedHistory.filter(m => m.role === 'user').length;
 
     // Build system prompt
-    const systemPrompt = buildChatSystemPrompt(tier, healthContext, consultationHistoryData);
+    let systemPrompt = buildChatSystemPrompt(tier, healthContext, consultationHistoryData);
+
+    // If adjusting a previous protocol, append context
+    if (parentProtocolSummary && typeof parentProtocolSummary === 'string') {
+      const sanitizedSummary = parentProtocolSummary.slice(0, 2000);
+      systemPrompt += `\n\n## Adjusting Previous Protocol\nThe user is adjusting a previous protocol. Here is the summary:\n<previous_protocol>\n${sanitizedSummary}\n</previous_protocol>\nAsk what they'd like to change about their current protocol. Focus on understanding what isn't working or what new symptoms have appeared.`;
+    }
 
     // Build messages for Claude
     const messagesForClaude = updatedHistory.map(m => ({ role: m.role, content: m.content }));

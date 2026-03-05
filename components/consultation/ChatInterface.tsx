@@ -5,16 +5,17 @@ import { useRouter } from 'next/navigation';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
-import { ConversationMessage, GeneratedProtocol, ChatResponse } from '@/lib/consultation/types';
+import { ConversationMessage, GeneratedProtocol, ChatResponse, isClaudeProtocol } from '@/lib/consultation/types';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { createConsultation, checkCanConsult } from '@/lib/supabase/database';
+import { createConsultation, checkCanConsult, getConsultation } from '@/lib/supabase/database';
 import { logger } from '@/lib/utils/logger';
 import { CHAT_LIMITS } from '@/lib/utils/validation';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 interface ChatInterfaceProps {
   initialQuery?: string;
+  adjustConsultationId?: string;
 }
 
 // Helper to create message objects
@@ -27,13 +28,14 @@ function createMessage(role: 'user' | 'assistant', content: string): Conversatio
   };
 }
 
-export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
+export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterfaceProps) {
   const router = useRouter();
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
   const consultationId = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const parentProtocolSummaryRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -42,6 +44,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [adjustingProtocol, setAdjustingProtocol] = useState<string | null>(null);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -67,9 +70,22 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
         }
 
         const userTier = (user.user_metadata?.tier as 'free' | 'pro') || 'free';
+
+        // If adjusting a previous protocol, fetch it
+        if (adjustConsultationId) {
+          const prevConsultation = await getConsultation(adjustConsultationId, user.id);
+          if (prevConsultation?.protocol_data && isClaudeProtocol(prevConsultation.protocol_data)) {
+            const protocol = prevConsultation.protocol_data as GeneratedProtocol;
+            const recNames = protocol.recommendations?.map(r => r.name).join(', ') || 'none';
+            const summary = `Previous protocol for "${prevConsultation.initial_input}": ${protocol.summary} Recommendations: ${recNames}.`;
+            parentProtocolSummaryRef.current = summary;
+            setAdjustingProtocol(prevConsultation.initial_input || 'previous protocol');
+          }
+        }
+
         const consultation = await createConsultation(
           user.id,
-          initialQuery || 'New consultation',
+          adjustConsultationId ? `Adjusting previous protocol` : (initialQuery || 'New consultation'),
           userTier
         );
 
@@ -81,8 +97,14 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
       }
     }
 
-    // If there's an initial query, send it immediately
-    if (initialQuery) {
+    // If adjusting, start with context message
+    if (adjustConsultationId && parentProtocolSummaryRef.current) {
+      const greeting = createMessage(
+        'assistant',
+        "I can see your previous protocol. What would you like to adjust? For example, you could change dosages, swap out a remedy, or address a new symptom."
+      );
+      setMessages([greeting]);
+    } else if (initialQuery) {
       const userMessage = createMessage('user', initialQuery);
       setMessages([userMessage]);
       await sendToClaudeAPI([userMessage]);
@@ -95,7 +117,7 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
       setMessages([greeting]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialQuery, user?.id]);
+  }, [initialQuery, adjustConsultationId, user?.id]);
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -118,7 +140,8 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
         body: JSON.stringify({
           message: conversationHistory[conversationHistory.length - 1].content,
           conversationHistory: conversationHistory.slice(0, -1),
-          consultationId: consultationId.current
+          consultationId: consultationId.current,
+          parentProtocolSummary: parentProtocolSummaryRef.current || undefined,
         }),
         signal: controller.signal
       });
@@ -251,6 +274,12 @@ export function ChatInterface({ initialQuery }: ChatInterfaceProps) {
 
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-xl border border-border/50 overflow-hidden">
+      {adjustingProtocol && (
+        <div className="px-4 sm:px-6 py-3 bg-accent/5 border-b border-accent/20 flex items-center gap-2">
+          <RefreshCw className="w-4 h-4 text-accent" />
+          <span className="text-sm text-accent font-medium">Adjusting protocol: {adjustingProtocol}</span>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {messages.map((message) => (
           <ChatMessage key={message.id} role={message.role} content={message.content} />
