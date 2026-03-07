@@ -2,21 +2,39 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { getAllRemedies, searchRemedies } from '@/lib/remedies/data';
+import { Remedy } from '@/lib/remedies/types';
 import { Search, Leaf, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 15;
 
-export function RemediesContent() {
+interface RemediesContentProps {
+  initialRemedies: Remedy[];
+}
+
+export function RemediesContent({ initialRemedies }: RemediesContentProps) {
   const [query, setQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const allRemedies = getAllRemedies();
 
   const filteredRemedies = useMemo(() => {
-    if (!query.trim()) return allRemedies;
-    return searchRemedies(query);
-  }, [query, allRemedies]);
+    if (!query.trim()) return initialRemedies;
+    const lowerQuery = query.toLowerCase();
+    return initialRemedies.filter(remedy => {
+      if (remedy.name.toLowerCase().includes(lowerQuery)) return true;
+      if (remedy.botanicalName.toLowerCase().includes(lowerQuery)) return true;
+      if (remedy.aliases.some(a => a.toLowerCase().includes(lowerQuery))) return true;
+      if (remedy.tags.some(t => t.toLowerCase().includes(lowerQuery))) return true;
+      if (remedy.faqs.some(faq =>
+        faq.question.toLowerCase().includes(lowerQuery) ||
+        faq.answer.toLowerCase().includes(lowerQuery)
+      )) return true;
+      if (remedy.benefits.some(b =>
+        b.name.toLowerCase().includes(lowerQuery) ||
+        b.description.toLowerCase().includes(lowerQuery)
+      )) return true;
+      return false;
+    });
+  }, [query, initialRemedies]);
 
   // Reset to page 1 when search query changes
   useEffect(() => {

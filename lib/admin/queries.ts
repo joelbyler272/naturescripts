@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/service';
+import { createServiceClient, ServiceClientError } from '@/lib/supabase/service';
 import { logger } from '@/lib/utils/logger';
 
 // ============================================
@@ -66,6 +66,7 @@ export async function getAdminStats(): Promise<AdminStats> {
       proUsers: proUsers ?? 0,
     };
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error fetching admin stats:', error);
     return {
       totalUsers: 0,
@@ -138,6 +139,7 @@ export async function getUsers(limit = 50, offset = 0): Promise<UserListItem[]> 
       consultation_count: countMap.get(profile.id) || 0,
     } as UserListItem));
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error fetching users:', error);
     return [];
   }
@@ -179,6 +181,7 @@ export async function getConsultations(limit = 50, offset = 0): Promise<Consulta
       has_protocol: c.protocol_data !== null,
     }));
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error fetching consultations:', error);
     return [];
   }
@@ -232,6 +235,7 @@ export async function getAnonymizedConsultation(consultationId: string): Promise
       updated_at: data.updated_at,
     };
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error fetching anonymized consultation:', error);
     return null;
   }
@@ -279,6 +283,7 @@ export async function getTrainingData(limit = 1000): Promise<TrainingDataEntry[]
       completed: c.status === 'completed',
     }));
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error fetching training data:', error);
     return [];
   }
