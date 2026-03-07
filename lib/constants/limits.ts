@@ -1,35 +1,33 @@
 /**
- * Centralized configuration for usage limits
- * Change these values in one place to update across the app
+ * Centralized configuration for usage limits and pricing.
+ * Change these values in one place to update across the app.
  */
 
 export const USAGE_LIMITS = {
-  FREE_DAILY_CONSULTATIONS: 3,
-  PRO_DAILY_CONSULTATIONS: Infinity,  // Unlimited
+  FREE_WEEKLY_CONSULTATIONS: 5,
+  PRO_WEEKLY_CONSULTATIONS: Infinity,  // Unlimited
 } as const;
 
 export const PRICING = {
-  PRO_MONTHLY_PRICE: 9,
-  PRO_MONTHLY_PRICE_DISCOUNTED: 4.50,
-  DISCOUNT_PERCENTAGE: 50,
+  PRO_MONTHLY_PRICE: 12.99,
 } as const;
 
 /**
- * Get the daily consultation limit for a tier
+ * Get the weekly consultation limit for a tier
  */
-export function getDailyLimit(tier: 'free' | 'pro'): number {
+export function getWeeklyLimit(tier: 'free' | 'pro'): number {
   return tier === 'pro'
-    ? USAGE_LIMITS.PRO_DAILY_CONSULTATIONS
-    : USAGE_LIMITS.FREE_DAILY_CONSULTATIONS;
+    ? USAGE_LIMITS.PRO_WEEKLY_CONSULTATIONS
+    : USAGE_LIMITS.FREE_WEEKLY_CONSULTATIONS;
 }
 
 /**
  * Format limit message for display
  */
 export function formatLimitMessage(currentCount: number, tier: 'free' | 'pro'): string {
-  const limit = getDailyLimit(tier);
+  const limit = getWeeklyLimit(tier);
   if (limit === Infinity) {
-    return `${currentCount} consultations today (unlimited)`;
+    return `${currentCount} consultations this week (unlimited)`;
   }
-  return `${currentCount} of ${limit} consultations used today`;
+  return `${currentCount} of ${limit} consultations used this week`;
 }

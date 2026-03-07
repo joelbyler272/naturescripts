@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: 'Consultation Details - Admin',
 };
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: typeof CheckCircle; label: string; className: string }> = {
   completed: {
     icon: CheckCircle,
     label: 'Completed',
@@ -29,6 +29,12 @@ const statusConfig = {
   },
 };
 
+const defaultStatus = {
+  icon: Clock,
+  label: 'Unknown',
+  className: 'bg-gray-100 text-gray-500',
+};
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -41,7 +47,7 @@ export default async function ConsultationDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const status = statusConfig[consultation.status];
+  const status = statusConfig[consultation.status] || defaultStatus;
   const StatusIcon = status.icon;
 
   return (

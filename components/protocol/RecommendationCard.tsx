@@ -3,6 +3,7 @@
 import { Recommendation, ProductLink } from '@/lib/consultation/types';
 import { getProductUrl } from '@/lib/utils/urlValidation';
 import { ExternalLink, Clock, AlertCircle, Leaf, Pill, Droplets } from 'lucide-react';
+import { trackAffiliateClick } from '@/lib/analytics/events';
 
 interface RecommendationCardProps {
   recommendation: Recommendation;
@@ -36,6 +37,7 @@ function ProductButton({ product }: { product: ProductLink }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => trackAffiliateClick(product.source, product.name)}
       className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${source.color}`}
     >
       <span>{source.label}</span>

@@ -18,9 +18,10 @@ CREATE TABLE IF NOT EXISTS public.api_usage (
 -- Enable RLS
 ALTER TABLE public.api_usage ENABLE ROW LEVEL SECURITY;
 
--- Service role can do everything (for API routes)
-CREATE POLICY "Service role full access" ON public.api_usage
-  FOR ALL USING (true) WITH CHECK (true);
+-- No access for authenticated users — api_usage is admin/service-role only.
+-- Service role bypasses RLS automatically, so no policy is needed for inserts.
+-- This prevents any authenticated user from querying or modifying api_usage
+-- via the Supabase REST API.
 
 -- Indexes for efficient querying
 CREATE INDEX IF NOT EXISTS idx_api_usage_created_at ON public.api_usage(created_at DESC);

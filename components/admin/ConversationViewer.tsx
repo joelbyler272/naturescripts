@@ -33,7 +33,7 @@ export function ConversationViewer({ messages }: ConversationViewerProps) {
             key={message.id || index}
             className={cn(
               'flex gap-3',
-              isUser ? 'flex-row' : 'flex-row'
+              isUser ? 'flex-row-reverse' : 'flex-row'
             )}
           >
             {/* Avatar */}
