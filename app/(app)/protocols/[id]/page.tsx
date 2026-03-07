@@ -376,8 +376,14 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-4 border-t border-border/30">
+        <Link href={`${routes.consultation}?adjust=${consultation.id}`}>
+          <Button className="bg-accent hover:bg-accent/90">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Adjust Protocol
+          </Button>
+        </Link>
         <Link href={routes.consultation}>
-          <Button className="bg-accent hover:bg-accent/90">Start New Consultation</Button>
+          <Button variant="outline">Start New Consultation</Button>
         </Link>
         <Link href={routes.dashboard}>
           <Button variant="outline">Back to Dashboard</Button>

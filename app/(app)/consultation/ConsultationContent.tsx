@@ -8,10 +8,14 @@ import { Loader2 } from 'lucide-react';
 function ConsultationInner() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || undefined;
+  const adjustConsultationId = searchParams.get('adjust') || undefined;
 
   return (
     <div className="w-full max-w-3xl mx-auto">
-      <ChatInterface initialQuery={initialQuery ? decodeURIComponent(initialQuery) : undefined} />
+      <ChatInterface
+        initialQuery={initialQuery ? decodeURIComponent(initialQuery) : undefined}
+        adjustConsultationId={adjustConsultationId}
+      />
     </div>
   );
 }
