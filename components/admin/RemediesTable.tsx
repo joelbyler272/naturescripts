@@ -55,12 +55,12 @@ export function RemediesTable({ remedies }: RemediesTableProps) {
             placeholder="Search remedies..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
         </div>
         <Link
           href="/admin/remedies/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-sage-600 text-white text-sm font-medium rounded-lg hover:bg-sage-700 transition-colors whitespace-nowrap"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors whitespace-nowrap"
         >
           <Plus className="w-4 h-4" /> Add Remedy
         </Link>
@@ -83,8 +83,8 @@ export function RemediesTable({ remedies }: RemediesTableProps) {
               <tr key={r.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-sage-50 rounded-lg flex items-center justify-center">
-                      <Leaf className="w-4 h-4 text-sage-600" />
+                    <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
+                      <Leaf className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">{r.name}</p>
@@ -96,7 +96,7 @@ export function RemediesTable({ remedies }: RemediesTableProps) {
                   <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{r.category}</span>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm font-semibold text-sage-600">{Number(r.rating).toFixed(1)}</span>
+                  <span className="text-sm font-semibold text-emerald-600">{Number(r.rating).toFixed(1)}</span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
                   {r.last_updated || new Date(r.created_at).toLocaleDateString()}
@@ -105,7 +105,7 @@ export function RemediesTable({ remedies }: RemediesTableProps) {
                   <div className="flex items-center justify-end gap-2">
                     <Link
                       href={`/admin/remedies/${r.slug}/edit`}
-                      className="p-2 text-gray-400 hover:text-sage-600 hover:bg-sage-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                     >
                       <Pencil className="w-4 h-4" />
                     </Link>

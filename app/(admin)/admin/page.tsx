@@ -69,7 +69,7 @@ export default async function AdminDashboardPage() {
             value={stats.protocolsGenerated}
             icon={FileText}
             subtext={`${Math.round((stats.protocolsGenerated / Math.max(stats.totalConsultations, 1)) * 100)}% completion rate`}
-            color="sage"
+            color="emerald"
           />
         </div>
 

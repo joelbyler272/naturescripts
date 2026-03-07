@@ -40,13 +40,13 @@ export function ConversationViewer({ messages }: ConversationViewerProps) {
             <div
               className={cn(
                 'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-                isUser ? 'bg-blue-100' : 'bg-sage-100'
+                isUser ? 'bg-blue-100' : 'bg-emerald-100'
               )}
             >
               {isUser ? (
                 <User className="w-4 h-4 text-blue-600" />
               ) : (
-                <Bot className="w-4 h-4 text-sage-600" />
+                <Bot className="w-4 h-4 text-emerald-600" />
               )}
             </div>
 

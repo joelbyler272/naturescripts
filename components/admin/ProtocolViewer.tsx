@@ -53,7 +53,7 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
     <div className="space-y-6">
       {/* Summary */}
       {p.summary && (
-        <div className="bg-sage-50 rounded-lg p-4">
+        <div className="bg-emerald-50 rounded-lg p-4">
           <p className="text-gray-800">{p.summary}</p>
         </div>
       )}
@@ -62,7 +62,7 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
       {p.recommendations && p.recommendations.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-            <Pill className="w-4 h-4 text-sage-600" />
+            <Pill className="w-4 h-4 text-emerald-600" />
             Recommendations ({p.recommendations.length})
           </h3>
           <div className="space-y-3">
@@ -92,7 +92,7 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
       {p.dietary_shifts && p.dietary_shifts.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-            <Utensils className="w-4 h-4 text-sage-600" />
+            <Utensils className="w-4 h-4 text-emerald-600" />
             Dietary Shifts ({p.dietary_shifts.length})
           </h3>
           <div className="space-y-2">
@@ -120,7 +120,7 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
       {p.lifestyle_practices && p.lifestyle_practices.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-            <Heart className="w-4 h-4 text-sage-600" />
+            <Heart className="w-4 h-4 text-emerald-600" />
             Lifestyle Practices ({p.lifestyle_practices.length})
           </h3>
           <div className="space-y-2">
@@ -140,7 +140,7 @@ export function ProtocolViewer({ protocol }: ProtocolViewerProps) {
       {p.tracking_suggestions && p.tracking_suggestions.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-sage-600" />
+            <BarChart3 className="w-4 h-4 text-emerald-600" />
             Tracking Suggestions ({p.tracking_suggestions.length})
           </h3>
           <div className="space-y-2">
