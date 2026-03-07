@@ -1,0 +1,107 @@
+[
+  {
+    "name": "Ashwagandha",
+    "slug": "ashwagandha",
+    "botanicalName": "Withania somnifera",
+    "aliases": ["Indian Ginseng", "Winter Cherry"],
+    "category": "Adaptogen",
+    "tags": ["stress", "anxiety", "energy", "sleep", "hormones"],
+    "rating": 8.4,
+    "summary": "A powerful adaptogenic herb used for centuries in Ayurvedic medicine to help the body manage stress and promote overall vitality.",
+    "overview": "Ashwagandha is one of the most important herbs in Ayurveda, a traditional system of medicine based on Indian principles of natural healing. It has been used for over 3,000 years to relieve stress, increase energy levels, and improve concentration. The name 'ashwagandha' comes from Sanskrit, meaning 'smell of the horse,' referring both to the herb's unique smell and its ability to increase strength.",
+    "howItWorks": "Ashwagandha works primarily by modulating the hypothalamic-pituitary-adrenal (HPA) axis, which controls the body's stress response. It helps regulate cortisol levels, the body's primary stress hormone. The active compounds, called withanolides, have anti-inflammatory and antioxidant properties. It also supports GABA-mimetic activity, which can promote calmness and reduce anxiety.",
+    "benefits": [
+      {
+        "name": "Stress & Anxiety Reduction",
+        "description": "Multiple clinical trials show significant reductions in cortisol levels and perceived stress scores. A 2012 study found a 28% reduction in cortisol levels after 60 days of supplementation.",
+        "evidenceLevel": 5
+      },
+      {
+        "name": "Sleep Quality",
+        "description": "Research indicates improvements in sleep quality and sleep onset latency, particularly with root extract standardized to withanolides.",
+        "evidenceLevel": 4
+      },
+      {
+        "name": "Physical Performance",
+        "description": "Studies suggest improvements in VO2 max, muscle strength, and recovery time in both trained and untrained individuals.",
+        "evidenceLevel": 3
+      }
+    ],
+    "dosages": [
+      {
+        "form": "Root Extract (capsule)",
+        "amount": "300-600mg",
+        "timing": "Once or twice daily",
+        "notes": "Look for extracts standardized to 5% withanolides (e.g., KSM-66 or Sensoril)"
+      },
+      {
+        "form": "Root Powder",
+        "amount": "1-2 grams",
+        "timing": "Mixed into warm milk or smoothie",
+        "notes": "Traditional preparation; lower concentration of active compounds"
+      }
+    ],
+    "bestTimeToTake": "Morning with breakfast for energy/stress benefits, or evening for sleep support",
+    "howLongToWork": "Noticeable effects within 2-4 weeks; full benefits at 8-12 weeks of consistent use",
+    "sideEffects": [
+      "Mild digestive upset (take with food)",
+      "Drowsiness at higher doses",
+      "May increase thyroid hormone levels"
+    ],
+    "whoShouldAvoid": [
+      "Pregnant or breastfeeding women",
+      "People with autoimmune conditions (may stimulate immune system)",
+      "Those with thyroid disorders (consult doctor first)",
+      "People scheduled for surgery (stop 2 weeks before)"
+    ],
+    "interactions": [
+      {
+        "substance": "Thyroid medications",
+        "severity": "moderate",
+        "description": "May increase thyroid hormone levels, potentially requiring medication adjustment"
+      },
+      {
+        "substance": "Sedatives / Sleep medications",
+        "severity": "mild",
+        "description": "May enhance sedative effects due to GABAergic activity"
+      },
+      {
+        "substance": "Immunosuppressants",
+        "severity": "moderate",
+        "description": "May counteract immunosuppressive therapy by stimulating immune function"
+      }
+    ],
+    "faqs": [
+      {
+        "question": "Can I take ashwagandha every day?",
+        "answer": "Yes, ashwagandha is generally considered safe for daily use. Most studies use daily supplementation for 8-12 weeks. Some practitioners recommend cycling (e.g., 8 weeks on, 2 weeks off) though this isn't strictly necessary."
+      },
+      {
+        "question": "Should I take ashwagandha in the morning or at night?",
+        "answer": "It depends on your goal. For stress and energy support, morning is ideal. For sleep support, take it 1-2 hours before bed. Some people split their dose between morning and evening."
+      },
+      {
+        "question": "What's the difference between KSM-66 and Sensoril?",
+        "answer": "Both are standardized ashwagandha extracts. KSM-66 is a full-spectrum root extract (more energizing), while Sensoril includes both root and leaf extract (more calming). Both are well-researched and effective."
+      }
+    ],
+    "qualityMarkers": [
+      "Standardized to minimum 5% withanolides",
+      "Third-party tested for heavy metals",
+      "Organic certification preferred",
+      "KSM-66 or Sensoril branded extract"
+    ],
+    "products": [
+      {
+        "name": "KSM-66 Ashwagandha",
+        "brand": "Nootropics Depot",
+        "form": "Capsule",
+        "size": "90 capsules",
+        "affiliateUrl": "",
+        "note": "600mg per capsule, standardized to 5% withanolides"
+      }
+    ],
+    "relatedRemedies": ["rhodiola", "holy-basil", "eleuthero"],
+    "oftenPairedWith": ["magnesium", "l-theanine", "rhodiola"]
+  }
+]
