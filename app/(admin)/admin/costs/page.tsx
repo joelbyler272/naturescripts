@@ -51,7 +51,7 @@ export default async function AdminCostsPage() {
             value={`$${usage.allTime.cost.toFixed(2)}`}
             icon={Zap}
             subtext={`${usage.allTime.requests.toLocaleString()} total requests`}
-            color="sage"
+            color="emerald"
           />
         </div>
 
