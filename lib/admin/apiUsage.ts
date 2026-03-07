@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/service';
+import { createServiceClient, ServiceClientError } from '@/lib/supabase/service';
 import { logger } from '@/lib/utils/logger';
 
 // Claude API Pricing
@@ -61,6 +61,7 @@ export async function recordApiUsage(entry: ApiUsageEntry): Promise<boolean> {
 
     return true;
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error recording API usage:', error);
     return false;
   }
@@ -208,6 +209,7 @@ export async function getApiUsageStats(): Promise<UsageSummary> {
       dailyUsage,
     };
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error fetching API usage stats:', error);
     return {
       today: { requests: 0, cost: 0, inputTokens: 0, outputTokens: 0 },
@@ -281,6 +283,7 @@ export async function getUserGrowthData(daysBack: number = 30): Promise<UserGrow
 
     return result;
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error fetching user growth data:', error);
     return [];
   }
@@ -340,6 +343,7 @@ export async function getConsultationTrends(daysBack: number = 30): Promise<Cons
 
     return result;
   } catch (error) {
+    if (error instanceof ServiceClientError) throw error;
     logger.error('Error fetching consultation trends:', error);
     return [];
   }
