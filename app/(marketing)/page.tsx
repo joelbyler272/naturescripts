@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Navigation } from "@/components/app/Navigation"
-import { Footer } from "@/components/shared/Footer"
 import { routes } from "@/lib/constants/routes"
 import { colors } from "@/lib/constants/colors"
 import { cn } from "@/lib/utils"
@@ -100,8 +98,7 @@ export default function LandingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <Navigation isAuthenticated={false} />
+    <>
 
       {/* Hero */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
@@ -513,7 +510,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <Footer />
-    </main>
+    </>
   )
 }
