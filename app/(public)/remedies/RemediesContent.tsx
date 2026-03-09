@@ -2,11 +2,13 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { Remedy } from '@/lib/remedies/types';
+import { Remedy, REMEDY_GROUPS, RemedyGroup } from '@/lib/remedies/types';
 import { Search, Leaf, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 15;
+const ALL_GROUPS = ['All', ...REMEDY_GROUPS] as const;
+type GroupTab = typeof ALL_GROUPS[number];
 
 interface RemediesContentProps {
   initialRemedies: Remedy[];
@@ -15,31 +17,60 @@ interface RemediesContentProps {
 export function RemediesContent({ initialRemedies }: RemediesContentProps) {
   const [query, setQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeGroup, setActiveGroup] = useState<GroupTab>('All');
+
+  // Count remedies per group for tab badges
+  const groupCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: initialRemedies.length };
+    for (const g of REMEDY_GROUPS) counts[g] = 0;
+    for (const r of initialRemedies) {
+      const g = r.group || 'Herbs';
+      counts[g] = (counts[g] || 0) + 1;
+    }
+    return counts;
+  }, [initialRemedies]);
 
   const filteredRemedies = useMemo(() => {
-    if (!query.trim()) return initialRemedies;
-    const lowerQuery = query.toLowerCase();
-    return initialRemedies.filter(remedy => {
-      if (remedy.name.toLowerCase().includes(lowerQuery)) return true;
-      if (remedy.botanicalName.toLowerCase().includes(lowerQuery)) return true;
-      if (remedy.aliases.some(a => a.toLowerCase().includes(lowerQuery))) return true;
-      if (remedy.tags.some(t => t.toLowerCase().includes(lowerQuery))) return true;
-      if (remedy.faqs.some(faq =>
-        faq.question.toLowerCase().includes(lowerQuery) ||
-        faq.answer.toLowerCase().includes(lowerQuery)
-      )) return true;
-      if (remedy.benefits.some(b =>
-        b.name.toLowerCase().includes(lowerQuery) ||
-        b.description.toLowerCase().includes(lowerQuery)
-      )) return true;
-      return false;
-    });
-  }, [query, initialRemedies]);
+    // First filter by group tab
+    let grouped = initialRemedies;
+    if (activeGroup !== 'All') {
+      grouped = initialRemedies.filter(r => (r.group || 'Herbs') === activeGroup);
+    }
 
-  // Reset to page 1 when search query changes
+    if (!query.trim()) return grouped;
+
+    // Search with name-first priority
+    const lowerQuery = query.toLowerCase();
+    const nameMatches: Remedy[] = [];
+    const otherMatches: Remedy[] = [];
+
+    for (const remedy of grouped) {
+      if (remedy.name.toLowerCase().includes(lowerQuery)) {
+        nameMatches.push(remedy);
+      } else if (
+        remedy.botanicalName.toLowerCase().includes(lowerQuery) ||
+        remedy.aliases.some(a => a.toLowerCase().includes(lowerQuery)) ||
+        remedy.tags.some(t => t.toLowerCase().includes(lowerQuery)) ||
+        remedy.faqs.some(faq =>
+          faq.question.toLowerCase().includes(lowerQuery) ||
+          faq.answer.toLowerCase().includes(lowerQuery)
+        ) ||
+        remedy.benefits.some(b =>
+          b.name.toLowerCase().includes(lowerQuery) ||
+          b.description.toLowerCase().includes(lowerQuery)
+        )
+      ) {
+        otherMatches.push(remedy);
+      }
+    }
+
+    return [...nameMatches, ...otherMatches];
+  }, [query, initialRemedies, activeGroup]);
+
+  // Reset to page 1 when search query or group changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [query]);
+  }, [query, activeGroup]);
 
   // Calculate paginated remedies
   const { paginatedRemedies, totalPages } = useMemo(() => {
@@ -94,6 +125,30 @@ export function RemediesContent({ initialRemedies }: RemediesContentProps) {
             {filteredRemedies.length} result{filteredRemedies.length !== 1 ? 's' : ''} found
           </p>
         )}
+      </div>
+
+      {/* Group Tabs */}
+      <div className="flex flex-wrap gap-2 mb-6 sm:mb-8 justify-center">
+        {ALL_GROUPS.map((group) => (
+          <button
+            key={group}
+            onClick={() => setActiveGroup(group)}
+            className={cn(
+              'px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all',
+              activeGroup === group
+                ? 'bg-accent text-white shadow-sm'
+                : 'bg-secondary/50 text-foreground/70 hover:bg-secondary hover:text-foreground'
+            )}
+          >
+            {group}
+            <span className={cn(
+              'ml-1.5 text-xs',
+              activeGroup === group ? 'text-white/80' : 'text-muted-foreground'
+            )}>
+              {groupCounts[group] || 0}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Results */}
