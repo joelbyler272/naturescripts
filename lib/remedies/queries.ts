@@ -28,6 +28,7 @@ function mapRowToRemedy(row: any): Remedy {
     relatedRemedies: row.related_remedies,
     oftenPairedWith: row.often_paired_with,
     lastUpdated: row.last_updated,
+    group: row.remedy_group || 'Herbs',
   };
 }
 

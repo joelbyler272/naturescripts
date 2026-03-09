@@ -1,0 +1,87 @@
+NATURESCRIPTS REMEDY GENERATOR PROMPT
+======================================
+
+Copy everything below this line, paste it into ChatGPT/Claude/etc, and ask it to generate remedies.
+Then save the output as a .json file and upload it via Admin > Remedies > Upload JSON.
+
+---
+
+I need you to generate a JSON file for natural remedies in a specific format. The output must be a valid JSON array (no comments, no trailing commas) that I can save directly as a .json file.
+
+Generate entries for the following remedies: [LIST YOUR REMEDIES HERE, e.g. "Turmeric, Magnesium, Vitamin D, Elderberry"]
+
+For EACH remedy, create a JSON object with ALL of these fields:
+
+{
+  "name": "Display name",
+  "slug": "url-friendly-lowercase-slug",
+  "botanicalName": "Latin/scientific name (or chemical name for vitamins/minerals)",
+  "aliases": ["Other common names"],
+  "category": "One of: Adaptogen, Amino Acid, Anti-Inflammatory & Pain, Cognitive Support, Digestive Health, Energy & Adaptogens, Hormonal & Women's Health, Immune, Joint & Bone, Metabolic Support, Mineral, Mushroom, Nervine, Sleep, Vitamin",
+  "group": "One of: Herbs, Oils, Tinctures, Remedies, Food",
+  "tags": ["3-6 relevant search tags like symptoms, uses, body systems"],
+  "rating": 7.5,
+  "summary": "One compelling sentence describing the remedy's primary use.",
+  "overview": "2-3 paragraphs covering history, traditional use, and modern applications. Be thorough but accessible.",
+  "howItWorks": "1-2 paragraphs explaining the mechanism of action in plain language. Reference specific pathways or compounds.",
+  "benefits": [
+    {
+      "name": "Benefit Name",
+      "description": "2-3 sentences describing the benefit with reference to research when possible.",
+      "evidenceLevel": 4
+    }
+  ],
+  "dosages": [
+    {
+      "form": "Capsule/Powder/Tincture/etc",
+      "amount": "Specific dose range",
+      "timing": "When and how often",
+      "notes": "Important details about standardization or form"
+    }
+  ],
+  "bestTimeToTake": "When during the day and with/without food",
+  "howLongToWork": "Expected timeline for noticeable effects",
+  "sideEffects": ["List common side effects as strings"],
+  "whoShouldAvoid": ["List specific groups who should avoid this"],
+  "interactions": [
+    {
+      "substance": "Drug or supplement name",
+      "severity": "mild OR moderate OR severe",
+      "description": "What happens and why"
+    }
+  ],
+  "faqs": [
+    {
+      "question": "A question a real person would ask about this remedy",
+      "answer": "A helpful, accurate answer in 2-3 sentences"
+    }
+  ],
+  "qualityMarkers": ["What to look for when buying this supplement"],
+  "products": [
+    {
+      "name": "Product name",
+      "brand": "Brand name",
+      "form": "Capsule/Powder/etc",
+      "size": "Container size",
+      "affiliateUrl": "",
+      "note": "Why this product is recommended"
+    }
+  ],
+  "relatedRemedies": ["slugs-of-related-remedies"],
+  "oftenPairedWith": ["slugs-of-complementary-remedies"]
+}
+
+IMPORTANT RULES:
+1. Output ONLY valid JSON — no markdown, no code fences, no comments, no extra text
+2. The output must be a JSON array: [ {...}, {...}, ... ]
+3. rating should be 1.0-10.0 based on strength of scientific evidence (be honest, not everything is a 9)
+4. evidenceLevel for benefits should be 1-5 (1=preliminary, 5=strong clinical evidence)
+5. Include 3-5 benefits, 1-3 dosage forms, 2-4 interactions, 3-5 FAQs per remedy
+6. interactions severity must be exactly "mild", "moderate", or "severe"
+7. slug must be lowercase with hyphens only (e.g., "st-johns-wort", "vitamin-d3")
+8. Be evidence-based and accurate. Don't overstate benefits.
+9. For products, leave affiliateUrl as empty string ""
+10. relatedRemedies and oftenPairedWith should use slug format
+11. group must be exactly one of: "Herbs", "Oils", "Tinctures", "Remedies", "Food". Use "Herbs" for plant-based supplements and adaptogens, "Oils" for essential oils, "Tinctures" for tincture preparations, "Remedies" for general health remedies (anti-inflammatory, immune, sleep, digestive, energy), "Food" for vitamins, minerals, and amino acids
+
+Generate the complete JSON array now.

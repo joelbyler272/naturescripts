@@ -11,7 +11,9 @@ import type {
   RemedyInteraction,
   RemedyFAQ,
   RemedyProduct,
+  RemedyGroup,
 } from '@/lib/remedies/types';
+import { REMEDY_GROUPS } from '@/lib/remedies/types';
 
 interface RemedyFormProps {
   initialData?: Remedy;
@@ -75,9 +77,9 @@ function Field({
 }
 
 const inputClass =
-  'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent';
+  'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent';
 const textareaClass =
-  'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent min-h-[80px]';
+  'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[80px]';
 
 // Tag/list input for simple string arrays
 function TagInput({
@@ -128,7 +130,7 @@ function TagInput({
           {value.map((tag, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-sage-50 text-sage-700 text-xs rounded-full"
+              className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full"
             >
               {tag}
               <button
@@ -156,6 +158,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
   const [slug, setSlug] = useState(initialData?.slug || '');
   const [botanicalName, setBotanicalName] = useState(initialData?.botanicalName || '');
   const [category, setCategory] = useState(initialData?.category || '');
+  const [group, setGroup] = useState<RemedyGroup>(initialData?.group || 'Herbs');
   const [rating, setRating] = useState(initialData?.rating || 0);
   const [summary, setSummary] = useState(initialData?.summary || '');
   const [overview, setOverview] = useState(initialData?.overview || '');
@@ -196,6 +199,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
       slug,
       botanicalName,
       category,
+      group,
       rating: Number(rating),
       summary,
       overview,
@@ -299,6 +303,17 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
               className={inputClass}
             />
           </Field>
+          <Field label="Group" helper="High-level grouping for tab filtering">
+            <select
+              value={group}
+              onChange={e => setGroup(e.target.value as RemedyGroup)}
+              className={inputClass}
+            >
+              {REMEDY_GROUPS.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </Field>
           <Field label="Rating" helper="1.0 to 10.0">
             <input
               type="number"
@@ -395,7 +410,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
           onClick={() =>
             setBenefits([...benefits, { name: '', description: '', evidenceLevel: 3 }])
           }
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-sage-600 hover:bg-sage-50 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Benefit
         </button>
@@ -450,7 +465,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
         <button
           type="button"
           onClick={() => setDosages([...dosages, { form: '', amount: '', timing: '' }])}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-sage-600 hover:bg-sage-50 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Dosage
         </button>
@@ -557,7 +572,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
               { substance: '', severity: 'mild', description: '' },
             ])
           }
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-sage-600 hover:bg-sage-50 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Interaction
         </button>
@@ -596,7 +611,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
         <button
           type="button"
           onClick={() => setFaqs([...faqs, { question: '', answer: '' }])}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-sage-600 hover:bg-sage-50 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" /> Add FAQ
         </button>
@@ -684,7 +699,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
                 { name: '', brand: '', form: '', size: '', affiliateUrl: '' },
               ])
             }
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-sage-600 hover:bg-sage-50 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" /> Add Product
           </button>
@@ -720,7 +735,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center gap-2 px-6 py-2 bg-sage-600 text-white text-sm font-medium rounded-lg hover:bg-sage-700 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : mode === 'create' ? 'Create Remedy' : 'Save Changes'}

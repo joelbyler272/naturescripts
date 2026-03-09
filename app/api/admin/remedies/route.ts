@@ -14,7 +14,7 @@ export async function GET() {
     const serviceClient = createServiceClient();
     const { data, error } = await serviceClient
       .from('remedies')
-      .select('id, slug, name, botanical_name, category, rating, last_updated, created_at')
+      .select('id, slug, name, botanical_name, category, remedy_group, rating, last_updated, created_at')
       .order('name');
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       products: body.products || [],
       related_remedies: body.relatedRemedies || [],
       often_paired_with: body.oftenPairedWith || [],
+      remedy_group: body.group || 'Herbs',
       last_updated: new Date().toISOString().split('T')[0],
     };
 

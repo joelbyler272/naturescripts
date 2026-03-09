@@ -53,13 +53,13 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
             placeholder="Search by concern or ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent"
+          className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
         >
           <option value="all">All statuses</option>
           <option value="completed">Completed</option>
@@ -140,7 +140,7 @@ export function ConsultationsTable({ consultations }: ConsultationsTableProps) {
                   <td className="px-6 py-4">
                     <Link
                       href={`/admin/consultations/${consultation.id}`}
-                      className="inline-flex items-center gap-1 text-sm text-sage-600 hover:text-sage-700 font-medium"
+                      className="inline-flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
                     >
                       <Eye className="w-4 h-4" />
                       View

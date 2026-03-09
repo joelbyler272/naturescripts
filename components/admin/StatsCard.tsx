@@ -7,7 +7,7 @@ interface StatsCardProps {
   icon: LucideIcon;
   trend?: string;
   subtext?: string;
-  color?: 'blue' | 'green' | 'purple' | 'sage' | 'amber';
+  color?: 'blue' | 'green' | 'purple' | 'emerald' | 'amber';
 }
 
 const colorStyles = {
@@ -26,10 +26,10 @@ const colorStyles = {
     icon: 'text-purple-600',
     trend: 'text-purple-600',
   },
-  sage: {
-    bg: 'bg-sage-50',
-    icon: 'text-sage-600',
-    trend: 'text-sage-600',
+  emerald: {
+    bg: 'bg-emerald-50',
+    icon: 'text-emerald-600',
+    trend: 'text-emerald-600',
   },
   amber: {
     bg: 'bg-amber-50',

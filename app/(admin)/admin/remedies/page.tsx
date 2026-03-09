@@ -11,7 +11,7 @@ export default async function AdminRemediesPage() {
     const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('remedies')
-      .select('id, slug, name, botanical_name, category, rating, last_updated, created_at')
+      .select('id, slug, name, botanical_name, category, remedy_group, rating, last_updated, created_at')
       .order('name');
 
     if (error) throw error;

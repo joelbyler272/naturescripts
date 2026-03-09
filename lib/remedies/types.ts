@@ -31,6 +31,10 @@ export interface RemedyProduct {
   note?: string;
 }
 
+export type RemedyGroup = 'Herbs' | 'Oils' | 'Tinctures' | 'Remedies' | 'Food';
+
+export const REMEDY_GROUPS: RemedyGroup[] = ['Herbs', 'Oils', 'Tinctures', 'Remedies', 'Food'];
+
 export interface Remedy {
   id: string;
   slug: string;
@@ -38,6 +42,7 @@ export interface Remedy {
   botanicalName: string;
   aliases: string[];
   category: string;
+  group?: RemedyGroup;
   tags: string[];
   rating: number; // 1.0 - 10.0
   summary: string;
