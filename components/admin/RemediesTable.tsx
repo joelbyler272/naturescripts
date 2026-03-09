@@ -11,6 +11,7 @@ interface RemedyRow {
   name: string;
   botanical_name: string;
   category: string;
+  remedy_group: string;
   rating: number;
   last_updated: string;
   created_at: string;
@@ -28,7 +29,9 @@ interface UploadResult {
 
 export function RemediesTable({ remedies }: RemediesTableProps) {
   const [search, setSearch] = useState('');
+  const [activeGroup, setActiveGroup] = useState<string>('All');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const groups = ['All', 'Herbs', 'Oils', 'Tinctures', 'Remedies', 'Food'];
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
@@ -38,10 +41,34 @@ export function RemediesTable({ remedies }: RemediesTableProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const filteredRemedies = remedies.filter(r => {
-    const s = search.toLowerCase();
-    return r.name.toLowerCase().includes(s) || r.category.toLowerCase().includes(s);
-  });
+  const filteredRemedies = (() => {
+    // Step 1: filter by active group tab
+    let grouped = remedies;
+    if (activeGroup !== 'All') {
+      grouped = remedies.filter(r => r.remedy_group === activeGroup);
+    }
+
+    // Step 2: if no search query, return group-filtered results
+    const s = search.toLowerCase().trim();
+    if (!s) return grouped;
+
+    // Step 3: name matches first, then category/botanical name matches
+    const nameMatches: RemedyRow[] = [];
+    const otherMatches: RemedyRow[] = [];
+
+    for (const r of grouped) {
+      if (r.name.toLowerCase().includes(s)) {
+        nameMatches.push(r);
+      } else if (
+        r.category.toLowerCase().includes(s) ||
+        r.botanical_name.toLowerCase().includes(s)
+      ) {
+        otherMatches.push(r);
+      }
+    }
+
+    return [...nameMatches, ...otherMatches];
+  })();
 
   const handleDelete = async (slug: string) => {
     if (!confirm(`Delete "${slug}"? This cannot be undone.`)) return;
@@ -167,6 +194,28 @@ export function RemediesTable({ remedies }: RemediesTableProps) {
               <Plus className="w-4 h-4" /> Add Remedy
             </Link>
           </div>
+        </div>
+
+        {/* Group Tabs */}
+        <div className="px-4 pt-3 border-b border-gray-200 flex gap-1 overflow-x-auto">
+          {groups.map(g => (
+            <button
+              key={g}
+              onClick={() => setActiveGroup(g)}
+              className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap -mb-px ${
+                activeGroup === g
+                  ? 'text-emerald-700 border-b-2 border-emerald-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {g}
+              <span className="ml-1.5 text-xs text-gray-400">
+                ({g === 'All'
+                  ? remedies.length
+                  : remedies.filter(r => r.remedy_group === g).length})
+              </span>
+            </button>
+          ))}
         </div>
 
         {/* Table */}

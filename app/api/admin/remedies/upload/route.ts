@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
         products: remedy.products || [],
         related_remedies: remedy.relatedRemedies || [],
         often_paired_with: remedy.oftenPairedWith || [],
+        remedy_group: remedy.group || 'Herbs',
         last_updated: new Date().toISOString().split('T')[0],
       };
 

@@ -17,6 +17,7 @@ function mapRowToRemedy(row: any): Remedy {
     botanicalName: row.botanical_name,
     aliases: row.aliases,
     category: row.category,
+    group: row.remedy_group || 'Herbs',
     tags: row.tags,
     rating: Number(row.rating),
     summary: row.summary,

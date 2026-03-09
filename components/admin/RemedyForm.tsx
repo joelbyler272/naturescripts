@@ -11,7 +11,9 @@ import type {
   RemedyInteraction,
   RemedyFAQ,
   RemedyProduct,
+  RemedyGroup,
 } from '@/lib/remedies/types';
+import { REMEDY_GROUPS } from '@/lib/remedies/types';
 
 interface RemedyFormProps {
   initialData?: Remedy;
@@ -156,6 +158,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
   const [slug, setSlug] = useState(initialData?.slug || '');
   const [botanicalName, setBotanicalName] = useState(initialData?.botanicalName || '');
   const [category, setCategory] = useState(initialData?.category || '');
+  const [group, setGroup] = useState<RemedyGroup>(initialData?.group || 'Herbs');
   const [rating, setRating] = useState(initialData?.rating || 0);
   const [summary, setSummary] = useState(initialData?.summary || '');
   const [overview, setOverview] = useState(initialData?.overview || '');
@@ -196,6 +199,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
       slug,
       botanicalName,
       category,
+      group,
       rating: Number(rating),
       summary,
       overview,
@@ -298,6 +302,17 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
               placeholder="e.g. Adaptogen, Vitamin, Mineral"
               className={inputClass}
             />
+          </Field>
+          <Field label="Group" helper="High-level grouping for tab filtering">
+            <select
+              value={group}
+              onChange={e => setGroup(e.target.value as RemedyGroup)}
+              className={inputClass}
+            >
+              {REMEDY_GROUPS.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
           </Field>
           <Field label="Rating" helper="1.0 to 10.0">
             <input

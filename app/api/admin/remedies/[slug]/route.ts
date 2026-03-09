@@ -76,6 +76,7 @@ export async function PUT(
       products: body.products || [],
       related_remedies: body.relatedRemedies || [],
       often_paired_with: body.oftenPairedWith || [],
+      remedy_group: body.group || 'Herbs',
       last_updated: new Date().toISOString().split('T')[0],
     };
 

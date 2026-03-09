@@ -18,6 +18,7 @@ For EACH remedy, create a JSON object with ALL of these fields:
   "botanicalName": "Latin/scientific name (or chemical name for vitamins/minerals)",
   "aliases": ["Other common names"],
   "category": "One of: Adaptogen, Amino Acid, Anti-Inflammatory & Pain, Cognitive Support, Digestive Health, Energy & Adaptogens, Hormonal & Women's Health, Immune, Joint & Bone, Metabolic Support, Mineral, Mushroom, Nervine, Sleep, Vitamin",
+  "group": "One of: Herbs, Oils, Tinctures, Remedies, Food",
   "tags": ["3-6 relevant search tags like symptoms, uses, body systems"],
   "rating": 7.5,
   "summary": "One compelling sentence describing the remedy's primary use.",
@@ -81,5 +82,6 @@ IMPORTANT RULES:
 8. Be evidence-based and accurate. Don't overstate benefits.
 9. For products, leave affiliateUrl as empty string ""
 10. relatedRemedies and oftenPairedWith should use slug format
+11. group must be exactly one of: "Herbs", "Oils", "Tinctures", "Remedies", "Food". Use "Herbs" for plant-based supplements and adaptogens, "Oils" for essential oils, "Tinctures" for tincture preparations, "Remedies" for general health remedies (anti-inflammatory, immune, sleep, digestive, energy), "Food" for vitamins, minerals, and amino acids
 
 Generate the complete JSON array now.
