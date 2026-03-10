@@ -17,9 +17,9 @@ export default function HowItWorksPage() {
     {
       number: "01",
       title: "Describe your symptoms",
-      description: "Tell us what you're experiencing in your own words. No forms, no dropdowns, no medical jargon required. Just describe how you're feeling — whether it's fatigue, digestive issues, trouble sleeping, or something more complex.",
+      description: "Tell us what you're experiencing in your own words. No forms, no dropdowns, no medical jargon required. Just describe how you're feeling, whether it's fatigue, digestive issues, trouble sleeping, or something more complex.",
       details: [
-        "Write in natural language — like texting a friend",
+        "Write in natural language, like texting a friend",
         "Mention any medications you're currently taking",
         "Include how long you've been experiencing symptoms",
         "No account required to get started",
@@ -41,10 +41,10 @@ export default function HowItWorksPage() {
     {
       number: "03",
       title: "Get your personalized protocol",
-      description: "Receive a comprehensive, three-part protocol tailored to your specific situation — herbal supplements, dietary adjustments, and lifestyle practices. Everything is explained clearly with dosages, timing, and reasoning.",
+      description: "Receive a comprehensive, three-part protocol tailored to your specific situation: herbal supplements, dietary adjustments, and lifestyle practices. Everything is explained clearly with dosages, timing, and reasoning.",
       details: [
         "Specific herbs with dosages and timing",
-        "Diet changes — what to add and what to reduce",
+        "Diet changes: what to add and what to reduce",
         "Lifestyle practices for long-term support",
         "Safety notes and healthcare provider guidance",
       ],

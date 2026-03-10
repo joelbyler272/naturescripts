@@ -122,7 +122,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="mb-12 max-w-lg text-base md:text-lg text-muted-foreground leading-relaxed">
-              Describe your symptoms. Get an evidence-based protocol with herbs, diet, and lifestyle changes — in minutes.
+              Describe your symptoms. Get an evidence-based protocol with herbs, diet, and lifestyle changes, in minutes.
             </p>
 
             {/* Search Bar */}
@@ -197,7 +197,7 @@ export default function LandingPage() {
               A complete protocol, instantly
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Herbs, diet changes, and lifestyle shifts — tailored to your symptoms and checked for safety.
+              Herbs, diet changes, and lifestyle shifts tailored to your symptoms and checked for safety.
             </p>
           </div>
 
@@ -322,7 +322,7 @@ export default function LandingPage() {
               {
                 step: "01",
                 title: "Describe your symptoms",
-                description: "Tell us what's going on — in your own words. No forms, no dropdowns.",
+                description: "Tell us what's going on in your own words. No forms, no dropdowns.",
               },
               {
                 step: "02",
@@ -332,7 +332,7 @@ export default function LandingPage() {
               {
                 step: "03",
                 title: "Get your protocol",
-                description: "Herbs, diet shifts, and lifestyle practices — delivered instantly.",
+                description: "Herbs, diet shifts, and lifestyle practices delivered instantly.",
               },
             ].map((item, index) => (
               <div key={item.step} className="relative">
@@ -386,7 +386,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-center text-sm text-muted-foreground mt-8">
-            And many more — just describe what you're experiencing.
+            And many more. Just describe what you're experiencing.
           </p>
         </div>
       </section>
@@ -404,7 +404,7 @@ export default function LandingPage() {
               </h2>
               <p className="text-background/60 text-base leading-relaxed mb-8">
                 Our protocols draw from traditional herbal medicine, modern nutritional science,
-                and holistic wellness practices — all filtered through safety-first principles.
+                and holistic wellness practices, all filtered through safety-first principles.
               </p>
               <Link
                 href={routes.onboarding}
@@ -428,7 +428,7 @@ export default function LandingPage() {
                 },
                 {
                   title: "Whole person wellness",
-                  description: "Mind, body, and lifestyle — not just a pill for every problem.",
+                  description: "Mind, body, and lifestyle, not just a pill for every problem.",
                 },
               ].map((item, index) => (
                 <div key={index} className="flex gap-4">

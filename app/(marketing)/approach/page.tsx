@@ -17,10 +17,10 @@ export default function ApproachPage() {
     {
       Icon: Search,
       title: "Root cause focused",
-      description: "We don't just match symptoms to supplements. Our system looks at patterns across your symptoms to identify potential underlying causes — whether it's adrenal fatigue, gut dysbiosis, nutrient deficiencies, or hormonal imbalances.",
+      description: "We don't just match symptoms to supplements. Our system looks at patterns across your symptoms to identify potential underlying causes, whether it's adrenal fatigue, gut dysbiosis, nutrient deficiencies, or hormonal imbalances.",
       details: [
         "Symptom cluster analysis to find connections",
-        "Multi-system perspective — not just isolated symptoms",
+        "Multi-system perspective, not just isolated symptoms",
         "Protocols address causes, not just effects",
       ],
     },
@@ -38,10 +38,10 @@ export default function ApproachPage() {
     {
       Icon: User,
       title: "Whole person wellness",
-      description: "A pill isn't always the answer. Our protocols include dietary adjustments, lifestyle practices, and behavioral changes alongside herbal recommendations — because lasting health requires a holistic approach.",
+      description: "A pill isn't always the answer. Our protocols include dietary adjustments, lifestyle practices, and behavioral changes alongside herbal recommendations. Lasting health requires a holistic approach.",
       details: [
         "Herbal supplements with specific dosages",
-        "Dietary changes — what to add and remove",
+        "Dietary changes: what to add and remove",
         "Lifestyle practices and daily habits",
         "Sleep, movement, and stress management",
       ],
@@ -57,7 +57,7 @@ export default function ApproachPage() {
           Address root causes, not just symptoms
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
-          Our protocols draw from traditional herbal medicine, modern nutritional science, and holistic wellness practices — all filtered through safety-first principles.
+          Our protocols draw from traditional herbal medicine, modern nutritional science, and holistic wellness practices, all filtered through safety-first principles.
         </p>
       </div>
 
@@ -98,7 +98,7 @@ export default function ApproachPage() {
             <h2 className="text-xl font-medium text-foreground">Evidence-based ratings</h2>
           </div>
           <p className="text-muted-foreground leading-relaxed mb-4">
-            Every remedy in our database is rated from 1.0 to 10.0 based on the quality and quantity of scientific research supporting its uses. We're honest about what the evidence shows — not everything gets a high score.
+            Every remedy in our database is rated from 1.0 to 10.0 based on the quality and quantity of scientific research supporting its uses. We're honest about what the evidence shows. Not everything gets a high score.
           </p>
           <Link
             href="/remedies/evidence-rating"
@@ -119,7 +119,7 @@ export default function ApproachPage() {
           <div>
             <h3 className="font-medium text-foreground mb-1">150+ herbs and growing</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Our remedy database covers adaptogens, nervines, immune support, digestive herbs, essential oils, vitamins, and minerals — each with detailed dosage guidance, safety information, and evidence ratings.
+              Our remedy database covers adaptogens, nervines, immune support, digestive herbs, essential oils, vitamins, and minerals. Each with detailed dosage guidance, safety information, and evidence ratings.
             </p>
             <Link
               href={routes.remedies}

@@ -7,7 +7,7 @@ const footerLinks = {
     title: "NatureScripts",
     links: [
       { label: "How It Works", href: routes.howItWorks },
-      { label: "Start Consultation", href: routes.consultation },
+      { label: "Start Consultation", href: routes.onboarding },
       { label: "Remedy Database", href: routes.remedies },
       { label: "Pricing", href: routes.pricing },
     ]

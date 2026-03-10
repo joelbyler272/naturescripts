@@ -35,7 +35,7 @@ export default function AboutPage() {
               Too many people are stuck between conventional medicine that doesn't address root causes and a sea of conflicting natural health advice online.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              We're building a bridge — giving people access to personalized, safety-checked natural health protocols grounded in both traditional wisdom and modern research. No hype, no miracle cures. Just honest, evidence-based guidance.
+              We're building a bridge, giving people access to personalized, safety-checked natural health protocols grounded in both traditional wisdom and modern research. No hype, no miracle cures. Just honest, evidence-based guidance.
             </p>
           </div>
           <div className="bg-white rounded-2xl border border-border/30 p-8">
@@ -76,8 +76,8 @@ export default function AboutPage() {
       {/* What NatureScripts is not */}
       <div className="max-w-4xl mx-auto px-6 mb-16 md:mb-24">
         <div className="bg-secondary/30 rounded-2xl p-8 md:p-10">
-          <h2 className="text-xl font-medium text-foreground mb-4">What NatureScripts is not</h2>
-          <div className="grid md:grid-cols-2 gap-4">
+          <h2 className="text-xl font-medium text-foreground mb-6 text-center">What NatureScripts is not</h2>
+          <div className="grid md:grid-cols-2 gap-4 max-w-lg mx-auto">
             {[
               "Not a replacement for your doctor",
               "Not a diagnosis or treatment tool",

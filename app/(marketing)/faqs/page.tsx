@@ -12,7 +12,7 @@ const faqCategories = [
     faqs: [
       {
         question: "What is NatureScripts?",
-        answer: "NatureScripts is an AI-powered tool that creates personalized natural health protocols. You describe your symptoms and health goals, and we generate a tailored plan that includes herbal supplements, dietary adjustments, and lifestyle practices — all safety-checked for interactions.",
+        answer: "NatureScripts is an AI-powered tool that creates personalized natural health protocols. You describe your symptoms and health goals, and we generate a tailored plan that includes herbal supplements, dietary adjustments, and lifestyle practices, all safety-checked for interactions.",
       },
       {
         question: "Is this medical advice?",
@@ -37,7 +37,7 @@ const faqCategories = [
       },
       {
         question: "What if I'm taking prescription medications?",
-        answer: "Always mention your medications during the consultation. Our system will check for known interactions and flag any concerns. However, this is not a substitute for talking to your pharmacist or doctor — always verify with them before adding supplements.",
+        answer: "Always mention your medications during the consultation. Our system will check for known interactions and flag any concerns. However, this is not a substitute for talking to your pharmacist or doctor. Always verify with them before adding supplements.",
       },
       {
         question: "Is it safe to use during pregnancy or breastfeeding?",
