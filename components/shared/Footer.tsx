@@ -34,6 +34,7 @@ const footerLinks = {
     links: [
       { label: "Terms of Service", href: routes.terms },
       { label: "Privacy Policy", href: routes.privacy },
+      { label: "Medical Disclaimer", href: routes.disclaimer },
     ]
   },
   connect: {

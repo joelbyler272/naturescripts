@@ -487,6 +487,22 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Medical Disclaimer */}
+      <section className="py-8 border-t border-border/30">
+        <div className="mx-auto max-w-3xl px-6">
+          <div className="flex items-start gap-3 text-muted-foreground/60">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <p className="text-xs leading-relaxed">
+              <span className="font-medium text-muted-foreground/80">Medical disclaimer:</span>{" "}
+              NatureScripts provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider before starting any supplement regimen.{" "}
+              <Link href="/disclaimer" className="underline hover:text-muted-foreground transition-colors">
+                Read full disclaimer
+              </Link>
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="relative py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-foreground" />

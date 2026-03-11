@@ -98,6 +98,23 @@ export default function TrackingPage() {
 
           <SymptomChart data={chartData} loading={symptomsLoading} />
 
+          {/* Getting started prompt when no data exists */}
+          {!symptomsLoading && chartData.length === 0 && symptomLogs.length === 0 && (
+            <Card>
+              <CardContent className="pt-6 pb-6">
+                <div className="text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
+                    <Plus className="w-5 h-5 text-accent" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Start tracking your symptoms</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    Log how you feel each day to reveal patterns over time. Tap the button above to record your first entry.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Today's logs */}
           {symptomLogs.length > 0 && (
             <Card>

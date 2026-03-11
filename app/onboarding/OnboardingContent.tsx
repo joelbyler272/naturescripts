@@ -29,6 +29,14 @@ function OnboardingInner() {
       {/* Chat area */}
       <main className="max-w-3xl mx-auto px-4 py-8">
         <OnboardingChat initialQuery={initialQuery} />
+
+        {/* Medical disclaimer */}
+        <p className="mt-4 text-xs text-muted-foreground/60 text-center max-w-xl mx-auto leading-relaxed">
+          NatureScripts provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider before starting any supplement regimen.{' '}
+          <Link href="/disclaimer" className="underline hover:text-muted-foreground transition-colors">
+            Full disclaimer
+          </Link>
+        </p>
       </main>
     </div>
   );
