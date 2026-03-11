@@ -10,7 +10,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // Rate limit by IP
     const ip = getClientIp(request);
-    const rateLimitResult = applyRateLimit('onboarding-clarify', ip, 10, 60000);
+    const rateLimitResult = await applyRateLimit('onboarding-clarify', ip, 10, 60000);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please wait a moment.' },

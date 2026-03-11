@@ -51,7 +51,8 @@ function emailWrapper(content: string): string {
           <tr>
             <td style="padding: 28px 16px 0 16px; text-align: center;">
               <p style="margin: 0 0 6px 0; color: #a1a1aa; font-size: 12px;">&copy; ${new Date().getFullYear()} NatureScripts</p>
-              <p style="margin: 0; color: #a1a1aa; font-size: 11px;">This is not medical advice. Always consult a healthcare provider.</p>
+              <p style="margin: 0 0 6px 0; color: #a1a1aa; font-size: 11px;">This is not medical advice. Always consult a healthcare provider.</p>
+              <p style="margin: 0; font-size: 11px;"><a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.com'}/settings" style="color: #a1a1aa; text-decoration: underline;">Manage email preferences</a> &middot; <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.com'}/settings" style="color: #a1a1aa; text-decoration: underline;">Unsubscribe</a></p>
             </td>
           </tr>
         </table>

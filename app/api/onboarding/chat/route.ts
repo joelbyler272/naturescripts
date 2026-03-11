@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildOnboardingSystemPrompt, extractEmailFromConversation } from '@/lib/consultation/onboardingPrompts';
 import { ConversationMessage, ChatResponse } from '@/lib/consultation/types';
-import { applyRateLimit, RateLimitResult } from '@/lib/utils/rateLimit';
+import { applyRateLimit } from '@/lib/utils/rateLimit';
+import { verifyTurnstileToken } from '@/lib/utils/turnstile';
 import { validateConversationHistory, CHAT_LIMITS } from '@/lib/utils/validation';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                'unknown';
 
     // Rate limit by IP (more restrictive than authenticated users)
-    const rateLimitResult: RateLimitResult = applyRateLimit('onboarding-chat', ip, 30, 60000);
+    const rateLimitResult = await applyRateLimit('onboarding-chat', ip, 30, 60000);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please wait a moment.' },
@@ -28,14 +29,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Parse request body
-    let body: { message?: string; conversationHistory?: unknown };
+    let body: { message?: string; conversationHistory?: unknown; turnstileToken?: string };
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
 
-    const { message } = body;
+    const { message, turnstileToken } = body;
+
+    // Verify CAPTCHA on first message of a new onboarding session
+    const validatedHistory = validateConversationHistory(body.conversationHistory || []);
+    if (validatedHistory.length === 0) {
+      const captcha = await verifyTurnstileToken(turnstileToken, ip);
+      if (!captcha.success) {
+        return NextResponse.json({ error: captcha.error }, { status: 403 });
+      }
+    }
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -47,9 +57,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
-
-    // Validate conversation history
-    const validatedHistory = validateConversationHistory(body.conversationHistory || []);
 
     // Build conversation for Claude
     const updatedHistory: ConversationMessage[] = [
