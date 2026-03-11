@@ -1,7 +1,6 @@
 'use client';
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatDate } from '@/lib/utils/date';
 
 interface DateSelectorProps {
   date: string; // YYYY-MM-DD
@@ -39,7 +38,7 @@ export function DateSelector({ date, onChange, disableFuture = true }: DateSelec
       </button>
 
       <span className="text-sm font-medium min-w-[120px] text-center">
-        {isToday ? 'Today' : formatDate(date, { weekday: 'short', month: 'short', day: 'numeric' })}
+        {isToday ? 'Today' : new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
       </span>
 
       <button

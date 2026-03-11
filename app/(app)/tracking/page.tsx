@@ -16,7 +16,6 @@ import { useHabitTracking } from '@/lib/hooks/useHabitTracking';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatDate } from '@/lib/utils/date';
 
 export default function TrackingPage() {
   const [loggerOpen, setLoggerOpen] = useState(false);
@@ -116,7 +115,7 @@ export default function TrackingPage() {
                           <p className="text-xs text-muted-foreground mt-0.5">{log.notes}</p>
                         )}
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(log.created_at, { hour: 'numeric', minute: '2-digit' })}
+                          {new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                         </p>
                       </div>
                       <button

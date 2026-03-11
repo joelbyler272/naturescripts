@@ -12,6 +12,7 @@ import { routes } from '@/lib/constants/routes';
 import { getProductUrl } from '@/lib/utils/urlValidation';
 import { WelcomeWalkthrough } from '@/components/protocol/WelcomeWalkthrough';
 import { UpgradeModal } from '@/components/protocol/UpgradeModal';
+import { ProtocolActions } from '@/components/protocol/ProtocolActions';
 import {
   ArrowLeft,
   Leaf,
@@ -376,12 +377,10 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-4 border-t border-border/30">
-        <Link href={`${routes.consultation}?adjust=${consultation.id}`}>
-          <Button className="bg-accent hover:bg-accent/90">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Adjust Protocol
-          </Button>
-        </Link>
+        <ProtocolActions
+          consultationId={consultation.id}
+          protocolTitle={protocol.title}
+        />
         <Link href={routes.consultation}>
           <Button variant="outline">Start New Consultation</Button>
         </Link>
