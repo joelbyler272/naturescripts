@@ -1,14 +1,29 @@
 # NatureScripts
 
-AI-powered naturopathic consultation platform that creates personalized herbal wellness protocols.
+AI-powered naturopathic consultation platform that creates personalized herbal wellness protocols using Claude.
 
 ## Features
 
-- **AI Consultations** — Chat-based consultation that asks smart follow-up questions
-- **Personalized Protocols** — Herbal recommendations with dosages, timing, and safety info
-- **Remedy Database** — Evidence-rated database of natural remedies
-- **Usage Limits** — Free tier (3/day) with Pro subscription for unlimited access
-- **Stripe Payments** — Subscription billing with customer portal
+### Free Tier
+- **AI Consultations** -- Chat-based consultation with smart follow-up questions (5/week)
+- **Personalized Protocols** -- Herbal recommendations with dosages, timing, and safety info
+- **Remedy Database** -- Evidence-rated database of natural remedies with product links
+- **Health Profile** -- Onboarding flow that builds your wellness profile
+- **PDF Export** -- Download protocols as formatted PDFs
+
+### Pro Tier ($12.99/month)
+- Unlimited consultations
+- **Symptom Tracking** -- Log symptoms daily and visualize trends over time
+- **Protocol Adjustments** -- Modify existing protocols based on progress
+- **Email Reminders** -- Weekly progress summaries and tracking nudges
+- **Custom Remedies** -- Save and manage your own remedy notes
+
+### Admin Dashboard
+- User management and consultation viewer (anonymized)
+- API usage analytics and cost tracking
+- Stripe revenue integration
+- Remedy database CRUD with bulk JSON import
+- Training data export (JSONL)
 
 ## Tech Stack
 
@@ -17,10 +32,16 @@ AI-powered naturopathic consultation platform that creates personalized herbal w
 | Framework | Next.js 14 (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
-| UI Components | shadcn/ui |
-| Database | Supabase (PostgreSQL) |
+| UI Components | shadcn/ui + Radix UI |
+| Database | Supabase (PostgreSQL + RLS) |
 | Auth | Supabase Auth |
-| Payments | Stripe |
+| AI | Anthropic Claude (via `@anthropic-ai/sdk`) |
+| Payments | Stripe (subscriptions + billing portal) |
+| Email | Resend |
+| Analytics | PostHog |
+| Charts | Recharts |
+| PDF | jsPDF |
+| Rate Limiting | In-memory + Upstash Redis |
 | Icons | Lucide React |
 
 ## Getting Started
@@ -28,42 +49,45 @@ AI-powered naturopathic consultation platform that creates personalized herbal w
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
+- npm
 - Supabase account
+- Anthropic API key
 - Stripe account (for payments)
+- Resend account (for emails, optional)
 
 ### Installation
 
 ```bash
-# Clone the repo
 git clone https://github.com/joelbyler272/naturescripts.git
 cd naturescripts
-
-# Install dependencies
 npm install
-
-# Copy environment template
 cp .env.local.example .env.local
 ```
 
 ### Environment Variables
 
-Add these to your `.env.local`:
+See `.env.local.example` for the full list. Key variables:
 
 ```bash
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Anthropic (Claude AI)
+ANTHROPIC_API_KEY=
 
 # Stripe
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-STRIPE_PRO_PRICE_ID=price_xxx
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRO_PRICE_ID=
 
-# Optional
-DEV_EMAILS=dev@example.com
-ADMIN_EMAILS=admin@example.com
+# Email (Resend)
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ### Database Setup
@@ -75,9 +99,9 @@ Run the SQL migration in your Supabase SQL Editor:
 ```
 
 This creates:
-- `profiles` — User profiles with tier info
-- `consultations` — Consultation history and protocols
-- `daily_usage` — Usage tracking for rate limiting
+- `profiles` -- User profiles with tier info
+- `consultations` -- Consultation history and protocols
+- `daily_usage` -- Usage tracking for rate limiting
 
 ### Development
 
@@ -90,10 +114,7 @@ Open [http://localhost:3000](http://localhost:3000)
 ### Stripe Webhook (Local Testing)
 
 ```bash
-# Install Stripe CLI
 brew install stripe/stripe-cli/stripe
-
-# Login and forward webhooks
 stripe login
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
@@ -101,30 +122,42 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 ## Project Structure
 
 ```
-├── app/
-│   ├── (app)/           # Authenticated app routes
-│   │   ├── dashboard/   # Main dashboard
-│   │   ├── consultation/# AI chat interface
-│   │   ├── protocols/   # Protocol history & detail
-│   │   ├── settings/    # User settings
-│   │   └── upgrade/     # Pro upgrade page
-│   ├── (auth)/          # Login/signup pages
-│   ├── (marketing)/     # Landing page
-│   ├── (public)/        # Public pages (remedies, library)
-│   └── api/             # API routes
-│       └── stripe/      # Stripe checkout, portal, webhook
-├── components/
-│   ├── app/             # App shell, navigation, sidebar
-│   ├── consultation/    # Chat interface components
-│   ├── protocol/        # Protocol display components
-│   └── ui/              # shadcn/ui components
-├── lib/
-│   ├── auth/            # Auth context
-│   ├── constants/       # Routes, limits, error codes
-│   ├── hooks/           # React hooks
-│   ├── supabase/        # Database client & queries
-│   └── utils/           # Utilities (logger, rate limit, etc.)
-└── types/               # TypeScript definitions
+app/
+  (admin)/             # Admin dashboard (users, analytics, costs, revenue, remedies)
+  (app)/               # Authenticated routes (dashboard, consultation, protocols, tracking, settings)
+  (auth)/              # Sign-in, sign-up, email verification
+  (legal)/             # Terms, privacy policy, medical disclaimer
+  (marketing)/         # Landing page, about, pricing, FAQs, blog, contact
+  (public)/            # Remedy database, health library
+  api/                 # API routes (consultation, stripe, auth, admin, cron)
+  onboarding/          # Guided onboarding chat flow
+
+components/
+  admin/               # Admin UI components
+  app/                 # App shell, sidebar, navigation
+  consultation/        # Chat interface
+  error/               # Error boundaries
+  onboarding/          # Onboarding chat and modals
+  protocol/            # Protocol display and detail
+  tracking/            # Symptom charts, supplement/habit trackers
+  shared/              # Navigation, Footer, Logo
+  ui/                  # shadcn/ui component library
+
+lib/
+  admin/               # Admin queries and API usage tracking
+  analytics/           # PostHog event tracking
+  anthropic/           # Claude SDK wrapper with cost logging
+  auth/                # Auth context and utilities
+  constants/           # Routes, limits, error codes, colors
+  consultation/        # Protocol generation, prompts, affiliate links
+  email/               # Resend templates (verification, reminders, summaries)
+  hooks/               # React hooks (usage limits, tracking, protocols)
+  onboarding/          # Onboarding state machine
+  pdf/                 # PDF generation
+  remedies/            # Remedy database queries
+  stripe/              # Stripe checkout and portal utilities
+  supabase/            # Database client and queries
+  utils/               # Logger, rate limiting, helpers
 ```
 
 ## Key Routes
@@ -132,60 +165,41 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 | Route | Description |
 |-------|-------------|
 | `/` | Landing page |
-| `/dashboard` | User dashboard with protocols |
-| `/consultation` | Start a new consultation |
-| `/protocols` | View past protocols |
-| `/protocols/[id]` | Protocol detail page |
-| `/remedies` | Remedy database |
-| `/settings` | User settings & billing |
+| `/onboarding` | Guided consultation and account creation |
+| `/dashboard` | User dashboard with active protocol |
+| `/consultation` | AI-powered consultation chat |
+| `/protocols` | Past protocol history |
+| `/protocols/[id]` | Protocol detail with supplements, habits, interactions |
+| `/tracking` | Symptom, supplement, and habit tracking (Pro) |
+| `/remedies` | Searchable remedy database |
+| `/library` | Health guides and research articles |
+| `/settings` | Profile, billing, and account management |
 | `/upgrade` | Pro subscription page |
-
-## Development History
-
-All features were developed through the following PRs (all merged to main):
-
-| PR | Description |
-|----|-------------|
-| #1 | Folder structure reorganization |
-| #2 | Landing page redesign |
-| #3 | Dashboard & app shell |
-| #4 | Consultation flow with smart questions |
-| #5 | Remedy database with evidence ratings |
-| #6 | Supabase authentication |
-| #7 | Database for consultations & usage limits |
-| #8 | Performance fixes (fonts, null handling) |
-| #9 | Polish, Stripe, mobile responsiveness |
-| #10 | Production readiness audit (security, a11y) |
-| #11 | Audit round 2 (fail-closed, React.memo) |
-| #12 | Audit round 3 (rate limiting, type guards) |
+| `/admin` | Admin dashboard (authorized users only) |
 
 ## Architecture Decisions
 
-- **Server/Client Split** — Pages are server components for metadata, with client `*Content.tsx` components for interactivity
-- **Fail-Closed Security** — Database errors deny access rather than allow bypass
-- **Rate Limiting** — In-memory rate limiter (upgradeable to Redis)
-- **Type Guards** — Centralized protocol type detection for backward compatibility
-- **Dev-Only Logging** — Production logs don't leak sensitive data
+- **Server/Client Split** -- Pages are server components for metadata, with client `*Content.tsx` components for interactivity
+- **Fail-Closed Security** -- Database errors deny access rather than allow bypass
+- **Rate Limiting** -- In-memory rate limiter with Upstash Redis support
+- **Type Guards** -- Centralized protocol type detection for backward compatibility
+- **Dev-Only Logging** -- Production logs don't leak sensitive data
+- **Affiliate Integration** -- Amazon and iHerb affiliate links in product recommendations
+- **Cron Jobs** -- `/api/cron/reminders` and `/api/cron/weekly-summary` for automated emails
 
 ## Deployment
 
-The app is designed for Vercel deployment:
+Designed for Vercel deployment:
 
 ```bash
-# Build
 npm run build
-
-# The app uses Edge Runtime for middleware
 ```
 
-Required Vercel environment variables:
-- All variables from `.env.local.example`
-- Set up Stripe webhook endpoint: `https://your-domain.com/api/stripe/webhook`
+Required:
+- All variables from `.env.local.example` set in Vercel
+- Stripe webhook endpoint: `https://your-domain.com/api/stripe/webhook`
+- Cron jobs configured in `vercel.json` (if using Vercel Cron)
 
 ## License
 
-Proprietary - All rights reserved
-
----
-
-Built with Next.js 14, TypeScript, Tailwind CSS, Supabase, and Stripe
+Proprietary -- All rights reserved
