@@ -67,6 +67,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Conversation history is required' }, { status: 400 });
     }
 
+    // Server-side consultation limit check before generating protocol
+    const { data: limitData, error: limitError } = await supabase
+      .rpc('check_can_consult', { p_user_id: user.id });
+
+    const limitResult = limitError ? null : limitData?.[0];
+    if (limitError || !limitResult || !limitResult.can_consult) {
+      return NextResponse.json(
+        { error: 'Weekly consultation limit reached. Upgrade to Pro for unlimited consultations.' },
+        { status: 403 }
+      );
+    }
+
     // Verify consultation ownership before making expensive Claude call
     if (consultationId) {
       const { data: existingConsultation, error: ownershipError } = await supabase

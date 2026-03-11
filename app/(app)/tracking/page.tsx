@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ProBadge } from '@/components/app/ProBadge';
+import { ProGate } from '@/components/shared/ProGate';
 import { SymptomChart } from '@/components/tracking/SymptomChart';
 import { SymptomLogger } from '@/components/tracking/SymptomLogger';
 import { SupplementTracker } from '@/components/tracking/SupplementTracker';
@@ -12,12 +13,13 @@ import { useProtocolItems } from '@/lib/hooks/useProtocolItems';
 import { useSymptomTracking } from '@/lib/hooks/useSymptomTracking';
 import { useSupplementTracking } from '@/lib/hooks/useSupplementTracking';
 import { useHabitTracking } from '@/lib/hooks/useHabitTracking';
-import { Plus, Trash2 } from 'lucide-react';
+import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
+import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatDate } from '@/lib/utils/date';
 
 export default function TrackingPage() {
   const [loggerOpen, setLoggerOpen] = useState(false);
+  const { isPro, loading } = useUsageLimits();
 
   const { supplements: protocolSupplements, habits: protocolHabits, suggestedSymptoms, protocolId } = useProtocolItems();
   const { todayLogs: symptomLogs, chartData, distinctSymptoms, loading: symptomsLoading, logSymptom, deleteLog } = useSymptomTracking();
@@ -26,6 +28,42 @@ export default function TrackingPage() {
 
   // Combine protocol suggestions with user's historical symptoms for autocomplete
   const allSuggestions = Array.from(new Set([...suggestedSymptoms, ...distinctSymptoms]));
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        </div>
+      </div>
+    );
+  }
+
+  // Show Pro gate for free users
+  if (!isPro) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <div className="flex items-center space-x-2 mb-2">
+            <h1 className="text-3xl font-bold text-foreground">Progress Tracking</h1>
+            <ProBadge />
+          </div>
+          <p className="text-muted-foreground">
+            Monitor your symptoms, supplements, and lifestyle changes over time
+          </p>
+        </div>
+
+        <ProGate
+          feature="Progress Tracking"
+          description="Track your energy, mood, sleep, and symptoms over time. See trends and insights to optimize your wellness protocol."
+          source="tracking_page"
+        >
+          {/* This won't render for free users */}
+          <div />
+        </ProGate>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -77,7 +115,7 @@ export default function TrackingPage() {
                           <p className="text-xs text-muted-foreground mt-0.5">{log.notes}</p>
                         )}
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(log.created_at, { hour: 'numeric', minute: '2-digit' })}
+                          {new Date(log.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                         </p>
                       </div>
                       <button

@@ -55,6 +55,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Validate conversation history
     const validatedHistory = validateConversationHistory(body.conversationHistory || []);
 
+    // Server-side consultation limit check on first message (new consultation)
+    if (validatedHistory.length === 0 && !consultationId) {
+      const { data: limitData, error: limitError } = await supabase
+        .rpc('check_can_consult', { p_user_id: user.id });
+
+      const limitResult = limitError ? null : limitData?.[0];
+      if (limitError || !limitResult || !limitResult.can_consult) {
+        return NextResponse.json(
+          { error: 'Weekly consultation limit reached. Upgrade to Pro for unlimited consultations.' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Get user's health context
     const { data: healthData, error: healthError } = await supabase
       .rpc('get_user_health_context', { p_user_id: user.id });
