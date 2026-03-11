@@ -1,171 +1,127 @@
 /**
- * Simple in-memory rate limiter
+ * Rate limiter with Upstash Redis (production) or in-memory fallback (dev).
  *
- * Note: This works for single-instance deployments. For multi-instance
- * deployments, replace with Redis-based rate limiting (e.g., Upstash).
- *
- * Usage:
- *   const limiter = createRateLimiter({ windowMs: 60000, maxRequests: 10 });
- *   const { allowed, remaining } = limiter.check(userId);
+ * In production on Vercel, serverless instances don't share memory,
+ * so we use Upstash Redis for distributed rate limiting.
+ * Falls back to in-memory for local development when env vars aren't set.
  */
 
-interface RateLimitConfig {
-  windowMs: number;  // Time window in milliseconds
-  maxRequests: number;  // Max requests per window
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  retryAfter: number; // Milliseconds until reset
 }
+
+// ---- Redis-backed rate limiter (production) ----
+
+let redis: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (redis) return redis;
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+    return redis;
+  }
+  return null;
+}
+
+// Cache of Ratelimit instances keyed by config
+const upstashLimiters = new Map<string, Ratelimit>();
+
+function getUpstashLimiter(maxRequests: number, windowMs: number): Ratelimit | null {
+  const r = getRedis();
+  if (!r) return null;
+
+  const key = `${maxRequests}:${windowMs}`;
+  if (!upstashLimiters.has(key)) {
+    upstashLimiters.set(key, new Ratelimit({
+      redis: r,
+      limiter: Ratelimit.slidingWindow(maxRequests, `${windowMs} ms`),
+      analytics: false,
+      prefix: 'ns_rl',
+    }));
+  }
+  return upstashLimiters.get(key)!;
+}
+
+// ---- In-memory fallback (development only) ----
 
 interface RateLimitEntry {
   count: number;
   resetTime: number;
 }
 
-export interface RateLimitResult {
-  allowed: boolean;
-  remaining: number;
-  retryAfter: number;  // Milliseconds until reset
-}
+const memoryStore = new Map<string, RateLimitEntry>();
+let lastCleanup = 0;
 
-const stores = new Map<string, Map<string, RateLimitEntry>>();
-
-export function createRateLimiter(config: RateLimitConfig) {
-  const storeKey = `${config.windowMs}-${config.maxRequests}`;
-
-  if (!stores.has(storeKey)) {
-    stores.set(storeKey, new Map());
-  }
-
-  const store = stores.get(storeKey)!;
-
-  // Clean up expired entries periodically
-  const interval = setInterval(() => {
-    const now = Date.now();
-    store.forEach((entry, key) => {
-      if (entry.resetTime <= now) {
-        store.delete(key);
-      }
-    });
-  }, config.windowMs);
-
-  // Allow Node.js to exit even if this interval is still running
-  if (typeof interval === 'object' && 'unref' in interval) {
-    interval.unref();
-  }
-
-  return {
-    check(identifier: string): RateLimitResult {
-      const now = Date.now();
-      const entry = store.get(identifier);
-
-      // If no entry or expired, create new one
-      if (!entry || entry.resetTime <= now) {
-        store.set(identifier, {
-          count: 1,
-          resetTime: now + config.windowMs,
-        });
-        return {
-          allowed: true,
-          remaining: config.maxRequests - 1,
-          retryAfter: 0,
-        };
-      }
-
-      // Check if over limit
-      if (entry.count >= config.maxRequests) {
-        return {
-          allowed: false,
-          remaining: 0,
-          retryAfter: entry.resetTime - now,
-        };
-      }
-
-      // Increment count
-      entry.count++;
-      return {
-        allowed: true,
-        remaining: config.maxRequests - entry.count,
-        retryAfter: 0,
-      };
-    },
-
-    reset(identifier: string): void {
-      store.delete(identifier);
-    },
-  };
-}
-
-// Pre-configured rate limiters for common use cases
-export const apiRateLimiters = {
-  // Stripe checkout: 5 requests per minute per user
-  stripeCheckout: createRateLimiter({ windowMs: 60000, maxRequests: 5 }),
-
-  // Stripe portal: 10 requests per minute per user
-  stripePortal: createRateLimiter({ windowMs: 60000, maxRequests: 10 }),
-
-  // Auth endpoints: 10 requests per minute per IP
-  auth: createRateLimiter({ windowMs: 60000, maxRequests: 10 }),
-
-  // Consultation chat: 20 requests per minute per user
-  consultationChat: createRateLimiter({ windowMs: 60000, maxRequests: 20 }),
-
-  // Consultation protocol: 10 requests per minute per user
-  consultationProtocol: createRateLimiter({ windowMs: 60000, maxRequests: 10 }),
-};
-
-/**
- * Simple rate limit function for API routes
- * Uses a global store keyed by endpoint + userId
- */
-const globalStore = new Map<string, RateLimitEntry>();
-let lastGlobalCleanup = 0;
-
-export function applyRateLimit(
-  key: string,
-  userId: string,
-  maxRequests: number = 10,
-  windowMs: number = 60000
+function memoryRateLimit(
+  storeKey: string,
+  maxRequests: number,
+  windowMs: number
 ): RateLimitResult {
   const now = Date.now();
 
-  // Lazy cleanup: run at most once per minute
-  if (now - lastGlobalCleanup > 60000) {
-    lastGlobalCleanup = now;
-    globalStore.forEach((v, k) => {
-      if (v.resetTime <= now) globalStore.delete(k);
+  // Lazy cleanup every 60 seconds
+  if (now - lastCleanup > 60000) {
+    lastCleanup = now;
+    memoryStore.forEach((v, k) => {
+      if (v.resetTime <= now) memoryStore.delete(k);
     });
   }
 
-  const storeKey = `${key}:${userId}`;
-  const entry = globalStore.get(storeKey);
+  const entry = memoryStore.get(storeKey);
 
-  // If no entry or expired, create new one
   if (!entry || entry.resetTime <= now) {
-    globalStore.set(storeKey, {
-      count: 1,
-      resetTime: now + windowMs,
-    });
-    return {
-      allowed: true,
-      remaining: maxRequests - 1,
-      retryAfter: 0,
-    };
+    memoryStore.set(storeKey, { count: 1, resetTime: now + windowMs });
+    return { allowed: true, remaining: maxRequests - 1, retryAfter: 0 };
   }
 
-  // Check if over limit
   if (entry.count >= maxRequests) {
+    return { allowed: false, remaining: 0, retryAfter: entry.resetTime - now };
+  }
+
+  entry.count++;
+  return { allowed: true, remaining: maxRequests - entry.count, retryAfter: 0 };
+}
+
+// ---- Public API ----
+
+/**
+ * Apply rate limiting for an API route.
+ * Uses Upstash Redis in production, falls back to in-memory in dev.
+ */
+export async function applyRateLimit(
+  key: string,
+  identifier: string,
+  maxRequests: number = 10,
+  windowMs: number = 60000
+): Promise<RateLimitResult> {
+  const limiter = getUpstashLimiter(maxRequests, windowMs);
+
+  if (limiter) {
+    const result = await limiter.limit(`${key}:${identifier}`);
     return {
-      allowed: false,
-      remaining: 0,
-      retryAfter: entry.resetTime - now,
+      allowed: result.success,
+      remaining: result.remaining,
+      retryAfter: result.success ? 0 : Math.max(0, result.reset - Date.now()),
     };
   }
 
-  // Increment count
-  entry.count++;
-  return {
-    allowed: true,
-    remaining: maxRequests - entry.count,
-    retryAfter: 0,
-  };
+  // Fallback: in-memory (single-instance only, for local dev)
+  if (process.env.NODE_ENV === 'development') {
+    return memoryRateLimit(`${key}:${identifier}`, maxRequests, windowMs);
+  }
+
+  // In production without Redis configured, log a warning and allow
+  // (fail-open to avoid blocking all traffic if Redis isn't set up yet)
+  console.warn('[RATE LIMIT] Upstash Redis not configured in production. Rate limiting disabled.');
+  return { allowed: true, remaining: maxRequests, retryAfter: 0 };
 }
 
 /**

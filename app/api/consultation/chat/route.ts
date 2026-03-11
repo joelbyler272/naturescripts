@@ -10,8 +10,9 @@ import {
   ConversationMessage,
   ChatResponse
 } from '@/lib/consultation/types';
-import { applyRateLimit, RateLimitResult } from '@/lib/utils/rateLimit';
+import { applyRateLimit } from '@/lib/utils/rateLimit';
 import { validateConversationHistory, CHAT_LIMITS } from '@/lib/utils/validation';
+import { cacheGet, cacheSet, healthContextKey, CACHE_TTL } from '@/lib/utils/cache';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Per-user rate limiting
-    const rateLimitResult: RateLimitResult = applyRateLimit('consultation-chat', user.id, 20, 60000);
+    const rateLimitResult = await applyRateLimit('consultation-chat', user.id, 20, 60000);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please wait a moment.' },
@@ -69,21 +70,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Get user's health context
-    const { data: healthData, error: healthError } = await supabase
-      .rpc('get_user_health_context', { p_user_id: user.id });
+    // Get user's health context (cached for 5 minutes)
+    const cacheKey = healthContextKey(user.id);
+    let healthContext: HealthContext = (await cacheGet<HealthContext>(cacheKey)) as HealthContext;
 
-    if (healthError) {
-      console.error('[CONSULTATION CHAT] Failed to get health context:', healthError);
+    if (!healthContext) {
+      const { data: healthData, error: healthError } = await supabase
+        .rpc('get_user_health_context', { p_user_id: user.id });
+
+      if (healthError) {
+        console.error('[CONSULTATION CHAT] Failed to get health context:', healthError);
+      }
+
+      healthContext = healthData || {
+        health_conditions: [],
+        medications: [],
+        supplements: [],
+        health_notes: '',
+        tier: 'free'
+      };
+
+      // Cache for subsequent requests
+      cacheSet(cacheKey, healthContext, CACHE_TTL.HEALTH_CONTEXT).catch(() => {});
     }
-
-    const healthContext: HealthContext = healthData || {
-      health_conditions: [],
-      medications: [],
-      supplements: [],
-      health_notes: '',
-      tier: 'free'
-    };
 
     const tier = healthContext.tier || 'free';
 
@@ -137,15 +146,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       messages: messagesForClaude
     });
 
-    // Record API usage to database for admin dashboard
-    await recordApiUsage({
+    // Record API usage (fire-and-forget — don't let tracking failures kill the response)
+    recordApiUsage({
       userId: user.id,
       consultationId: consultationId || undefined,
       endpoint: 'chat',
       model: claudeResponse.usage.model,
       inputTokens: claudeResponse.usage.inputTokens,
       outputTokens: claudeResponse.usage.outputTokens,
-    });
+    }).catch(() => { /* silently ignore tracking failures */ });
 
     // Log the full consultation call with cost tracking (dev only)
     logConsultationCall({

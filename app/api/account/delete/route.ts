@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
@@ -26,6 +27,29 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         { error: 'Please type "DELETE MY ACCOUNT" to confirm' },
         { status: 400 }
       );
+    }
+
+    // Cancel Stripe subscription before deleting data
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('stripe_customer_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.stripe_customer_id && process.env.STRIPE_SECRET_KEY) {
+      try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-02-24.acacia' });
+        const subscriptions = await stripe.subscriptions.list({
+          customer: profile.stripe_customer_id,
+          status: 'active',
+        });
+        for (const sub of subscriptions.data) {
+          await stripe.subscriptions.cancel(sub.id);
+        }
+      } catch (stripeErr) {
+        console.error('[ACCOUNT DELETE] Error cancelling Stripe subscription:', stripeErr);
+        // Continue with deletion even if Stripe cancel fails
+      }
     }
 
     // Delete user data using the database function

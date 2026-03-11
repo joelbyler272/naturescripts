@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
 import { logger } from '@/lib/utils/logger';
-import { apiRateLimiters } from '@/lib/utils/rateLimit';
+import { applyRateLimit } from '@/lib/utils/rateLimit';
 
 // Lazy initialization to avoid build-time errors when env vars aren't set
 function getStripe() {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Rate limiting: 10 requests per minute per user
-    const rateLimitResult = apiRateLimiters.stripePortal.check(user.id);
+    const rateLimitResult = await applyRateLimit('stripe-portal', user.id, 10, 60000);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },

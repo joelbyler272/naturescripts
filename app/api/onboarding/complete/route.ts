@@ -9,6 +9,7 @@ import { OnboardingState, getProfileData, buildProtocolContext } from '@/lib/onb
 import { HealthContext, GeneratedProtocol } from '@/lib/consultation/types';
 import { validateConversationHistory } from '@/lib/utils/validation';
 import { applyRateLimit, getClientIp } from '@/lib/utils/rateLimit';
+import { verifyTurnstileToken } from '@/lib/utils/turnstile';
 import { logger } from '@/lib/utils/logger';
 import crypto from 'crypto';
 
@@ -32,25 +33,19 @@ interface OnboardingCompleteRequest {
   email: string;
   state: OnboardingState;
   conversationHistory: unknown;
+  turnstileToken?: string;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // Rate limit by IP (restrictive — this is an expensive endpoint)
     const ip = getClientIp(request);
-    const rateLimitResult = applyRateLimit('onboarding-complete', ip, 5, 60000);
+    const rateLimitResult = await applyRateLimit('onboarding-complete', ip, 5, 60000);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please wait a moment.' },
         { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.retryAfter / 1000)) } }
       );
-    }
-
-    let supabaseAdmin: ReturnType<typeof createClient>;
-    try {
-      supabaseAdmin = getSupabaseAdmin();
-    } catch {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
     // Parse request body
@@ -59,6 +54,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+
+    // Verify CAPTCHA before expensive operations
+    const captcha = await verifyTurnstileToken(body.turnstileToken, ip);
+    if (!captcha.success) {
+      return NextResponse.json({ error: captcha.error }, { status: 403 });
+    }
+
+    let supabaseAdmin: ReturnType<typeof createClient>;
+    try {
+      supabaseAdmin = getSupabaseAdmin();
+    } catch {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
     const { email, state } = body;

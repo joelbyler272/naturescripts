@@ -15,6 +15,7 @@ import {
 import { logger } from '@/lib/utils/logger';
 import { Mail, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { TurnstileWidget } from '@/components/shared/TurnstileWidget';
 
 interface OnboardingChatProps {
   initialQuery?: string;
@@ -41,6 +42,7 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
   const [completionState, setCompletionState] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
   const [existingUserError, setExistingUserError] = useState<boolean>(false);
 
+  const turnstileTokenRef = useRef<string | null>(null);
   const onboardingStateRef = useRef(onboardingState);
   const mountedRef = useRef(true);
 
@@ -194,6 +196,7 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
             email: profileData.email,
             state: currentState,
             conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
+            turnstileToken: turnstileTokenRef.current,
           }),
         });
 
@@ -308,6 +311,14 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
         )}
 
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* Turnstile CAPTCHA — renders as a compact managed widget */}
+      <div className="px-4 sm:px-6 flex justify-center">
+        <TurnstileWidget
+          onToken={(token) => { turnstileTokenRef.current = token; }}
+          onExpire={() => { turnstileTokenRef.current = null; }}
+        />
       </div>
 
       <ChatInput
