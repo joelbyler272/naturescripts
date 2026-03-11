@@ -6,8 +6,8 @@ const footerLinks = {
   naturescripts: {
     title: "NatureScripts",
     links: [
-      { label: "How It Works", href: "/how-it-works" },
-      { label: "Start Consultation", href: routes.consultation },
+      { label: "How It Works", href: routes.howItWorks },
+      { label: "Start Consultation", href: routes.onboarding },
       { label: "Remedy Database", href: routes.remedies },
       { label: "Pricing", href: routes.pricing },
     ]
@@ -15,10 +15,10 @@ const footerLinks = {
   company: {
     title: "Company",
     links: [
-      { label: "About Us", href: "/about" },
-      { label: "Our Approach", href: "/approach" },
-      { label: "Contact", href: "/contact" },
-      { label: "FAQs", href: "/faqs" },
+      { label: "About Us", href: routes.about },
+      { label: "Our Approach", href: routes.approach },
+      { label: "Contact", href: routes.contact },
+      { label: "FAQs", href: routes.faqs },
     ]
   },
   library: {

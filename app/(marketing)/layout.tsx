@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { Navigation } from '@/components/app/Navigation'
+import { Footer } from '@/components/shared/Footer'
 
 export const metadata: Metadata = {
   title: 'NatureScripts - Personalized Natural Health Protocols',
@@ -10,5 +12,11 @@ export default function MarketingLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Navigation isAuthenticated={false} />
+      <main className="flex-1">{children}</main>
+      <Footer />
+    </div>
+  )
 }

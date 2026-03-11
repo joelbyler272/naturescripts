@@ -7,6 +7,10 @@ export const routes = {
   home: '/',
   pricing: '/pricing',
   about: '/about',
+  howItWorks: '/how-it-works',
+  approach: '/approach',
+  contact: '/contact',
+  faqs: '/faqs',
   
   // Auth
   signIn: '/sign-in',
