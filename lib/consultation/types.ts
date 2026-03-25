@@ -75,11 +75,24 @@ export interface LegacyGeneratedProtocol {
 
 // Protocol Types
 
+export interface ScheduleItem {
+  name: string;
+  dosage: string;
+  notes?: string;
+}
+
+export interface DailySchedule {
+  morning?: ScheduleItem[];
+  afternoon?: ScheduleItem[];
+  evening?: ScheduleItem[];
+}
+
 export interface GeneratedProtocol {
   id?: string;
   title?: string; // 1-4 word title like "Sleep Support" or "Knee Pain Relief"
   summary: string;
   recommendations: Recommendation[];
+  daily_schedule?: DailySchedule;
   dietary_shifts?: DietaryShift[];
   lifestyle_practices?: LifestylePractice[];
   tracking_suggestions?: TrackingSuggestion[];

@@ -106,9 +106,20 @@ Respond with a valid JSON object matching this structure:
       ]
     }
   ],
+  "daily_schedule": {
+    "morning": [{"name": "Remedy name", "dosage": "Amount", "notes": "With breakfast"}],
+    "afternoon": [{"name": "Remedy name", "dosage": "Amount"}],
+    "evening": [{"name": "Remedy name", "dosage": "Amount", "notes": "Before bed"}]
+  },
   ${tier === 'pro' ? PRO_PROTOCOL_JSON_FIELDS : ''}
   "disclaimer": "A brief, light-touch reminder to consult a healthcare provider if symptoms persist or worsen."
 }
+
+## Daily Schedule Guidelines
+- Organize ALL recommendations into a daily_schedule with morning, afternoon, and/or evening time slots
+- Only include time slots that have items (omit empty slots)
+- Each item has: name (matching a recommendation name), dosage, and optional notes
+- This helps users know exactly when to take each remedy throughout their day
 
 ## Title Guidelines
 - The title should be 1-4 words maximum
@@ -150,6 +161,30 @@ const PRO_PROTOCOL_JSON_FIELDS = `"dietary_shifts": [
  */
 function formatHealthContext(context: HealthContext): string {
   const parts: string[] = [];
+
+  // Personal info (if available via extended context)
+  const ext = context as Record<string, unknown>;
+  const personalParts: string[] = [];
+  if (ext.age) personalParts.push(`Age: ${ext.age}`);
+  if (ext.gender) personalParts.push(`Gender: ${ext.gender}`);
+  if (ext.height_cm) personalParts.push(`Height: ${ext.height_cm}cm`);
+  if (ext.weight_kg) personalParts.push(`Weight: ${ext.weight_kg}kg`);
+  if (personalParts.length > 0) {
+    parts.push(`Personal Info: ${personalParts.join(', ')}`);
+  }
+
+  const lifestyleParts: string[] = [];
+  if (ext.activity_level) lifestyleParts.push(`Activity: ${ext.activity_level}`);
+  if (ext.sleep_hours) lifestyleParts.push(`Sleep: ${ext.sleep_hours} hrs/night`);
+  if (ext.stress_level) lifestyleParts.push(`Stress: ${ext.stress_level}/10`);
+  if (ext.diet_type) lifestyleParts.push(`Diet: ${ext.diet_type}`);
+  if (lifestyleParts.length > 0) {
+    parts.push(`Lifestyle: ${lifestyleParts.join(', ')}`);
+  }
+
+  if (ext.wellness_goals && Array.isArray(ext.wellness_goals) && ext.wellness_goals.length > 0) {
+    parts.push(`Goals: ${ext.wellness_goals.join(', ')}`);
+  }
 
   if (context.health_conditions && context.health_conditions.length > 0) {
     parts.push(`Health Conditions: ${context.health_conditions.join(', ')}`);

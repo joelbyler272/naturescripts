@@ -5,16 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { WelcomeHeader } from '@/components/app/WelcomeHeader';
 import { ProtocolCard } from '@/components/protocol/ProtocolCard';
-import { LimitReachedModal } from '@/components/shared/LimitReachedModal';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useConsultations } from '@/lib/hooks/useConsultations';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { HEALTH_SUGGESTIONS } from '@/lib/constants/suggestions';
 import { routes } from '@/lib/constants/routes';
-import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Sparkles, Lock, Crown } from 'lucide-react';
+import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Sparkles, Leaf } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { USAGE_LIMITS } from '@/lib/constants/limits';
-import { trackUpgradeClicked } from '@/lib/analytics/events';
+import { trackUpgradeClicked, trackLimitReached } from '@/lib/analytics/events';
+import { REMEDIES } from '@/lib/remedies/data';
 
 const TIPS = [
   "Ashwagandha is best absorbed when taken with food",
@@ -34,8 +33,6 @@ const TIPS = [
   "Elderberry syrup is most effective taken at the first sign of illness",
 ];
 
-const FREE_TIER_PROTOCOL_LIMIT = USAGE_LIMITS.FREE_TIER_PROTOCOL_HISTORY;
-
 function seededShuffle<T>(arr: T[], seed: number): T[] {
   const copy = [...arr];
   let m = copy.length;
@@ -46,15 +43,6 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
     [copy[m], copy[i]] = [copy[i], copy[m]];
   }
   return copy;
-}
-
-// Calculate days until next Monday (week reset)
-function getDaysUntilWeekReset(): number {
-  const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  // Days until next Monday
-  if (dayOfWeek === 0) return 1; // Sunday -> 1 day
-  return 8 - dayOfWeek; // Monday = 7, Tuesday = 6, etc.
 }
 
 export function DashboardContent() {
@@ -69,17 +57,10 @@ export function DashboardContent() {
   const [currentTip, setCurrentTip] = useState('');
   const [visibleSuggestions, setVisibleSuggestions] = useState<string[]>([]);
   const [hasCheckedWelcome, setHasCheckedWelcome] = useState(false);
-  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [spotlightRemedy, setSpotlightRemedy] = useState<typeof REMEDIES[0] | null>(null);
 
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
   const isWelcome = searchParams.get('welcome') === 'true';
-
-  // Apply free tier limit to visible protocols
-  const visibleProtocols = isPro 
-    ? pastProtocols.slice(0, 2) 
-    : pastProtocols.slice(0, Math.min(2, FREE_TIER_PROTOCOL_LIMIT));
-  
-  const hasLockedProtocols = !isPro && pastProtocols.length > FREE_TIER_PROTOCOL_LIMIT;
 
   // If user came from onboarding (welcome=true), redirect to their protocol
   useEffect(() => {
@@ -110,25 +91,34 @@ export function DashboardContent() {
     setCurrentTip(TIPS[index]);
   }, []);
 
+  // Pick a daily remedy spotlight (changes once per day)
+  useEffect(() => {
+    const now = new Date();
+    const daySeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+    const shuffled = seededShuffle(REMEDIES, daySeed);
+    setSpotlightRemedy(shuffled[0]);
+  }, []);
+
+  // Track limit reached event
+  useEffect(() => {
+    if (isAtLimit && !usageLoading) {
+      trackLimitReached(usage.tier, usage.currentCount);
+    }
+  }, [isAtLimit, usageLoading, usage.tier, usage.currentCount]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      if (isAtLimit) {
-        setShowLimitModal(true);
-        return;
-      }
+    if (inputValue.trim() && !isAtLimit) {
       const query = encodeURIComponent(inputValue.trim());
       router.push(`${routes.consultation}?q=${query}`);
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    if (isAtLimit) {
-      setShowLimitModal(true);
-      return;
+    if (!isAtLimit) {
+      const query = encodeURIComponent(suggestion);
+      router.push(`${routes.consultation}?q=${query}`);
     }
-    const query = encodeURIComponent(suggestion);
-    router.push(`${routes.consultation}?q=${query}`);
   };
 
   const isLoading = consultationsLoading || usageLoading;
@@ -147,13 +137,6 @@ export function DashboardContent() {
 
   return (
     <div className="w-full">
-      {/* Limit Reached Modal */}
-      <LimitReachedModal
-        isOpen={showLimitModal}
-        onClose={() => setShowLimitModal(false)}
-        remainingDays={getDaysUntilWeekReset()}
-      />
-
       {/* Welcome Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
@@ -210,7 +193,7 @@ export function DashboardContent() {
           <div
             className={cn(
               "relative flex items-center bg-white rounded-2xl border transition-all duration-200",
-              isAtLimit && "opacity-50",
+              isAtLimit && "opacity-50 cursor-not-allowed",
               isFocused && !isAtLimit
                 ? "border-accent shadow-[0_0_0_3px_rgba(107,142,127,0.1)]"
                 : "border-border/50 hover:border-border"
@@ -222,15 +205,16 @@ export function DashboardContent() {
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder={isAtLimit ? "Weekly limit reached — upgrade for unlimited" : "Describe how you're feeling..."}
-              className="flex-1 px-4 sm:px-5 py-3 sm:py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm sm:text-base"
+              disabled={isAtLimit}
+              placeholder={isAtLimit ? "Weekly limit reached" : "Describe how you're feeling..."}
+              className="flex-1 px-4 sm:px-5 py-3 sm:py-4 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-sm sm:text-base disabled:cursor-not-allowed"
             />
             <button
               type="submit"
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isAtLimit}
               className={cn(
                 "mr-2 w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all",
-                inputValue.trim()
+                inputValue.trim() && !isAtLimit
                   ? "bg-accent text-white hover:bg-accent/90"
                   : "bg-secondary/50 text-muted-foreground"
               )}
@@ -247,10 +231,11 @@ export function DashboardContent() {
               <button
                 key={suggestion}
                 onClick={() => handleSuggestionClick(suggestion)}
+                disabled={isAtLimit}
                 className={cn(
                   "px-3 py-1.5 text-xs sm:text-sm bg-white border rounded-full transition-colors",
                   isAtLimit
-                    ? "text-muted-foreground border-border/30 opacity-50"
+                    ? "text-muted-foreground border-border/30 cursor-not-allowed opacity-50"
                     : "text-muted-foreground border-border/50 hover:border-accent/50 hover:text-foreground"
                 )}
               >
@@ -278,6 +263,39 @@ export function DashboardContent() {
         </div>
       )}
 
+      {/* Daily Remedy Spotlight */}
+      {!isLoading && spotlightRemedy && (
+        <Link
+          href={`${routes.remedies}/${spotlightRemedy.slug}`}
+          className="block mb-5 p-4 bg-white border border-border/40 rounded-xl hover:border-accent/40 transition-colors group"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 bg-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Leaf className="w-4.5 h-4.5 text-accent" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-medium text-accent uppercase tracking-wide">Remedy of the Day</span>
+              </div>
+              <h3 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
+                {spotlightRemedy.name}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                {spotlightRemedy.summary}
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs px-2 py-0.5 bg-secondary/50 rounded-full text-muted-foreground">
+                  {spotlightRemedy.category}
+                </span>
+                <span className="text-xs text-accent flex items-center gap-1 ml-auto">
+                  Learn more <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* Past Protocols */}
       {!isLoading && (
         <div>
@@ -296,22 +314,9 @@ export function DashboardContent() {
 
           {pastProtocols.length > 0 ? (
             <div className="space-y-3">
-              {visibleProtocols.map((consultation) => (
+              {pastProtocols.slice(0, 2).map((consultation) => (
                 <ProtocolCard key={consultation.id} consultation={consultation} />
               ))}
-              
-              {/* Show locked indicator for free users */}
-              {hasLockedProtocols && (
-                <Link
-                  href={routes.upgrade}
-                  onClick={() => trackUpgradeClicked('dashboard_locked_protocols')}
-                  className="flex items-center justify-center gap-2 p-3 bg-muted/50 border border-dashed rounded-xl text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
-                >
-                  <Lock className="w-4 h-4" />
-                  <span>{pastProtocols.length - FREE_TIER_PROTOCOL_LIMIT} older protocols locked</span>
-                  <Crown className="w-4 h-4 text-accent" />
-                </Link>
-              )}
             </div>
           ) : (
             <div className="text-center py-10 sm:py-14 bg-gradient-to-b from-white/80 to-white/40 rounded-2xl border border-dashed border-border/50">

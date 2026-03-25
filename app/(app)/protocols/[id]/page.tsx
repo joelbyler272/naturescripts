@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getConsultation } from '@/lib/supabase/database';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Consultation, Protocol } from '@/types';
-import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice, isClaudeProtocol } from '@/lib/consultation/types';
+import { GeneratedProtocol as NewGeneratedProtocol, Recommendation, ProductLink, DietaryShift, LifestylePractice, DailySchedule, ScheduleItem, isClaudeProtocol } from '@/lib/consultation/types';
 import { routes } from '@/lib/constants/routes';
 import { getProductUrl } from '@/lib/utils/urlValidation';
 import { WelcomeWalkthrough } from '@/components/protocol/WelcomeWalkthrough';
@@ -26,6 +26,9 @@ import {
   Utensils,
   Activity,
   ShoppingCart,
+  Sun,
+  Sunset,
+  Moon,
 } from 'lucide-react';
 
 // Type guard for old template-based protocol
@@ -310,6 +313,11 @@ function ClaudeProtocolView({ consultation, protocol }: { consultation: Consulta
         </div>
       )}
 
+      {/* Daily Schedule */}
+      {protocol.daily_schedule && (
+        <DailyScheduleView schedule={protocol.daily_schedule} />
+      )}
+
       {/* Dietary Shifts (Pro only) */}
       {protocol.dietary_shifts && protocol.dietary_shifts.length > 0 && (
         <div className="mb-8" data-tour-section="dietary-shifts">
@@ -498,6 +506,50 @@ function RecommendationCard({ recommendation, index }: { recommendation: Recomme
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Daily Schedule View
+function DailyScheduleView({ schedule }: { schedule: DailySchedule }) {
+  const timeSlots: { key: keyof DailySchedule; label: string; icon: React.ReactNode; bg: string }[] = [
+    { key: 'morning', label: 'Morning', icon: <Sun className="w-4 h-4 text-amber-500" />, bg: 'bg-amber-50 border-amber-100' },
+    { key: 'afternoon', label: 'Afternoon', icon: <Sunset className="w-4 h-4 text-orange-500" />, bg: 'bg-orange-50 border-orange-100' },
+    { key: 'evening', label: 'Evening', icon: <Moon className="w-4 h-4 text-indigo-500" />, bg: 'bg-indigo-50 border-indigo-100' },
+  ];
+
+  const hasItems = timeSlots.some(slot => schedule[slot.key] && schedule[slot.key]!.length > 0);
+  if (!hasItems) return null;
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4 flex items-center gap-2">
+        <Clock className="w-4 h-4 text-accent" />
+        Your Daily Schedule
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {timeSlots.map(slot => {
+          const items = schedule[slot.key];
+          if (!items || items.length === 0) return null;
+          return (
+            <div key={slot.key} className={`border rounded-xl p-4 ${slot.bg}`}>
+              <div className="flex items-center gap-2 mb-3">
+                {slot.icon}
+                <h3 className="text-sm font-semibold text-foreground">{slot.label}</h3>
+              </div>
+              <ul className="space-y-2">
+                {items.map((item: ScheduleItem, i: number) => (
+                  <li key={i} className="text-sm">
+                    <p className="font-medium text-foreground">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">{item.dosage}</p>
+                    {item.notes && <p className="text-xs text-muted-foreground/70">{item.notes}</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

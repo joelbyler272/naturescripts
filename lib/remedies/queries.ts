@@ -27,6 +27,7 @@ function mapRowToRemedy(row: any): Remedy {
     products: row.products,
     relatedRemedies: row.related_remedies,
     oftenPairedWith: row.often_paired_with,
+    pharmaceuticalEquivalents: row.pharmaceutical_equivalents || [],
     lastUpdated: row.last_updated,
     group: row.remedy_group || 'Herbs',
   };

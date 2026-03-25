@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       products: body.products || [],
       related_remedies: body.relatedRemedies || [],
       often_paired_with: body.oftenPairedWith || [],
+      pharmaceutical_equivalents: body.pharmaceuticalEquivalents || [],
       remedy_group: body.group || 'Herbs',
       last_updated: new Date().toISOString().split('T')[0],
     };
