@@ -61,11 +61,25 @@ export async function updateHealthProfile(userId: string, updates: {
   gender?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
+  blood_type?: string | null;
   activity_level?: string | null;
   sleep_hours?: number | null;
   stress_level?: number | null;
+  exercise_frequency?: string | null;
+  sunlight_exposure?: string | null;
   diet_type?: string | null;
+  food_sensitivities?: string[];
+  caffeine_intake?: string | null;
+  sugar_consumption?: string | null;
+  water_intake?: string | null;
+  alcohol_use?: string | null;
+  tobacco_use?: string | null;
+  mood_patterns?: string | null;
+  focus_ability?: number | null;
+  meditation_practice?: boolean;
   wellness_goals?: string[];
+  intake_completed?: boolean;
+  intake_completed_at?: string | null;
 }) {
   const supabase = createClient();
 

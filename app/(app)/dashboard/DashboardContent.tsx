@@ -10,10 +10,11 @@ import { useConsultations } from '@/lib/hooks/useConsultations';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { HEALTH_SUGGESTIONS } from '@/lib/constants/suggestions';
 import { routes } from '@/lib/constants/routes';
-import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Sparkles, Leaf } from 'lucide-react';
+import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Sparkles, Leaf, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackUpgradeClicked, trackLimitReached } from '@/lib/analytics/events';
 import { REMEDIES } from '@/lib/remedies/data';
+import { getUserProfile } from '@/lib/supabase/database';
 
 const TIPS = [
   "Ashwagandha is best absorbed when taken with food",
@@ -58,6 +59,7 @@ export function DashboardContent() {
   const [visibleSuggestions, setVisibleSuggestions] = useState<string[]>([]);
   const [hasCheckedWelcome, setHasCheckedWelcome] = useState(false);
   const [spotlightRemedy, setSpotlightRemedy] = useState<typeof REMEDIES[0] | null>(null);
+  const [intakeCompleted, setIntakeCompleted] = useState<boolean | null>(null);
 
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
   const isWelcome = searchParams.get('welcome') === 'true';
@@ -98,6 +100,16 @@ export function DashboardContent() {
     const shuffled = seededShuffle(REMEDIES, daySeed);
     setSpotlightRemedy(shuffled[0]);
   }, []);
+
+  // Check if user has completed wellness intake
+  useEffect(() => {
+    async function checkIntake() {
+      if (!user?.id) return;
+      const profile = await getUserProfile(user.id);
+      setIntakeCompleted(profile?.intake_completed ?? false);
+    }
+    checkIntake();
+  }, [user?.id]);
 
   // Track limit reached event
   useEffect(() => {
@@ -261,6 +273,31 @@ export function DashboardContent() {
             <span className="font-medium text-foreground">Tip:</span> {currentTip}
           </p>
         </div>
+      )}
+
+      {/* Intake CTA */}
+      {!isLoading && intakeCompleted === false && (
+        <Link
+          href={routes.intake}
+          className="block mb-5 p-4 bg-accent/5 border border-accent/20 rounded-xl hover:bg-accent/10 transition-colors group"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 bg-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <ClipboardList className="w-4.5 h-4.5 text-accent" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
+                Complete your wellness intake
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Answer a few questions about your health, diet, and lifestyle to get more personalized protocols.
+              </p>
+              <span className="text-xs text-accent flex items-center gap-1 mt-2">
+                Take 3-minute assessment <ArrowRight className="w-3 h-3" />
+              </span>
+            </div>
+          </div>
+        </Link>
       )}
 
       {/* Daily Remedy Spotlight */}
