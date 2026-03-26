@@ -6,6 +6,32 @@ export interface HealthContext {
   supplements: Supplement[];
   health_notes: string;
   tier: 'free' | 'pro';
+  // Personal
+  age?: number;
+  gender?: string;
+  height_cm?: number;
+  weight_kg?: number;
+  blood_type?: string;
+  // Lifestyle
+  activity_level?: string;
+  sleep_hours?: number;
+  stress_level?: number;
+  exercise_frequency?: string;
+  sunlight_exposure?: string;
+  // Diet & Nutrition
+  diet_type?: string;
+  food_sensitivities?: string[];
+  caffeine_intake?: string;
+  sugar_consumption?: string;
+  water_intake?: string;
+  alcohol_use?: string;
+  tobacco_use?: string;
+  // Mental & Emotional
+  mood_patterns?: string;
+  focus_ability?: number;
+  meditation_practice?: boolean;
+  // Goals
+  wellness_goals?: string[];
 }
 
 export interface Medication {

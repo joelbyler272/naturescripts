@@ -162,28 +162,55 @@ const PRO_PROTOCOL_JSON_FIELDS = `"dietary_shifts": [
 function formatHealthContext(context: HealthContext): string {
   const parts: string[] = [];
 
-  // Personal info (if available via extended context)
-  const ext = context as Record<string, unknown>;
+  // Personal info
   const personalParts: string[] = [];
-  if (ext.age) personalParts.push(`Age: ${ext.age}`);
-  if (ext.gender) personalParts.push(`Gender: ${ext.gender}`);
-  if (ext.height_cm) personalParts.push(`Height: ${ext.height_cm}cm`);
-  if (ext.weight_kg) personalParts.push(`Weight: ${ext.weight_kg}kg`);
+  if (context.age) personalParts.push(`Age: ${context.age}`);
+  if (context.gender) personalParts.push(`Gender: ${context.gender}`);
+  if (context.height_cm) personalParts.push(`Height: ${context.height_cm}cm`);
+  if (context.weight_kg) personalParts.push(`Weight: ${context.weight_kg}kg`);
+  if (context.blood_type) personalParts.push(`Blood Type: ${context.blood_type}`);
   if (personalParts.length > 0) {
     parts.push(`Personal Info: ${personalParts.join(', ')}`);
   }
 
+  // Lifestyle
   const lifestyleParts: string[] = [];
-  if (ext.activity_level) lifestyleParts.push(`Activity: ${ext.activity_level}`);
-  if (ext.sleep_hours) lifestyleParts.push(`Sleep: ${ext.sleep_hours} hrs/night`);
-  if (ext.stress_level) lifestyleParts.push(`Stress: ${ext.stress_level}/10`);
-  if (ext.diet_type) lifestyleParts.push(`Diet: ${ext.diet_type}`);
+  if (context.activity_level) lifestyleParts.push(`Activity: ${context.activity_level}`);
+  if (context.exercise_frequency) lifestyleParts.push(`Exercise: ${context.exercise_frequency}/week`);
+  if (context.sleep_hours) lifestyleParts.push(`Sleep: ${context.sleep_hours} hrs/night`);
+  if (context.stress_level) lifestyleParts.push(`Stress: ${context.stress_level}/10`);
+  if (context.sunlight_exposure) lifestyleParts.push(`Sunlight: ${context.sunlight_exposure}`);
   if (lifestyleParts.length > 0) {
     parts.push(`Lifestyle: ${lifestyleParts.join(', ')}`);
   }
 
-  if (ext.wellness_goals && Array.isArray(ext.wellness_goals) && ext.wellness_goals.length > 0) {
-    parts.push(`Goals: ${ext.wellness_goals.join(', ')}`);
+  // Diet & Nutrition
+  const dietParts: string[] = [];
+  if (context.diet_type) dietParts.push(`Diet: ${context.diet_type}`);
+  if (context.food_sensitivities && context.food_sensitivities.length > 0) {
+    dietParts.push(`Sensitivities: ${context.food_sensitivities.join(', ')}`);
+  }
+  if (context.caffeine_intake) dietParts.push(`Caffeine: ${context.caffeine_intake}`);
+  if (context.sugar_consumption) dietParts.push(`Sugar: ${context.sugar_consumption}`);
+  if (context.water_intake) dietParts.push(`Water: ${context.water_intake} glasses/day`);
+  if (context.alcohol_use) dietParts.push(`Alcohol: ${context.alcohol_use}`);
+  if (context.tobacco_use) dietParts.push(`Tobacco: ${context.tobacco_use}`);
+  if (dietParts.length > 0) {
+    parts.push(`Diet & Nutrition: ${dietParts.join(', ')}`);
+  }
+
+  // Mental & Emotional
+  const mentalParts: string[] = [];
+  if (context.mood_patterns) mentalParts.push(`Mood: ${context.mood_patterns}`);
+  if (context.focus_ability) mentalParts.push(`Focus: ${context.focus_ability}/10`);
+  if (context.meditation_practice) mentalParts.push(`Meditation: yes`);
+  if (mentalParts.length > 0) {
+    parts.push(`Mental & Emotional: ${mentalParts.join(', ')}`);
+  }
+
+  // Goals
+  if (context.wellness_goals && context.wellness_goals.length > 0) {
+    parts.push(`Goals: ${context.wellness_goals.join(', ')}`);
   }
 
   if (context.health_conditions && context.health_conditions.length > 0) {

@@ -422,6 +422,19 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Intake Wizard Link */}
+              <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Full Wellness Intake</p>
+                    <p className="text-xs text-muted-foreground">Complete a guided assessment covering diet, lifestyle, mental health, and goals</p>
+                  </div>
+                  <Link href={routes.intake} className="text-sm text-accent hover:text-accent/80 transition-colors whitespace-nowrap ml-4">
+                    Take assessment &rarr;
+                  </Link>
+                </div>
+              </div>
+
               {/* Personal Information */}
               <div className="space-y-4">
                 <label className="text-sm font-medium text-foreground">
