@@ -12,6 +12,7 @@ import type {
   RemedyFAQ,
   RemedyProduct,
   RemedyGroup,
+  PharmaceuticalEquivalent,
 } from '@/lib/remedies/types';
 import { REMEDY_GROUPS } from '@/lib/remedies/types';
 
@@ -181,6 +182,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
   const [interactions, setInteractions] = useState<RemedyInteraction[]>(initialData?.interactions || []);
   const [faqs, setFaqs] = useState<RemedyFAQ[]>(initialData?.faqs || []);
   const [products, setProducts] = useState<RemedyProduct[]>(initialData?.products || []);
+  const [pharmaceuticalEquivalents, setPharmaceuticalEquivalents] = useState<PharmaceuticalEquivalent[]>(initialData?.pharmaceuticalEquivalents || []);
 
   const handleNameChange = (val: string) => {
     setName(val);
@@ -218,6 +220,7 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
       interactions,
       faqs,
       products,
+      pharmaceuticalEquivalents,
     };
 
     try {
@@ -511,6 +514,68 @@ export function RemedyForm({ initialData, mode }: RemedyFormProps) {
             placeholder="Add a group"
           />
         </Field>
+      </Section>
+
+      {/* Pharmaceutical Equivalents */}
+      <Section title={`Pharmaceutical Equivalents (${pharmaceuticalEquivalents.length})`}>
+        <p className="text-xs text-gray-400 mb-2">
+          Conventional drugs this remedy may serve as a natural alternative to
+        </p>
+        {pharmaceuticalEquivalents.map((pe, i) => (
+          <div key={i} className="p-4 border border-gray-200 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500">Equivalent {i + 1}</span>
+              <button
+                type="button"
+                onClick={() => setPharmaceuticalEquivalents(removeAt(pharmaceuticalEquivalents, i))}
+                className="p-1 text-gray-400 hover:text-red-600"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                type="text"
+                value={pe.drug}
+                onChange={e =>
+                  setPharmaceuticalEquivalents(updateAt(pharmaceuticalEquivalents, i, { drug: e.target.value }))
+                }
+                placeholder="Drug name (e.g. Ibuprofen)"
+                className={inputClass}
+              />
+              <input
+                type="text"
+                value={pe.drugClass}
+                onChange={e =>
+                  setPharmaceuticalEquivalents(updateAt(pharmaceuticalEquivalents, i, { drugClass: e.target.value }))
+                }
+                placeholder="Drug class (e.g. NSAIDs)"
+                className={inputClass}
+              />
+              <input
+                type="text"
+                value={pe.mechanism}
+                onChange={e =>
+                  setPharmaceuticalEquivalents(updateAt(pharmaceuticalEquivalents, i, { mechanism: e.target.value }))
+                }
+                placeholder="Shared mechanism (e.g. COX-2 inhibition)"
+                className={inputClass}
+              />
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() =>
+            setPharmaceuticalEquivalents([
+              ...pharmaceuticalEquivalents,
+              { drug: '', drugClass: '', mechanism: '' },
+            ])
+          }
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Add Pharmaceutical Equivalent
+        </button>
       </Section>
 
       {/* Interactions */}

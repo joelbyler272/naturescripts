@@ -57,6 +57,15 @@ export async function updateHealthProfile(userId: string, updates: {
   medications?: Medication[];
   supplements?: Supplement[];
   health_notes?: string;
+  age?: number | null;
+  gender?: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  activity_level?: string | null;
+  sleep_hours?: number | null;
+  stress_level?: number | null;
+  diet_type?: string | null;
+  wellness_goals?: string[];
 }) {
   const supabase = createClient();
 

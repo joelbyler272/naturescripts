@@ -31,6 +31,12 @@ export interface RemedyProduct {
   note?: string;
 }
 
+export interface PharmaceuticalEquivalent {
+  drug: string;
+  drugClass: string;
+  mechanism: string;
+}
+
 export type RemedyGroup = 'Herbs' | 'Oils' | 'Tinctures' | 'Remedies' | 'Food';
 
 export const REMEDY_GROUPS: RemedyGroup[] = ['Herbs', 'Oils', 'Tinctures', 'Remedies', 'Food'];
@@ -60,5 +66,6 @@ export interface Remedy {
   products: RemedyProduct[];
   relatedRemedies: string[]; // slugs
   oftenPairedWith: string[]; // slugs
+  pharmaceuticalEquivalents?: PharmaceuticalEquivalent[];
   lastUpdated: string;
 }

@@ -63,6 +63,17 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
   const [healthSaved, setHealthSaved] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
 
+  // Expanded profile state
+  const [age, setAge] = useState<number | ''>('');
+  const [gender, setGender] = useState('');
+  const [heightCm, setHeightCm] = useState<number | ''>('');
+  const [weightKg, setWeightKg] = useState<number | ''>('');
+  const [activityLevel, setActivityLevel] = useState('');
+  const [sleepHours, setSleepHours] = useState<number | ''>('');
+  const [stressLevel, setStressLevel] = useState<number | ''>('');
+  const [dietType, setDietType] = useState('');
+  const [wellnessGoals, setWellnessGoals] = useState<string[]>([]);
+
   // Password state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -99,6 +110,15 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
             setMedications(profile.medications || []);
             setSupplements(profile.supplements || []);
             setHealthNotes(profile.health_notes || '');
+            setAge(profile.age || '');
+            setGender(profile.gender || '');
+            setHeightCm(profile.height_cm || '');
+            setWeightKg(profile.weight_kg || '');
+            setActivityLevel(profile.activity_level || '');
+            setSleepHours(profile.sleep_hours || '');
+            setStressLevel(profile.stress_level || '');
+            setDietType(profile.diet_type || '');
+            setWellnessGoals(profile.wellness_goals || []);
           }
         })
         .catch((err) => {
@@ -194,7 +214,16 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
         health_conditions: healthConditions,
         medications: filteredMeds,
         supplements: filteredSupps,
-        health_notes: healthNotes
+        health_notes: healthNotes,
+        age: age === '' ? null : Number(age),
+        gender: gender || null,
+        height_cm: heightCm === '' ? null : Number(heightCm),
+        weight_kg: weightKg === '' ? null : Number(weightKg),
+        activity_level: activityLevel || null,
+        sleep_hours: sleepHours === '' ? null : Number(sleepHours),
+        stress_level: stressLevel === '' ? null : Number(stressLevel),
+        diet_type: dietType || null,
+        wellness_goals: wellnessGoals,
       });
 
       setHealthSaved(true);
@@ -393,6 +422,124 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <label className="text-sm font-medium text-foreground">
+                  Personal Information
+                </label>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Helps tailor supplement dosages and recommendations to your body
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Age</label>
+                    <Input
+                      type="number"
+                      value={age}
+                      onChange={(e) => setAge(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="Years"
+                      min={1}
+                      max={120}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Gender</label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Select...</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="non-binary">Non-binary</option>
+                      <option value="prefer-not-to-say">Prefer not to say</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Height (cm)</label>
+                    <Input
+                      type="number"
+                      value={heightCm}
+                      onChange={(e) => setHeightCm(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="cm"
+                      min={50}
+                      max={300}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Weight (kg)</label>
+                    <Input
+                      type="number"
+                      value={weightKg}
+                      onChange={(e) => setWeightKg(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="kg"
+                      min={10}
+                      max={500}
+                      step={0.1}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Activity Level</label>
+                    <select
+                      value={activityLevel}
+                      onChange={(e) => setActivityLevel(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Select...</option>
+                      <option value="sedentary">Sedentary</option>
+                      <option value="light">Light</option>
+                      <option value="moderate">Moderate</option>
+                      <option value="active">Active</option>
+                      <option value="very-active">Very Active</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Sleep (hrs/night)</label>
+                    <Input
+                      type="number"
+                      value={sleepHours}
+                      onChange={(e) => setSleepHours(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="Hours"
+                      min={0}
+                      max={24}
+                      step={0.5}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Stress (1-10)</label>
+                    <Input
+                      type="number"
+                      value={stressLevel}
+                      onChange={(e) => setStressLevel(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="1-10"
+                      min={1}
+                      max={10}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Diet Type</label>
+                    <select
+                      value={dietType}
+                      onChange={(e) => setDietType(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Select...</option>
+                      <option value="omnivore">Omnivore</option>
+                      <option value="vegetarian">Vegetarian</option>
+                      <option value="vegan">Vegan</option>
+                      <option value="keto">Keto</option>
+                      <option value="paleo">Paleo</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t" />
+
               {/* Health Conditions */}
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground">
