@@ -6,10 +6,13 @@ AI-powered naturopathic consultation platform that creates personalized herbal w
 
 ### Free Tier
 - **AI Consultations** -- Chat-based consultation with smart follow-up questions (5/week)
-- **Personalized Protocols** -- Herbal recommendations with dosages, timing, and safety info
-- **Remedy Database** -- Evidence-rated database of natural remedies with product links
+- **Personalized Protocols** -- Herbal recommendations with dosages, timing, daily schedule, and safety info
+- **Remedy Database** -- Evidence-rated database of 36+ natural remedies with pharmaceutical equivalents and product links
 - **Health Profile** -- Onboarding flow that builds your wellness profile
+- **Wellness Intake** -- 5-step assessment covering personal info, diet, lifestyle, mental health, and goals
 - **PDF Export** -- Download protocols as formatted PDFs
+- **Health Quizzes** -- Stress, sleep, and digestion assessments with personalized remedy suggestions
+- **Remedy Favorites** -- Save remedies for quick reference
 
 ### Pro Tier ($12.99/month)
 - Unlimited consultations
@@ -18,11 +21,23 @@ AI-powered naturopathic consultation platform that creates personalized herbal w
 - **Email Reminders** -- Weekly progress summaries and tracking nudges
 - **Custom Remedies** -- Save and manage your own remedy notes
 
+### Document Intelligence
+- **Document Upload** -- Upload lab reports and medical documents (PDF, JPG, PNG)
+- **AI Lab Report Interpreter** -- Claude-powered extraction of lab markers with reference ranges and status
+- **Medical Document Simplifier** -- Plain-English translations of complex medical documents
+- **Wellness Suggestions** -- Natural remedy recommendations based on lab findings
+
+### Dashboard & Engagement
+- **Wellness Score** -- Aggregate 0-100 score across 6 categories (nutrition, activity, sleep, stress, mindfulness, hydration)
+- **Health Map** -- Radar chart visualization of wellness categories
+- **Daily Remedy Spotlight** -- Featured remedy that rotates daily
+- **Daily Tips** -- Rotating natural health tips
+
 ### Admin Dashboard
 - User management and consultation viewer (anonymized)
 - API usage analytics and cost tracking
 - Stripe revenue integration
-- Remedy database CRUD with bulk JSON import
+- Remedy database CRUD with bulk JSON import and pharmaceutical equivalents
 - Training data export (JSONL)
 
 ## Tech Stack
@@ -34,6 +49,7 @@ AI-powered naturopathic consultation platform that creates personalized herbal w
 | Styling | Tailwind CSS |
 | UI Components | shadcn/ui + Radix UI |
 | Database | Supabase (PostgreSQL + RLS) |
+| Storage | Supabase Storage (health documents) |
 | Auth | Supabase Auth |
 | AI | Anthropic Claude (via `@anthropic-ai/sdk`) |
 | Payments | Stripe (subscriptions + billing portal) |
@@ -92,16 +108,23 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ### Database Setup
 
-Run the SQL migration in your Supabase SQL Editor:
+Run the SQL migrations in your Supabase SQL Editor in order:
 
-```bash
-# The schema is in supabase/schema.sql
 ```
-
-This creates:
-- `profiles` -- User profiles with tier info
-- `consultations` -- Consultation history and protocols
-- `daily_usage` -- Usage tracking for rate limiting
+supabase/migrations/
+  001_health_profile.sql          -- Health conditions, medications, supplements
+  002_onboarding.sql              -- Onboarding tracking
+  003_daily_usage.sql             -- Usage rate limiting
+  004_remedies.sql                -- Remedy database table
+  005_tracking.sql                -- Symptom, supplement, habit logs
+  006_consultation_history.sql    -- Consultation history RPC
+  007_usage_rpc.sql               -- Usage check/increment RPCs
+  008_weekly_limit.sql            -- Weekly limit enforcement
+  009_pharma_equivalents.sql      -- Pharmaceutical equivalents on remedies
+  010_expanded_profile.sql        -- Personal info (age, gender, height, weight, lifestyle)
+  011_intake_expansion.sql        -- Full intake fields (diet, mental, goals)
+  012_documents_and_favorites.sql -- Document storage, lab results, favorites, wellness scores
+```
 
 ### Development
 
@@ -124,19 +147,30 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 app/
   (admin)/             # Admin dashboard (users, analytics, costs, revenue, remedies)
-  (app)/               # Authenticated routes (dashboard, consultation, protocols, tracking, settings)
+  (app)/               # Authenticated routes
+    consultation/      # AI consultation chat
+    dashboard/         # User dashboard with wellness score, health map, tips
+    documents/         # Document upload and AI interpretation
+    intake/            # 5-step wellness intake wizard
+    protocols/         # Protocol history and detail with daily schedule
+    quizzes/           # Health quizzes (stress, sleep, digestion)
+    settings/          # Profile, health data, billing, account
+    tracking/          # Symptom, supplement, and habit tracking (Pro)
+    upgrade/           # Pro subscription
   (auth)/              # Sign-in, sign-up, email verification
   (legal)/             # Terms, privacy policy, medical disclaimer
   (marketing)/         # Landing page, about, pricing, FAQs, blog, contact
   (public)/            # Remedy database, health library
-  api/                 # API routes (consultation, stripe, auth, admin, cron)
+  api/                 # API routes (consultation, documents, stripe, auth, admin, cron)
   onboarding/          # Guided onboarding chat flow
 
 components/
   admin/               # Admin UI components
   app/                 # App shell, sidebar, navigation
   consultation/        # Chat interface
+  dashboard/           # Wellness score ring, health map radar chart
   error/               # Error boundaries
+  intake/              # Intake wizard step components
   onboarding/          # Onboarding chat and modals
   protocol/            # Protocol display and detail
   tracking/            # Symptom charts, supplement/habit trackers
@@ -150,14 +184,18 @@ lib/
   auth/                # Auth context and utilities
   constants/           # Routes, limits, error codes, colors
   consultation/        # Protocol generation, prompts, affiliate links
+  documents/           # Document storage, AI interpreter prompts
   email/               # Resend templates (verification, reminders, summaries)
   hooks/               # React hooks (usage limits, tracking, protocols)
+  intake/              # Intake wizard types and option constants
   onboarding/          # Onboarding state machine
   pdf/                 # PDF generation
-  remedies/            # Remedy database queries
+  quizzes/             # Quiz engine with scored health assessments
+  remedies/            # Remedy database queries, favorites
   stripe/              # Stripe checkout and portal utilities
   supabase/            # Database client and queries
   utils/               # Logger, rate limiting, helpers
+  wellness/            # Wellness score algorithm (6 categories)
 ```
 
 ## Key Routes
@@ -166,14 +204,19 @@ lib/
 |-------|-------------|
 | `/` | Landing page |
 | `/onboarding` | Guided consultation and account creation |
-| `/dashboard` | User dashboard with active protocol |
+| `/dashboard` | User dashboard with wellness score, health map, tips, and protocols |
 | `/consultation` | AI-powered consultation chat |
 | `/protocols` | Past protocol history |
-| `/protocols/[id]` | Protocol detail with supplements, habits, interactions |
+| `/protocols/[id]` | Protocol detail with daily schedule, supplements, interactions |
+| `/intake` | 5-step wellness intake (personal, diet, lifestyle, mental, goals) |
+| `/documents` | Upload and manage health documents |
+| `/documents/[id]` | Document detail with AI interpretation |
+| `/quizzes` | Health quizzes with scored results |
 | `/tracking` | Symptom, supplement, and habit tracking (Pro) |
-| `/remedies` | Searchable remedy database |
+| `/remedies` | Searchable remedy database with favorites |
+| `/remedies/[slug]` | Remedy detail with pharmaceutical equivalents |
 | `/library` | Health guides and research articles |
-| `/settings` | Profile, billing, and account management |
+| `/settings` | Profile, health data, billing, and account management |
 | `/upgrade` | Pro subscription page |
 | `/admin` | Admin dashboard (authorized users only) |
 
@@ -186,6 +229,8 @@ lib/
 - **Dev-Only Logging** -- Production logs don't leak sensitive data
 - **Affiliate Integration** -- Amazon and iHerb affiliate links in product recommendations
 - **Cron Jobs** -- `/api/cron/reminders` and `/api/cron/weekly-summary` for automated emails
+- **Prompt Security** -- Health data wrapped in XML tags, injection-resistant prompts
+- **Supabase RLS** -- Row-level security on all user tables, including document storage
 
 ## Deployment
 
@@ -199,6 +244,7 @@ Required:
 - All variables from `.env.local.example` set in Vercel
 - Stripe webhook endpoint: `https://your-domain.com/api/stripe/webhook`
 - Cron jobs configured in `vercel.json` (if using Vercel Cron)
+- Supabase migrations run in order (001-012)
 
 ## License
 
