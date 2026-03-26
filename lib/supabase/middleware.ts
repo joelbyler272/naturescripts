@@ -1,13 +1,24 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { getSubdomainInfo, isConsumerRoute, isPractitionerRoute } from '@/lib/subdomain/detect';
 
 export async function updateSession(request: NextRequest) {
+  const hostname = request.headers.get('host') || 'localhost:3000';
+  const { type, subdomain } = getSubdomainInfo(hostname);
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
+  // Set subdomain headers for downstream consumption
+  response.headers.set('x-subdomain-type', type);
+  if (subdomain) {
+    response.headers.set('x-subdomain', subdomain);
+  }
+
+  // Supabase auth refresh
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,6 +38,11 @@ export async function updateSession(request: NextRequest) {
               headers: request.headers,
             },
           });
+          // Re-apply subdomain headers after response recreation
+          response.headers.set('x-subdomain-type', type);
+          if (subdomain) {
+            response.headers.set('x-subdomain', subdomain);
+          }
           response.cookies.set({
             name,
             value,
@@ -44,6 +60,11 @@ export async function updateSession(request: NextRequest) {
               headers: request.headers,
             },
           });
+          // Re-apply subdomain headers after response recreation
+          response.headers.set('x-subdomain-type', type);
+          if (subdomain) {
+            response.headers.set('x-subdomain', subdomain);
+          }
           response.cookies.set({
             name,
             value: '',
@@ -56,6 +77,43 @@ export async function updateSession(request: NextRequest) {
 
   // Refresh session if expired
   await supabase.auth.getUser();
+
+  // Subdomain-based route enforcement
+  const pathname = request.nextUrl.pathname;
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
+  const protocol = rootDomain.includes('localhost') ? 'http' : 'https';
+
+  // Marketing subdomain: redirect consumer/practitioner routes to proper subdomain
+  if (type === 'marketing') {
+    if (isConsumerRoute(pathname)) {
+      return NextResponse.redirect(
+        new URL(`${protocol}://app.${rootDomain}${pathname}${request.nextUrl.search}`)
+      );
+    }
+    if (isPractitionerRoute(pathname)) {
+      return NextResponse.redirect(
+        new URL(`${protocol}://practitioner.${rootDomain}${pathname}${request.nextUrl.search}`)
+      );
+    }
+  }
+
+  // App subdomain: redirect practitioner routes
+  if (type === 'app') {
+    if (isPractitionerRoute(pathname)) {
+      return NextResponse.redirect(
+        new URL(`${protocol}://practitioner.${rootDomain}${pathname}${request.nextUrl.search}`)
+      );
+    }
+  }
+
+  // Practitioner/custom subdomain: redirect consumer routes to app
+  if (type === 'practitioner' || type === 'custom') {
+    if (isConsumerRoute(pathname)) {
+      return NextResponse.redirect(
+        new URL(`${protocol}://app.${rootDomain}${pathname}${request.nextUrl.search}`)
+      );
+    }
+  }
 
   return response;
 }
