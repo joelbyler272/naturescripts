@@ -470,26 +470,27 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Height (cm)</label>
+                    <label className="text-xs text-muted-foreground">Height (inches)</label>
                     <Input
                       type="number"
-                      value={heightCm}
-                      onChange={(e) => setHeightCm(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="cm"
-                      min={50}
-                      max={300}
+                      value={heightCm ? Math.round(Number(heightCm) / 2.54 * 10) / 10 : ''}
+                      onChange={(e) => setHeightCm(e.target.value ? Math.round(Number(e.target.value) * 2.54) : '')}
+                      placeholder="e.g., 68"
+                      min={20}
+                      max={100}
+                      step={0.5}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Weight (kg)</label>
+                    <label className="text-xs text-muted-foreground">Weight (lbs)</label>
                     <Input
                       type="number"
-                      value={weightKg}
-                      onChange={(e) => setWeightKg(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="kg"
-                      min={10}
-                      max={500}
-                      step={0.1}
+                      value={weightKg ? Math.round(Number(weightKg) * 2.205 * 10) / 10 : ''}
+                      onChange={(e) => setWeightKg(e.target.value ? Math.round(Number(e.target.value) / 2.205 * 10) / 10 : '')}
+                      placeholder="e.g., 155"
+                      min={50}
+                      max={660}
+                      step={0.5}
                     />
                   </div>
                 </div>

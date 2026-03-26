@@ -8,7 +8,17 @@ interface Props {
   onChange: (updates: Partial<IntakeData>) => void;
 }
 
+// Conversion helpers
+const cmToInches = (cm: number) => Math.round(cm / 2.54 * 10) / 10;
+const inchesToCm = (inches: number) => Math.round(inches * 2.54);
+const kgToLbs = (kg: number) => Math.round(kg * 2.205 * 10) / 10;
+const lbsToKg = (lbs: number) => Math.round(lbs / 2.205 * 10) / 10;
+
 export function PersonalStep({ data, onChange }: Props) {
+  // Display values in imperial
+  const heightInches = data.height_cm ? cmToInches(data.height_cm) : '';
+  const weightLbs = data.weight_kg ? kgToLbs(data.weight_kg) : '';
+
   return (
     <div className="space-y-6">
       <div>
@@ -46,27 +56,29 @@ export function PersonalStep({ data, onChange }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1.5">Height (cm)</label>
-          <Input
-            type="number"
-            min={50}
-            max={250}
-            placeholder="e.g., 175"
-            value={data.height_cm ?? ''}
-            onChange={(e) => onChange({ height_cm: e.target.value ? Number(e.target.value) : null })}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1.5">Weight (kg)</label>
+          <label className="block text-sm font-medium text-foreground mb-1.5">Height (inches)</label>
           <Input
             type="number"
             min={20}
-            max={300}
-            step={0.1}
-            placeholder="e.g., 70"
-            value={data.weight_kg ?? ''}
-            onChange={(e) => onChange({ weight_kg: e.target.value ? Number(e.target.value) : null })}
+            max={100}
+            step={0.5}
+            placeholder="e.g., 68"
+            value={heightInches}
+            onChange={(e) => onChange({ height_cm: e.target.value ? inchesToCm(Number(e.target.value)) : null })}
+          />
+          <p className="text-xs text-muted-foreground mt-1">5&apos;8&quot; = 68 inches</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">Weight (lbs)</label>
+          <Input
+            type="number"
+            min={50}
+            max={660}
+            step={0.5}
+            placeholder="e.g., 155"
+            value={weightLbs}
+            onChange={(e) => onChange({ weight_kg: e.target.value ? lbsToKg(Number(e.target.value)) : null })}
           />
         </div>
 

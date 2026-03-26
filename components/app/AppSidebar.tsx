@@ -10,7 +10,6 @@ import {
   Home,
   BookOpen,
   Leaf,
-  Search,
   HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -52,41 +51,6 @@ export function AppSidebar() {
       >
         <NSLogo collapsed={collapsed} onToggle={toggleCollapsed} />
       </div>
-
-      {/* Search Bar (expanded only) */}
-      {!collapsed && (
-        <div className="px-3 py-3 shrink-0">
-          <button
-            className={cn(
-              'w-full flex items-center gap-2 px-3 py-2 rounded-lg',
-              'bg-secondary/30 hover:bg-secondary/50 transition-colors',
-              'text-muted-foreground text-sm'
-            )}
-          >
-            <Search className="w-4 h-4" />
-            <span className="flex-1 text-left">Search...</span>
-            <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border/50">
-              &#8984;K
-            </kbd>
-          </button>
-        </div>
-      )}
-
-      {/* Collapsed Search Icon */}
-      {collapsed && (
-        <div className="px-2 py-3 flex justify-center shrink-0">
-          <button
-            className={cn(
-              'w-10 h-10 flex items-center justify-center rounded-lg',
-              'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-              'transition-colors'
-            )}
-            title="Search"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="flex-1 py-2 overflow-y-auto">

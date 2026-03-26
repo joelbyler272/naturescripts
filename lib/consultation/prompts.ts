@@ -166,8 +166,16 @@ function formatHealthContext(context: HealthContext): string {
   const personalParts: string[] = [];
   if (context.age) personalParts.push(`Age: ${context.age}`);
   if (context.gender) personalParts.push(`Gender: ${context.gender}`);
-  if (context.height_cm) personalParts.push(`Height: ${context.height_cm}cm`);
-  if (context.weight_kg) personalParts.push(`Weight: ${context.weight_kg}kg`);
+  if (context.height_cm) {
+    const inches = Math.round(context.height_cm / 2.54);
+    const ft = Math.floor(inches / 12);
+    const rem = inches % 12;
+    personalParts.push(`Height: ${ft}'${rem}"`);
+  }
+  if (context.weight_kg) {
+    const lbs = Math.round(context.weight_kg * 2.205);
+    personalParts.push(`Weight: ${lbs} lbs`);
+  }
   if (context.blood_type) personalParts.push(`Blood Type: ${context.blood_type}`);
   if (personalParts.length > 0) {
     parts.push(`Personal Info: ${personalParts.join(', ')}`);
