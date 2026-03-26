@@ -15,6 +15,9 @@ import { cn } from '@/lib/utils';
 import { trackUpgradeClicked, trackLimitReached } from '@/lib/analytics/events';
 import { REMEDIES } from '@/lib/remedies/data';
 import { getUserProfile } from '@/lib/supabase/database';
+import { calculateWellnessScore, WellnessBreakdown } from '@/lib/wellness/score';
+import { WellnessScore } from '@/components/dashboard/WellnessScore';
+import { HealthMap } from '@/components/dashboard/HealthMap';
 
 const TIPS = [
   "Ashwagandha is best absorbed when taken with food",
@@ -60,6 +63,7 @@ export function DashboardContent() {
   const [hasCheckedWelcome, setHasCheckedWelcome] = useState(false);
   const [spotlightRemedy, setSpotlightRemedy] = useState<typeof REMEDIES[0] | null>(null);
   const [intakeCompleted, setIntakeCompleted] = useState<boolean | null>(null);
+  const [wellnessBreakdown, setWellnessBreakdown] = useState<WellnessBreakdown | null>(null);
 
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
   const isWelcome = searchParams.get('welcome') === 'true';
@@ -101,12 +105,16 @@ export function DashboardContent() {
     setSpotlightRemedy(shuffled[0]);
   }, []);
 
-  // Check if user has completed wellness intake
+  // Check intake status and calculate wellness score
   useEffect(() => {
     async function checkIntake() {
       if (!user?.id) return;
       const profile = await getUserProfile(user.id);
       setIntakeCompleted(profile?.intake_completed ?? false);
+      if (profile?.intake_completed) {
+        const breakdown = calculateWellnessScore(profile);
+        setWellnessBreakdown(breakdown);
+      }
     }
     checkIntake();
   }, [user?.id]);
@@ -298,6 +306,19 @@ export function DashboardContent() {
             </div>
           </div>
         </Link>
+      )}
+
+      {/* Wellness Score + Health Map */}
+      {!isLoading && wellnessBreakdown && (
+        <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white border border-border/40 rounded-xl p-4">
+            <WellnessScore breakdown={wellnessBreakdown} />
+          </div>
+          <div className="bg-white border border-border/40 rounded-xl p-4">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Health Map</h3>
+            <HealthMap breakdown={wellnessBreakdown} />
+          </div>
+        </div>
       )}
 
       {/* Daily Remedy Spotlight */}

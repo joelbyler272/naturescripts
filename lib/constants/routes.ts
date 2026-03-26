@@ -36,6 +36,9 @@ export const routes = {
   protocolDetail: (id: string) => `/protocols/${id}`,
   tracking: '/tracking',
   intake: '/intake',
+  documents: '/documents',
+  documentDetail: (id: string) => `/documents/${id}`,
+  quizzes: '/quizzes',
   settings: '/settings',
   upgrade: '/upgrade',
   

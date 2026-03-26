@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Remedy } from '@/lib/remedies/types';
 import { routes } from '@/lib/constants/routes';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { isFavorited, toggleFavorite } from '@/lib/remedies/favorites';
 import {
   ArrowLeft,
   Clock,
@@ -13,6 +15,7 @@ import {
   Info,
   ExternalLink,
   Pill,
+  Heart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -93,6 +96,20 @@ interface RemedyDetailProps {
 
 export function RemedyDetail({ remedy }: RemedyDetailProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const { user } = useAuth();
+  const [favorited, setFavorited] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      isFavorited(user.id, remedy.slug).then(setFavorited);
+    }
+  }, [user?.id, remedy.slug]);
+
+  const handleToggleFavorite = async () => {
+    if (!user?.id) return;
+    const result = await toggleFavorite(user.id, remedy.slug);
+    setFavorited(result);
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -133,7 +150,23 @@ export function RemedyDetail({ remedy }: RemedyDetailProps) {
             </p>
           </div>
 
-          <RatingBadge rating={remedy.rating} />
+          <div className="flex items-center gap-2">
+            {user && (
+              <button
+                onClick={handleToggleFavorite}
+                className={cn(
+                  'p-2 rounded-lg border transition-colors',
+                  favorited
+                    ? 'bg-red-50 border-red-200 text-red-500'
+                    : 'bg-white border-border hover:border-red-200 text-muted-foreground hover:text-red-400'
+                )}
+                title={favorited ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Heart className={cn('w-5 h-5', favorited && 'fill-current')} />
+              </button>
+            )}
+            <RatingBadge rating={remedy.rating} />
+          </div>
         </div>
       </div>
 
