@@ -50,7 +50,7 @@ const faqCategories = [
     faqs: [
       {
         question: "Can I try NatureScripts without paying?",
-        answer: "Yes. Your first consultation is completely free, no account or credit card needed. The free plan gives you 1 consultation per week with full safety checking.",
+        answer: "Yes. Your first consultation is completely free, no account or credit card needed. The free plan gives you 5 consultations per week with full safety checking.",
       },
       {
         question: "What does Pro include?",

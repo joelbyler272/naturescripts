@@ -96,17 +96,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const tier = healthContext.tier || 'free';
 
-    // For Pro users, get consultation history
+    // Get consultation history for all users (helps Claude provide better context)
     let consultationHistoryData: ConsultationHistory[] = [];
-    if (tier === 'pro') {
-      const { data: historyData, error: historyError } = await supabase
-        .rpc('get_consultation_history', { p_user_id: user.id, p_limit: 5 });
+    const { data: historyData, error: historyError } = await supabase
+      .rpc('get_consultation_history', { p_user_id: user.id, p_limit: 5 });
 
-      if (historyError) {
-        console.error('[CONSULTATION CHAT] Failed to get consultation history:', historyError);
-      } else if (historyData) {
-        consultationHistoryData = historyData;
-      }
+    if (historyError) {
+      console.error('[CONSULTATION CHAT] Failed to get consultation history:', historyError);
+    } else if (historyData) {
+      consultationHistoryData = historyData;
     }
 
     // Build conversation for Claude

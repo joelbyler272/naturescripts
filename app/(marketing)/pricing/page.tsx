@@ -22,7 +22,7 @@ const plans = [
     ctaHref: routes.onboarding,
     highlighted: false,
     features: [
-      "1 consultation per week",
+      "5 consultations per week",
       "Basic 3-part protocol",
       "Herb-drug interaction safety check",
       "Access to remedy database",
@@ -122,7 +122,7 @@ export default function PricingPage() {
           {[
             {
               q: "Can I try NatureScripts without paying?",
-              a: "Yes. Your first consultation is completely free, no account or credit card needed. The free plan gives you 1 consultation per week.",
+              a: "Yes. Your first consultation is completely free, no account or credit card needed. The free plan gives you 5 consultations per week.",
             },
             {
               q: "Can I cancel Pro anytime?",
