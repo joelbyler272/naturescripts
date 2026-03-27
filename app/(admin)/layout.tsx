@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isAdminUser } from '@/lib/constants/adminAccess';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { getMarketingUrl } from '@/lib/utils/urls';
 
 export default async function AdminLayout({
   children,
@@ -13,7 +14,7 @@ export default async function AdminLayout({
 
   // Redirect if not logged in
   if (!user) {
-    redirect('/login');
+    redirect(getMarketingUrl('/sign-in'));
   }
 
   // Redirect if not an admin

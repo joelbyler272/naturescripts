@@ -2,9 +2,18 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSubdomainInfo, isConsumerRoute, isPractitionerRoute, isAuthRoute } from '@/lib/subdomain/detect';
 
+function getCookieDomain(): string | undefined {
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
+  if (rootDomain.includes('naturescripts.io')) {
+    return '.naturescripts.io';
+  }
+  return undefined;
+}
+
 export async function updateSession(request: NextRequest) {
   const hostname = request.headers.get('host') || 'localhost:3000';
   const { type, subdomain } = getSubdomainInfo(hostname);
+  const cookieDomain = getCookieDomain();
 
   let response = NextResponse.next({
     request: {
@@ -28,10 +37,11 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
+          const cookieOpts = { ...options, domain: cookieDomain ?? options.domain };
           request.cookies.set({
             name,
             value,
-            ...options,
+            ...cookieOpts,
           });
           response = NextResponse.next({
             request: {
@@ -46,14 +56,15 @@ export async function updateSession(request: NextRequest) {
           response.cookies.set({
             name,
             value,
-            ...options,
+            ...cookieOpts,
           });
         },
         remove(name: string, options: CookieOptions) {
+          const cookieOpts = { ...options, domain: cookieDomain ?? options.domain };
           request.cookies.set({
             name,
             value: '',
-            ...options,
+            ...cookieOpts,
           });
           response = NextResponse.next({
             request: {
@@ -68,7 +79,7 @@ export async function updateSession(request: NextRequest) {
           response.cookies.set({
             name,
             value: '',
-            ...options,
+            ...cookieOpts,
           });
         },
       },
