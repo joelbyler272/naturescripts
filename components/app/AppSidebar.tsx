@@ -86,7 +86,7 @@ export function AppSidebar() {
       {/* Bottom Section */}
       <div className="border-t border-border/30 p-2 shrink-0">
         <SidebarItem
-          href="/help"
+          href={routes.help}
           label="Help & Support"
           icon={HelpCircle}
           collapsed={collapsed}

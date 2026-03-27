@@ -41,6 +41,7 @@ export const routes = {
   quizzes: '/quizzes',
   settings: '/settings',
   upgrade: '/upgrade',
+  help: '/help',
 
   // Practitioner (requires auth + practitioner role) - served on practitioner.* or custom subdomain
   practitionerDashboard: '/portal',
