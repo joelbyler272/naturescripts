@@ -33,7 +33,8 @@ function SignInForm() {
       setError(error.message);
       setLoading(false);
     } else {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${window.location.protocol}//app.${window.location.host}`;
+      const host = window.location.host.replace(/^www\./, '');
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${window.location.protocol}//app.${host}`;
       window.location.href = `${appUrl}/dashboard`;
     }
   };
