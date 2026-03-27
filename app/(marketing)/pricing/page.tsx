@@ -31,7 +31,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "$9",
+    price: "$12.99",
     period: "/month",
     description: "Unlimited consultations, tracking, and advanced protocol features.",
     cta: "Upgrade to Pro",

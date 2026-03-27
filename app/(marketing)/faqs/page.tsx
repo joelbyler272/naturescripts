@@ -54,7 +54,7 @@ const faqCategories = [
       },
       {
         question: "What does Pro include?",
-        answer: "Pro ($9/month) includes unlimited consultations, symptom and supplement tracking, protocol history and comparison, the ability to adjust and refine protocols over time, and priority support.",
+        answer: "Pro ($12.99/month) includes unlimited consultations, symptom and supplement tracking, protocol history and comparison, the ability to adjust and refine protocols over time, and priority support.",
       },
       {
         question: "Can I cancel Pro anytime?",
