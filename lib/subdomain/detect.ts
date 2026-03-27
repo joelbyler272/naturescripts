@@ -61,3 +61,9 @@ export function isConsumerRoute(pathname: string): boolean {
 export function isPractitionerRoute(pathname: string): boolean {
   return PRACTITIONER_PREFIXES.some(p => pathname === p || pathname.startsWith(`${p}/`));
 }
+
+const AUTH_PREFIXES = ['/sign-in', '/sign-up', '/verify-email'];
+
+export function isAuthRoute(pathname: string): boolean {
+  return AUTH_PREFIXES.some(p => pathname === p || pathname.startsWith(`${p}/`));
+}

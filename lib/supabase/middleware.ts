@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { getSubdomainInfo, isConsumerRoute, isPractitionerRoute } from '@/lib/subdomain/detect';
+import { getSubdomainInfo, isConsumerRoute, isPractitionerRoute, isAuthRoute } from '@/lib/subdomain/detect';
 
 export async function updateSession(request: NextRequest) {
   const hostname = request.headers.get('host') || 'localhost:3000';
@@ -82,6 +82,13 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
   const protocol = rootDomain.includes('localhost') ? 'http' : 'https';
+
+  // Auth routes should only live on the root marketing domain
+  if (type !== 'marketing' && isAuthRoute(pathname)) {
+    return NextResponse.redirect(
+      new URL(`${protocol}://${rootDomain}${pathname}${request.nextUrl.search}`)
+    );
+  }
 
   // Marketing subdomain: redirect consumer/practitioner routes to proper subdomain
   if (type === 'marketing') {
