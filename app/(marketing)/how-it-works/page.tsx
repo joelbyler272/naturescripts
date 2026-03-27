@@ -34,7 +34,7 @@ export default function HowItWorksPage() {
         "Pattern recognition across symptom clusters",
         "Herb-drug interaction database cross-check",
         "Contraindication screening for safety",
-        "Evidence-based matching from 150+ herbs",
+        "Evidence-based matching from 700+ remedies",
       ],
       Icon: Search,
     },

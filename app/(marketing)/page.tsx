@@ -47,7 +47,7 @@ export default function LandingPage() {
       setAnimatedStats({
         time: Math.round(progress * 3),
         parts: Math.round(progress * 3),
-        herbs: Math.round(progress * 150),
+        herbs: Math.round(progress * 700),
       })
       if (step >= steps) clearInterval(timer)
     }, interval)
@@ -171,7 +171,7 @@ export default function LandingPage() {
             {[
               { value: `~${animatedStats.time}`, unit: "min", label: "Average consultation", Icon: Clock },
               { value: `${animatedStats.parts}`, unit: "-part", label: "Comprehensive protocol", Icon: Layers },
-              { value: `${animatedStats.herbs}`, unit: "+", label: "Herbs in database", Icon: Leaf },
+              { value: `${animatedStats.herbs}`, unit: "+", label: "Remedies in database", Icon: Leaf },
             ].map((stat) => (
               <div key={stat.label} className="flex flex-col items-center text-center">
                 <stat.Icon className="w-5 h-5 text-accent mb-3 hidden sm:block" />

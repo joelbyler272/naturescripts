@@ -117,7 +117,7 @@ export default function ApproachPage() {
             <Leaf className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h3 className="font-medium text-foreground mb-1">150+ herbs and growing</h3>
+            <h3 className="font-medium text-foreground mb-1">700+ remedies and growing</h3>
             <p className="text-sm text-muted-foreground mb-3">
               Our remedy database covers adaptogens, nervines, immune support, digestive herbs, essential oils, vitamins, and minerals. Each with detailed dosage guidance, safety information, and evidence ratings.
             </p>
