@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { getAppUrl } from '@/lib/utils/urls';
 
 // Validate consultationId is a UUID to prevent injection
 function isValidUuid(id: string): boolean {
@@ -32,6 +33,10 @@ export async function GET(request: Request) {
       }
       if (type === 'recovery') {
         return NextResponse.redirect(`${origin}/auth/set-password`);
+      }
+      // Redirect to app subdomain for dashboard routes
+      if (next === '/dashboard' || next.startsWith('/dashboard')) {
+        return NextResponse.redirect(getAppUrl(next));
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
