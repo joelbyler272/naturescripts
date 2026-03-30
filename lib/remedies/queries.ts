@@ -39,7 +39,8 @@ export async function getAllRemediesFromDb(): Promise<Remedy[]> {
   const { data, error } = await supabase
     .from('remedies')
     .select('*')
-    .order('name', { ascending: true });
+    .order('name', { ascending: true })
+    .limit(5000);
 
   if (error) {
     console.error('Failed to fetch remedies:', error.message);

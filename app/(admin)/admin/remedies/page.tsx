@@ -12,7 +12,8 @@ export default async function AdminRemediesPage() {
     const { data, error } = await supabase
       .from('remedies')
       .select('id, slug, name, botanical_name, category, remedy_group, rating, last_updated, created_at')
-      .order('name');
+      .order('name')
+      .limit(5000);
 
     if (error) throw error;
     return (
