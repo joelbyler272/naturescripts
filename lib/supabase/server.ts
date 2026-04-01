@@ -2,7 +2,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 function getCookieDomain(): string | undefined {
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
+  // Check env var first, then fall back to site URL detection
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
   if (rootDomain.includes('naturescripts.io')) {
     return '.naturescripts.io';
   }

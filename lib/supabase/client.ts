@@ -4,10 +4,9 @@ function getCookieDomain(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   const host = window.location.hostname;
   // In production, set cookie on root domain so it's shared across subdomains
-  if (host.endsWith('naturescripts.io')) {
+  if (host === 'naturescripts.io' || host.endsWith('.naturescripts.io')) {
     return '.naturescripts.io';
   }
-  // For localhost, don't set a domain (cookies work on localhost by default)
   return undefined;
 }
 
