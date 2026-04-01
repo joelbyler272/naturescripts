@@ -256,7 +256,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // STEP 6: Send verification email WITH consultation ID
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     const redirectUrl = consultationId
       ? `${appUrl}/auth/callback?type=invite&consultation=${consultationId}`

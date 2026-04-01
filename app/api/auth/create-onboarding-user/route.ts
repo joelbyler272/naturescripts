@@ -138,7 +138,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       type: 'magiclink',
       email: normalizedEmail,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/set-password`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/set-password`,
       },
     });
 
