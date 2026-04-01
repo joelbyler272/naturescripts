@@ -86,11 +86,27 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired
-  await supabase.auth.getUser();
-
   // Subdomain-based route enforcement
   const pathname = request.nextUrl.pathname;
+
+  // Only refresh session on routes that actually need auth
+  // Skip auth routes, public marketing pages, legal pages, and static assets
+  const skipAuthRefresh = isAuthRoute(pathname) ||
+    pathname === '/' ||
+    pathname.startsWith('/pricing') ||
+    pathname.startsWith('/about') ||
+    pathname.startsWith('/how-it-works') ||
+    pathname.startsWith('/approach') ||
+    pathname.startsWith('/blog') ||
+    pathname.startsWith('/contact') ||
+    pathname.startsWith('/terms') ||
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/disclaimer') ||
+    pathname.startsWith('/auth/callback');
+
+  if (!skipAuthRefresh) {
+    await supabase.auth.getUser();
+  }
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
   const protocol = rootDomain.includes('localhost') ? 'http' : 'https';
 
