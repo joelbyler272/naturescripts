@@ -19,10 +19,9 @@ export function isDevUser(email: string | undefined | null): boolean {
   if (!email) return false;
 
   const devEmails = getDevEmails();
-  // In development, allow dev tools if no DEV_EMAILS are configured
-  if (devEmails.length === 0 && process.env.NODE_ENV === 'development') {
-    return true;
-  }
-
+  // Always require an explicit allowlist match. The previous "if dev mode and
+  // no DEV_EMAILS, allow everyone" fallback was a footgun: any preview
+  // deployment with NODE_ENV !== 'production' and DEV_EMAILS unset would
+  // expose dev tools (tier toggle, usage reset) to every signed-in user.
   return devEmails.includes(email.toLowerCase());
 }
