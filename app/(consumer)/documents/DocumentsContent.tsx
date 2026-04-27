@@ -179,7 +179,8 @@ export function DocumentsContent() {
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDelete(doc)}
-                  className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  aria-label={`Delete ${doc.file_name}`}
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>

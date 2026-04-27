@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getDocument, getDocumentUrl } from '@/lib/documents/storage';
+import { getDocument, getDocumentUrl, deleteDocument } from '@/lib/documents/storage';
 import { UserDocument, DOCUMENT_TYPE_LABELS, DocumentType, DocumentInterpretation } from '@/lib/documents/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft, FileText, Loader2, Sparkles, AlertTriangle,
-  CheckCircle, ChevronDown, ChevronUp, ExternalLink
+  CheckCircle, ChevronDown, ChevronUp, ExternalLink, Trash2
 } from 'lucide-react';
 
 interface Props {
@@ -25,6 +25,7 @@ export function DocumentDetail({ documentId }: Props) {
   const [textInput, setTextInput] = useState('');
   const [showText, setShowText] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -47,6 +48,19 @@ export function DocumentDetail({ documentId }: Props) {
     }
     load();
   }, [documentId, router]);
+
+  const handleDelete = async () => {
+    if (!doc) return;
+    if (!confirm(`Permanently delete "${doc.file_name}"? This will remove the file, AI interpretation, and any extracted lab markers. This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      await deleteDocument(doc.id, doc.file_path);
+      router.push('/documents');
+    } catch {
+      alert('Failed to delete the document. Please try again.');
+      setDeleting(false);
+    }
+  };
 
   const handleInterpret = async () => {
     if (!doc || !textInput.trim()) return;
@@ -115,6 +129,17 @@ export function DocumentDetail({ documentId }: Props) {
             )}
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDelete}
+          disabled={deleting}
+          aria-label={`Delete ${doc.file_name}`}
+          className="gap-2 text-muted-foreground hover:text-destructive"
+        >
+          {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+          <span className="hidden sm:inline">Delete</span>
+        </Button>
       </div>
 
       {/* Text Input for Interpretation */}
