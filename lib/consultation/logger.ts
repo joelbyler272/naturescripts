@@ -4,12 +4,16 @@
 import fs from 'fs';
 import path from 'path';
 
-// Claude pricing (as of 2024) - Sonnet 3.5
+// Claude pricing — verify against https://www.anthropic.com/pricing
 const PRICING = {
+  'claude-sonnet-4-6': {
+    input: 3.00 / 1_000_000,
+    output: 15.00 / 1_000_000,
+  },
   'claude-sonnet-4-20250514': {
-    input: 3.00 / 1_000_000,  // $3 per 1M input tokens
-    output: 15.00 / 1_000_000, // $15 per 1M output tokens
-  }
+    input: 3.00 / 1_000_000,
+    output: 15.00 / 1_000_000,
+  },
 };
 
 export interface TokenUsage {
@@ -70,7 +74,7 @@ function getSummaryFilePath(): string {
 }
 
 export function calculateCost(usage: TokenUsage): { input: number; output: number; total: number } {
-  const pricing = PRICING[usage.model as keyof typeof PRICING] || PRICING['claude-sonnet-4-20250514'];
+  const pricing = PRICING[usage.model as keyof typeof PRICING] || PRICING['claude-sonnet-4-6'];
   const inputCost = usage.inputTokens * pricing.input;
   const outputCost = usage.outputTokens * pricing.output;
   return {

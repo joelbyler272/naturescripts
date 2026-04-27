@@ -1,8 +1,16 @@
 import { createServiceClient, ServiceClientError } from '@/lib/supabase/service';
 import { logger } from '@/lib/utils/logger';
 
-// Claude API Pricing
+// Claude API Pricing (USD per token)
+// NOTE: Verify pricing against https://www.anthropic.com/pricing before relying
+// on these numbers for billing or alerts; Anthropic occasionally updates rates.
 const CLAUDE_PRICING: Record<string, { input: number; output: number }> = {
+  // Current default — Sonnet 4.6
+  'claude-sonnet-4-6': {
+    input: 3.00 / 1_000_000,
+    output: 15.00 / 1_000_000,
+  },
+  // Legacy / kept for backward compatibility on rows recorded under older models
   'claude-sonnet-4-20250514': {
     input: 3.00 / 1_000_000,
     output: 15.00 / 1_000_000,
@@ -43,7 +51,7 @@ export async function recordApiUsage(entry: ApiUsageEntry): Promise<boolean> {
   try {
     const supabase = createServiceClient();
     
-    const pricing = CLAUDE_PRICING[entry.model] || CLAUDE_PRICING['claude-sonnet-4-20250514'];
+    const pricing = CLAUDE_PRICING[entry.model] || CLAUDE_PRICING['claude-sonnet-4-6'];
     const inputCost = entry.inputTokens * pricing.input;
     const outputCost = entry.outputTokens * pricing.output;
     const totalCost = inputCost + outputCost;
