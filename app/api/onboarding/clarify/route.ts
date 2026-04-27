@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildClarifyingQuestionPrompt, OnboardingState } from '@/lib/onboarding/stateMachine';
+import { recordApiUsage } from '@/lib/admin/apiUsage';
 import { applyRateLimit, getClientIp } from '@/lib/utils/rateLimit';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -37,6 +38,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       systemPrompt: prompt,
       messages: [{ role: 'user', content: 'Generate the follow-up question.' }],
     });
+
+    recordApiUsage({
+      endpoint: 'onboarding-clarify',
+      model: response.usage.model,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
+    }).catch(() => { /* silently ignore tracking failures */ });
 
     return NextResponse.json({
       question: response.content,

@@ -24,7 +24,13 @@ const CLAUDE_PRICING: Record<string, { input: number; output: number }> = {
 export interface ApiUsageEntry {
   userId?: string;
   consultationId?: string;
-  endpoint: 'chat' | 'protocol';
+  endpoint:
+    | 'chat'
+    | 'protocol'
+    | 'onboarding-chat'
+    | 'onboarding-clarify'
+    | 'onboarding-complete'
+    | 'documents-interpret';
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -155,14 +161,24 @@ export async function getApiUsageStats(): Promise<UsageSummary> {
       { requests: 0, cost: 0 }
     );
 
-    // All time stats — count only (no full row fetch)
+    // All time stats — count + paginated cost sum
     const { count: allTimeCount } = await supabase
       .from('api_usage')
       .select('*', { count: 'exact', head: true });
 
-    // Sum total_cost from the monthly data we already have (approximate for dashboard)
-    // For exact all-time cost, this would need a database aggregate function
-    const allTimeCost = monthStats.cost; // Use month as proxy; exact sum would require SQL view
+    // Sum total_cost across all rows. Paginate so we handle >1000 rows
+    // correctly without relying on a SQL aggregate function.
+    // TODO: when row count exceeds ~50k, replace with a Postgres aggregate RPC.
+    let allTimeCost = 0;
+    const PAGE_SIZE = 1000;
+    for (let from = 0; from < (allTimeCount ?? 0); from += PAGE_SIZE) {
+      const { data: page } = await supabase
+        .from('api_usage')
+        .select('total_cost')
+        .range(from, from + PAGE_SIZE - 1);
+      if (!page || page.length === 0) break;
+      allTimeCost += page.reduce((sum, row) => sum + Number(row.total_cost), 0);
+    }
     const allTimeStats = { requests: allTimeCount ?? 0, cost: allTimeCost };
 
     // Daily usage for charts (last 30 days) - manual aggregation

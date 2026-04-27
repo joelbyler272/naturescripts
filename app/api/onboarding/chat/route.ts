@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildOnboardingSystemPrompt, extractEmailFromConversation } from '@/lib/consultation/onboardingPrompts';
+import { recordApiUsage } from '@/lib/admin/apiUsage';
 import { ConversationMessage, ChatResponse } from '@/lib/consultation/types';
 import { applyRateLimit } from '@/lib/utils/rateLimit';
 import { verifyTurnstileToken } from '@/lib/utils/turnstile';
@@ -88,6 +89,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       systemPrompt,
       messages: messagesForClaude
     });
+
+    // Record API usage (anonymous — no userId). Fire-and-forget so a tracking
+    // failure doesn't kill the response for the user.
+    recordApiUsage({
+      endpoint: 'onboarding-chat',
+      model: claudeResponse.usage.model,
+      inputTokens: claudeResponse.usage.inputTokens,
+      outputTokens: claudeResponse.usage.outputTokens,
+    }).catch(() => { /* silently ignore tracking failures */ });
 
     // Check if email was just provided in this message
     const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i;

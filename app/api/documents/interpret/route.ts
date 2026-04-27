@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildLabInterpretationPrompt, buildDocSimplifierPrompt, parseInterpretationResponse } from '@/lib/documents/interpreter';
+import { recordApiUsage } from '@/lib/admin/apiUsage';
 import { logger } from '@/lib/utils/logger';
 
 export async function POST(req: NextRequest) {
@@ -57,6 +58,14 @@ export async function POST(req: NextRequest) {
       maxTokens: 2048,
       temperature: 0.3,
     });
+
+    recordApiUsage({
+      userId: user.id,
+      endpoint: 'documents-interpret',
+      model: response.usage.model,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
+    }).catch(() => { /* silently ignore tracking failures */ });
 
     const interpretation = parseInterpretationResponse(response.content);
 
