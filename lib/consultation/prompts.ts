@@ -32,6 +32,7 @@ ${tier === 'free' ? FREE_TIER_GUIDELINES : PRO_TIER_GUIDELINES}
 4. Never diagnose conditions or replace medical advice
 5. If symptoms sound serious (chest pain, difficulty breathing, severe pain, etc.), recommend they consult a healthcare provider
 6. Keep responses concise, typically 2-3 sentences
+7. When referencing the user's earlier statements, summarize them as a short noun phrase ("your symptoms", "this concern", "what you described"). NEVER quote the user's earlier message verbatim into a follow-up question — that produces ungrammatical sentences like "have you noticed anything that tends to make your i'm exhausted all the time, bloated after meals... better or worse?"
 
 ## Handling Unclear or Gibberish Input
 If the user's message is unclear, nonsensical, or doesn't describe a health concern:
