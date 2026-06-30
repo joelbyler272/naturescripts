@@ -49,3 +49,6 @@ Thumbs.db
 
 # Consultation logs (local dev only)
 /logs/
+
+# Supabase CLI local state
+supabase/.temp/
