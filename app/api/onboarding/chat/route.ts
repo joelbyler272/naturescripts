@@ -38,13 +38,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const { message, turnstileToken } = body;
 
-    // Verify CAPTCHA on first message of a new onboarding session
     const validatedHistory = validateConversationHistory(body.conversationHistory || []);
+
+    // Verify CAPTCHA only when starting a session. Turnstile tokens are
+    // single-use, so re-verifying a reused token would 403 legit users
+    // mid-conversation. Abuse past message 1 is bounded by the per-IP rate
+    // limit (above) and the 12-message cap (below).
     if (validatedHistory.length === 0) {
       const captcha = await verifyTurnstileToken(turnstileToken, ip);
       if (!captcha.success) {
         return NextResponse.json({ error: captcha.error }, { status: 403 });
       }
+    }
+
+    // Cap conversation length to prevent abuse on this unauthenticated endpoint
+    if (validatedHistory.length > 12) {
+      return NextResponse.json({ error: 'Conversation too long' }, { status: 400 });
     }
 
     if (!message || typeof message !== 'string') {

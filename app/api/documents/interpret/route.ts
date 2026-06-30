@@ -3,22 +3,43 @@ import { createClient } from '@/lib/supabase/server';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildLabInterpretationPrompt, buildDocSimplifierPrompt, parseInterpretationResponse } from '@/lib/documents/interpreter';
 import { logger } from '@/lib/utils/logger';
+import { applyRateLimit } from '@/lib/utils/rateLimit';
+
+// Cap interpreted document size to bound Claude input cost. Real lab reports /
+// documents are well under this; larger payloads are abuse.
+const MAX_DOCUMENT_TEXT_LENGTH = 50_000;
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Rate limit AI calls per user (this endpoint hits Claude with user input).
+    const rateLimitResult = await applyRateLimit('documents-interpret', user.id, 10, 60000);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a moment.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.retryAfter / 1000)) } }
+      );
+    }
+
     const { documentId, documentText, documentType } = await req.json();
 
-    if (!documentId || !documentText) {
+    if (!documentId || !documentText || typeof documentText !== 'string') {
       return NextResponse.json(
         { error: 'Missing documentId or documentText' },
         { status: 400 }
+      );
+    }
+
+    if (documentText.length > MAX_DOCUMENT_TEXT_LENGTH) {
+      return NextResponse.json(
+        { error: 'Document is too large to interpret.' },
+        { status: 413 }
       );
     }
 

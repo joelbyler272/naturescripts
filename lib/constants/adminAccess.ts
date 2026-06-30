@@ -34,10 +34,7 @@ export function isAdminUser(email: string | undefined | null): boolean {
 
   const adminEmails = getAdminEmails();
   
-  // In development with no admin emails configured, allow access
-  if (adminEmails.length === 0 && process.env.NODE_ENV === 'development') {
-    return true;
-  }
+  if (adminEmails.length === 0) return false;
 
   return adminEmails.includes(email.toLowerCase());
 }
