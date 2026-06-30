@@ -6,7 +6,7 @@
 export const USAGE_LIMITS = {
   FREE_WEEKLY_CONSULTATIONS: 5,
   PRO_WEEKLY_CONSULTATIONS: Infinity,  // Unlimited
-  FREE_TIER_PROTOCOL_HISTORY: 3,  // Free users can only see their last 3 protocols
+  FREE_TIER_PROTOCOL_HISTORY: 5,  // Free users can only see their last 5 protocols
 } as const;
 
 export const PRICING = {

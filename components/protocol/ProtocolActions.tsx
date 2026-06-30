@@ -20,24 +20,17 @@ export function ProtocolActions({ consultationId, protocolTitle }: ProtocolActio
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handleDownloadPdf = async () => {
-    if (!isPro) {
-      trackUpgradeClicked('protocol_pdf_download');
-      router.push(routes.upgrade);
-      return;
-    }
-
     setDownloading(true);
     setDownloadError(null);
 
     try {
       const response = await fetch(`/api/protocol/pdf?id=${consultationId}`);
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to download PDF');
       }
 
-      // Create download link
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -63,7 +56,6 @@ export function ProtocolActions({ consultationId, protocolTitle }: ProtocolActio
       return;
     }
 
-    // Navigate to consultation with adjustment context
     router.push(`${routes.consultation}?adjust=${consultationId}`);
   };
 
@@ -78,12 +70,10 @@ export function ProtocolActions({ consultationId, protocolTitle }: ProtocolActio
       >
         {downloading ? (
           <Loader2 className="w-4 h-4 animate-spin" />
-        ) : isPro ? (
-          <FileDown className="w-4 h-4" />
         ) : (
-          <Lock className="w-4 h-4" />
+          <FileDown className="w-4 h-4" />
         )}
-        {isPro ? 'Download PDF' : 'PDF (Pro)'}
+        Download PDF
       </Button>
 
       {/* Adjust Protocol */}

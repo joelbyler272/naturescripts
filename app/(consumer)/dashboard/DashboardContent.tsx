@@ -8,46 +8,11 @@ import { ProtocolCard } from '@/components/protocol/ProtocolCard';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useConsultations } from '@/lib/hooks/useConsultations';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
-import { HEALTH_SUGGESTIONS } from '@/lib/constants/suggestions';
 import { routes } from '@/lib/constants/routes';
-import { ArrowRight, Lightbulb, Send, AlertCircle, Loader2, Sparkles, Leaf, ClipboardList } from 'lucide-react';
+import { ArrowRight, Send, AlertCircle, Loader2, Sparkles, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackUpgradeClicked, trackLimitReached } from '@/lib/analytics/events';
-import { REMEDIES } from '@/lib/remedies/data';
 import { getUserProfile } from '@/lib/supabase/database';
-import { calculateWellnessScore, WellnessBreakdown } from '@/lib/wellness/score';
-import { WellnessScore } from '@/components/dashboard/WellnessScore';
-import { HealthMap } from '@/components/dashboard/HealthMap';
-
-const TIPS = [
-  "Ashwagandha is best absorbed when taken with food",
-  "Consistency matters more than perfection with herbal protocols",
-  "Most herbs take 2-4 weeks to show their full effects",
-  "Keeping a symptom journal helps track what's working",
-  "Adaptogens work best when cycled: 6 weeks on, 1 week off",
-  "Take iron-containing herbs away from tea and coffee",
-  "Probiotics are most effective when taken on an empty stomach",
-  "Chamomile tea before bed can improve sleep onset by 15 minutes",
-  "Turmeric absorption increases 2000% when paired with black pepper",
-  "Magnesium glycinate is the gentlest form on the stomach",
-  "Ginger tea can ease nausea within 20 minutes",
-  "Valerian root works better after 2 weeks of consistent use",
-  "Omega-3 supplements are best taken with a meal containing fat",
-  "Holy basil can help lower cortisol levels during stressful periods",
-  "Elderberry syrup is most effective taken at the first sign of illness",
-];
-
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  const copy = [...arr];
-  let m = copy.length;
-  let s = seed;
-  while (m) {
-    s = (s * 9301 + 49297) % 233280;
-    const i = Math.floor((s / 233280) * m--);
-    [copy[m], copy[i]] = [copy[i], copy[m]];
-  }
-  return copy;
-}
 
 export function DashboardContent() {
   const router = useRouter();
@@ -58,68 +23,34 @@ export function DashboardContent() {
 
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [currentTip, setCurrentTip] = useState('');
-  const [visibleSuggestions, setVisibleSuggestions] = useState<string[]>([]);
   const [hasCheckedWelcome, setHasCheckedWelcome] = useState(false);
-  const [spotlightRemedy, setSpotlightRemedy] = useState<typeof REMEDIES[0] | null>(null);
   const [intakeCompleted, setIntakeCompleted] = useState<boolean | null>(null);
-  const [wellnessBreakdown, setWellnessBreakdown] = useState<WellnessBreakdown | null>(null);
 
   const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there';
   const isWelcome = searchParams.get('welcome') === 'true';
 
-  // If user came from onboarding (welcome=true), redirect to their protocol
   useEffect(() => {
     if (isWelcome && !consultationsLoading && !hasCheckedWelcome && pastProtocols.length > 0) {
       setHasCheckedWelcome(true);
-      // Redirect to the most recent protocol with welcome flag
       const latestProtocol = pastProtocols[0];
       if (latestProtocol?.id) {
         router.replace(`/protocols/${latestProtocol.id}?welcome=true`);
       }
     } else if (isWelcome && !consultationsLoading && pastProtocols.length === 0) {
-      // No protocols found, just clear the welcome param
       setHasCheckedWelcome(true);
       router.replace('/dashboard');
     }
   }, [isWelcome, consultationsLoading, pastProtocols, hasCheckedWelcome, router]);
 
-  // Pick 3 random suggestions client-side only (changes on refresh)
-  useEffect(() => {
-    const seed = Math.floor(Date.now() / 1000);
-    const shuffled = seededShuffle(HEALTH_SUGGESTIONS, seed);
-    setVisibleSuggestions(shuffled.slice(0, 3));
-  }, []);
-
-  // Pick 1 random tip client-side only (changes on refresh)
-  useEffect(() => {
-    const index = Math.floor(Date.now() / 1000) % TIPS.length;
-    setCurrentTip(TIPS[index]);
-  }, []);
-
-  // Pick a daily remedy spotlight (changes once per day)
-  useEffect(() => {
-    const now = new Date();
-    const daySeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-    const shuffled = seededShuffle(REMEDIES, daySeed);
-    setSpotlightRemedy(shuffled[0]);
-  }, []);
-
-  // Check intake status and calculate wellness score
   useEffect(() => {
     async function checkIntake() {
       if (!user?.id) return;
       const profile = await getUserProfile(user.id);
       setIntakeCompleted(profile?.intake_completed ?? false);
-      if (profile?.intake_completed) {
-        const breakdown = calculateWellnessScore(profile);
-        setWellnessBreakdown(breakdown);
-      }
     }
     checkIntake();
   }, [user?.id]);
 
-  // Track limit reached event
   useEffect(() => {
     if (isAtLimit && !usageLoading) {
       trackLimitReached(usage.tier, usage.currentCount);
@@ -134,16 +65,8 @@ export function DashboardContent() {
     }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    if (!isAtLimit) {
-      const query = encodeURIComponent(suggestion);
-      router.push(`${routes.consultation}?q=${query}`);
-    }
-  };
-
   const isLoading = consultationsLoading || usageLoading;
 
-  // Show loading if we're about to redirect
   if (isWelcome && !hasCheckedWelcome) {
     return (
       <div className="w-full flex items-center justify-center py-24">
@@ -208,7 +131,7 @@ export function DashboardContent() {
       )}
 
       {/* Chat Input Bar */}
-      <div className="mb-4">
+      <div className="mb-6">
         <form onSubmit={handleSubmit}>
           <div
             className={cn(
@@ -243,43 +166,12 @@ export function DashboardContent() {
             </button>
           </div>
         </form>
-
-        {/* Suggestions */}
-        {visibleSuggestions.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {visibleSuggestions.map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => handleSuggestionClick(suggestion)}
-                disabled={isAtLimit}
-                className={cn(
-                  "px-3 py-1.5 text-xs sm:text-sm bg-white border rounded-full transition-colors",
-                  isAtLimit
-                    ? "text-muted-foreground border-border/30 cursor-not-allowed opacity-50"
-                    : "text-muted-foreground border-border/50 hover:border-accent/50 hover:text-foreground"
-                )}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-accent" />
-        </div>
-      )}
-
-      {/* Tip */}
-      {!isLoading && currentTip && (
-        <div className="mb-5 flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white/60 border border-border/30 rounded-lg">
-          <Lightbulb className="w-4 h-4 text-accent flex-shrink-0" />
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Tip:</span> {currentTip}
-          </p>
         </div>
       )}
 
@@ -308,52 +200,6 @@ export function DashboardContent() {
         </Link>
       )}
 
-      {/* Wellness Score + Health Map */}
-      {!isLoading && wellnessBreakdown && (
-        <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white border border-border/40 rounded-xl p-4">
-            <WellnessScore breakdown={wellnessBreakdown} />
-          </div>
-          <div className="bg-white border border-border/40 rounded-xl p-4">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Health Map</h3>
-            <HealthMap breakdown={wellnessBreakdown} />
-          </div>
-        </div>
-      )}
-
-      {/* Daily Remedy Spotlight */}
-      {!isLoading && spotlightRemedy && (
-        <Link
-          href={`${routes.remedies}/${spotlightRemedy.slug}`}
-          className="block mb-5 p-4 bg-white border border-border/40 rounded-xl hover:border-accent/40 transition-colors group"
-        >
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 bg-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Leaf className="w-4.5 h-4.5 text-accent" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-medium text-accent uppercase tracking-wide">Remedy of the Day</span>
-              </div>
-              <h3 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
-                {spotlightRemedy.name}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                {spotlightRemedy.summary}
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs px-2 py-0.5 bg-secondary/50 rounded-full text-muted-foreground">
-                  {spotlightRemedy.category}
-                </span>
-                <span className="text-xs text-accent flex items-center gap-1 ml-auto">
-                  Learn more <ArrowRight className="w-3 h-3" />
-                </span>
-              </div>
-            </div>
-          </div>
-        </Link>
-      )}
-
       {/* Past Protocols */}
       {!isLoading && (
         <div>
@@ -361,18 +207,20 @@ export function DashboardContent() {
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Your Protocols
             </h2>
-            <Link
-              href={routes.protocols}
-              className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
-            >
-              View all
-              <ArrowRight className="w-3 h-3" />
-            </Link>
+            {pastProtocols.length > 3 && (
+              <Link
+                href={routes.protocols}
+                className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
+              >
+                View all
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            )}
           </div>
 
           {pastProtocols.length > 0 ? (
             <div className="space-y-3">
-              {pastProtocols.slice(0, 2).map((consultation) => (
+              {pastProtocols.slice(0, 3).map((consultation) => (
                 <ProtocolCard key={consultation.id} consultation={consultation} />
               ))}
             </div>

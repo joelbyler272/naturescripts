@@ -8,7 +8,6 @@ import { SidebarItem } from './SidebarItem';
 import { routes } from '@/lib/constants/routes';
 import {
   Home,
-  BookOpen,
   Leaf,
   HelpCircle,
 } from 'lucide-react';
@@ -74,12 +73,6 @@ export function AppSidebar() {
             collapsed={collapsed}
           />
 
-          <SidebarItem
-            href={routes.library}
-            label="Library"
-            icon={BookOpen}
-            collapsed={collapsed}
-          />
         </div>
       </nav>
 

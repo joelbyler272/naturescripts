@@ -109,43 +109,47 @@ export async function updateSession(request: NextRequest) {
   }
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
   const protocol = rootDomain.includes('localhost') ? 'http' : 'https';
+  const isLocalDev = rootDomain.includes('localhost');
 
-  // Auth routes should only live on the root marketing domain
-  if (type !== 'marketing' && isAuthRoute(pathname)) {
-    return NextResponse.redirect(
-      new URL(`${protocol}://${rootDomain}${pathname}${request.nextUrl.search}`)
-    );
-  }
-
-  // Marketing subdomain: redirect consumer/practitioner routes to proper subdomain
-  if (type === 'marketing') {
-    if (isConsumerRoute(pathname)) {
+  // Skip subdomain routing in local development
+  if (!isLocalDev) {
+    // Auth routes should only live on the root marketing domain
+    if (type !== 'marketing' && isAuthRoute(pathname)) {
       return NextResponse.redirect(
-        new URL(`${protocol}://app.${rootDomain}${pathname}${request.nextUrl.search}`)
+        new URL(`${protocol}://${rootDomain}${pathname}${request.nextUrl.search}`)
       );
     }
-    if (isPractitionerRoute(pathname)) {
-      return NextResponse.redirect(
-        new URL(`${protocol}://practitioner.${rootDomain}${pathname}${request.nextUrl.search}`)
-      );
-    }
-  }
 
-  // App subdomain: redirect practitioner routes
-  if (type === 'app') {
-    if (isPractitionerRoute(pathname)) {
-      return NextResponse.redirect(
-        new URL(`${protocol}://practitioner.${rootDomain}${pathname}${request.nextUrl.search}`)
-      );
+    // Marketing subdomain: redirect consumer/practitioner routes to proper subdomain
+    if (type === 'marketing') {
+      if (isConsumerRoute(pathname)) {
+        return NextResponse.redirect(
+          new URL(`${protocol}://app.${rootDomain}${pathname}${request.nextUrl.search}`)
+        );
+      }
+      if (isPractitionerRoute(pathname)) {
+        return NextResponse.redirect(
+          new URL(`${protocol}://practitioner.${rootDomain}${pathname}${request.nextUrl.search}`)
+        );
+      }
     }
-  }
 
-  // Practitioner/custom subdomain: redirect consumer routes to app
-  if (type === 'practitioner' || type === 'custom') {
-    if (isConsumerRoute(pathname)) {
-      return NextResponse.redirect(
-        new URL(`${protocol}://app.${rootDomain}${pathname}${request.nextUrl.search}`)
-      );
+    // App subdomain: redirect practitioner routes
+    if (type === 'app') {
+      if (isPractitionerRoute(pathname)) {
+        return NextResponse.redirect(
+          new URL(`${protocol}://practitioner.${rootDomain}${pathname}${request.nextUrl.search}`)
+        );
+      }
+    }
+
+    // Practitioner/custom subdomain: redirect consumer routes to app
+    if (type === 'practitioner' || type === 'custom') {
+      if (isConsumerRoute(pathname)) {
+        return NextResponse.redirect(
+          new URL(`${protocol}://app.${rootDomain}${pathname}${request.nextUrl.search}`)
+        );
+      }
     }
   }
 

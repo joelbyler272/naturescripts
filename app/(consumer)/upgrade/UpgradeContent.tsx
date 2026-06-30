@@ -38,17 +38,18 @@ export function UpgradeContent() {
   const features = {
     free: [
       '5 consultations per week',
-      'Basic herbal protocols',
+      '1-2 recommendations per protocol',
+      'PDF export',
       'Remedy database access',
-      'Community support',
+      '5 most recent protocols saved',
     ],
     pro: [
       'Unlimited consultations',
-      'Advanced protocols with multiple phases',
+      '2-4 recommendations per protocol',
+      'Daily schedule, dietary shifts & lifestyle practices',
       'Progress tracking & charts',
-      'Personalized insights from your history',
-      'Priority support',
-      'Export protocols as PDF',
+      'Protocol adjustments',
+      'Unlimited protocol history',
       'Early access to new features',
     ],
   };
