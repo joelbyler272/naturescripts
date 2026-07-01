@@ -188,16 +188,16 @@ export function Navigation({
             </Link>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-4">
             <Link
               href={routes.signIn}
-              className="text-[13px] sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Sign In
             </Link>
             <Link
               href={routes.onboarding}
-              className="text-[13px] sm:text-sm px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full border border-foreground text-foreground sm:border-0 sm:bg-foreground sm:text-background hover:bg-foreground hover:text-background transition-colors whitespace-nowrap"
+              className="text-sm text-foreground hover:text-foreground/70 sm:px-4 sm:py-2 sm:rounded-full sm:bg-foreground sm:text-background sm:hover:bg-foreground/90 sm:hover:text-background transition-colors whitespace-nowrap"
             >
               Get Started
             </Link>
