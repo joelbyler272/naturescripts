@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Crown, Clock, Sparkles, FileText, TrendingUp, X } from 'lucide-react';
+import { Crown, Clock, Sparkles, TrendingUp, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { trackUpgradeClicked } from '@/lib/analytics/events';
@@ -16,7 +16,6 @@ interface LimitReachedModalProps {
 
 const PRO_BENEFITS = [
   { icon: Sparkles, text: 'Unlimited consultations' },
-  { icon: FileText, text: 'Download protocols as PDF' },
   { icon: TrendingUp, text: 'Progress tracking & insights' },
 ];
 

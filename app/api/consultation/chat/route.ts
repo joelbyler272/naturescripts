@@ -56,18 +56,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Validate conversation history
     const validatedHistory = validateConversationHistory(body.conversationHistory || []);
 
-    // Server-side consultation limit check on first message (new consultation)
-    if (validatedHistory.length === 0 && !consultationId) {
-      const { data: limitData, error: limitError } = await supabase
-        .rpc('check_can_consult', { p_user_id: user.id });
+    // Check limit server-side on every request. check_can_consult is read-only
+    // so it doesn't burn a slot -- the actual increment happens in the protocol
+    // generation endpoint via increment_daily_usage (which is now atomic).
+    const { data: limitData, error: limitError } = await supabase
+      .rpc('check_can_consult', { p_user_id: user.id });
 
-      const limitResult = limitError ? null : limitData?.[0];
-      if (limitError || !limitResult || !limitResult.can_consult) {
-        return NextResponse.json(
-          { error: 'Weekly consultation limit reached. Upgrade to Pro for unlimited consultations.' },
-          { status: 403 }
-        );
-      }
+    const limitResult = limitError ? null : limitData?.[0];
+    if (limitError || !limitResult || !limitResult.can_consult) {
+      return NextResponse.json(
+        { error: 'Weekly consultation limit reached. Upgrade to Pro for unlimited consultations.' },
+        { status: 403 }
+      );
     }
 
     // Get user's health context (cached for 5 minutes)

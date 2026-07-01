@@ -19,10 +19,7 @@ export function isDevUser(email: string | undefined | null): boolean {
   if (!email) return false;
 
   const devEmails = getDevEmails();
-  // In development, allow dev tools if no DEV_EMAILS are configured
-  if (devEmails.length === 0 && process.env.NODE_ENV === 'development') {
-    return true;
-  }
+  if (devEmails.length === 0) return false;
 
   return devEmails.includes(email.toLowerCase());
 }

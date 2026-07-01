@@ -118,10 +118,10 @@ export async function applyRateLimit(
     return memoryRateLimit(`${key}:${identifier}`, maxRequests, windowMs);
   }
 
-  // In production without Redis configured, log a warning and allow
-  // (fail-open to avoid blocking all traffic if Redis isn't set up yet)
-  console.warn('[RATE LIMIT] Upstash Redis not configured in production. Rate limiting disabled.');
-  return { allowed: true, remaining: maxRequests, retryAfter: 0 };
+  // In production without Redis configured, fall back to in-memory rate limiting.
+  // This is per-instance only (not distributed), but better than no limiting at all.
+  console.warn('[RATE LIMIT] Upstash Redis not configured in production. Using in-memory fallback.');
+  return memoryRateLimit(`${key}:${identifier}`, maxRequests, windowMs);
 }
 
 /**

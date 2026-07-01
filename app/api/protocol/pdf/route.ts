@@ -23,19 +23,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is Pro
     const { data: profile } = await supabase
       .from('profiles')
-      .select('tier, first_name')
+      .select('first_name')
       .eq('id', user.id)
       .single();
-
-    if (profile?.tier !== 'pro') {
-      return NextResponse.json(
-        { error: 'PDF export is a Pro feature. Please upgrade to access.' },
-        { status: 403 }
-      );
-    }
 
     // Get the consultation
     const { data: consultation, error: consultationError } = await supabase

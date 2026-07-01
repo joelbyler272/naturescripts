@@ -68,9 +68,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Conversation history is required' }, { status: 400 });
     }
 
-    // Server-side consultation limit check before generating protocol
+    // Atomic check-and-increment: claims a slot or rejects if at the limit.
+    // This prevents the TOCTOU race where concurrent requests both pass a
+    // read-only check before either increments.
     const { data: limitData, error: limitError } = await supabase
-      .rpc('check_can_consult', { p_user_id: user.id });
+      .rpc('increment_daily_usage', { p_user_id: user.id });
 
     const limitResult = limitError ? null : limitData?.[0];
     if (limitError || !limitResult || !limitResult.can_consult) {
@@ -274,12 +276,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (updateError) {
         console.error('[PROTOCOL GENERATION] Failed to save protocol:', updateError);
       }
-    }
-
-    // Increment daily usage
-    const { error: usageError } = await supabase.rpc('increment_daily_usage', { p_user_id: user.id });
-    if (usageError) {
-      console.error('[PROTOCOL GENERATION] Failed to increment usage:', usageError);
     }
 
     return NextResponse.json({

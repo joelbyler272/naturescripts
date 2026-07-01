@@ -5,7 +5,7 @@ import Anthropic from '@anthropic-ai/sdk';
 // Initialize the client (uses ANTHROPIC_API_KEY env var automatically)
 const anthropic = new Anthropic();
 
-const MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514';
+const MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
 
 export interface ClaudeMessage {
   role: 'user' | 'assistant';

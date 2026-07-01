@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { routes } from '@/lib/constants/routes';
 import { useRouter } from 'next/navigation';
-import { Crown, Infinity, FileText, TrendingUp, RefreshCw, Calendar } from 'lucide-react';
+import { Crown, Infinity, TrendingUp, RefreshCw, Calendar } from 'lucide-react';
 
 interface ConsultationLimitModalProps {
   isOpen: boolean;
@@ -16,7 +16,6 @@ interface ConsultationLimitModalProps {
 const PRO_BENEFITS = [
   { icon: Infinity, label: 'Unlimited consultations' },
   { icon: RefreshCw, label: 'Adjust existing protocols' },
-  { icon: FileText, label: 'Download PDF protocols' },
   { icon: TrendingUp, label: 'Progress tracking & charts' },
 ];
 

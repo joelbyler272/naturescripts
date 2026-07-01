@@ -212,7 +212,7 @@ export function IntakeWizard() {
       {/* Skip link */}
       <div className="text-center mt-4">
         <button
-          onClick={() => router.push(routes.dashboard)}
+          onClick={() => router.push(routes.protocols)}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           Skip for now

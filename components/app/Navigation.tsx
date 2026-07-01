@@ -61,15 +61,6 @@ export function Navigation({
               >
                 Remedy Database
               </Link>
-              <Link
-                href={routes.library}
-                className={cn(
-                  "text-sm transition-colors",
-                  isActive(routes.library) ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Library
-              </Link>
               {userTier === "free" && (
                 <Link href={routes.upgrade}>
                   <Button variant="outline" size="sm" className="text-xs rounded-full">
@@ -145,16 +136,6 @@ export function Navigation({
                 Remedy Database
               </Link>
               <Link
-                href={routes.library}
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "block px-2 py-2 text-sm rounded-md transition-colors",
-                  isActive(routes.library) ? "text-foreground bg-secondary/50" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Library
-              </Link>
-              <Link
                 href={routes.settings}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
@@ -204,15 +185,6 @@ export function Navigation({
               )}
             >
               Remedy Database
-            </Link>
-            <Link
-              href={routes.library}
-              className={cn(
-                "text-sm transition-colors",
-                isActive(routes.library) ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Library
             </Link>
           </div>
 
