@@ -173,5 +173,14 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // Block indexing of non-marketing subdomains (app, practitioner, admin, custom).
+  // These are private application surfaces and shouldn't compete with the
+  // marketing site for SEO, leak URL structure, or expose auth-redirect
+  // pages in search results. Set just before return so it survives the
+  // response reassignment that happens during Supabase cookie refresh above.
+  if (type !== 'marketing') {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+
   return response;
 }

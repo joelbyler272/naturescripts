@@ -1,14 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Crown, Loader2 } from 'lucide-react';
 import { trackUpgradeClicked } from '@/lib/analytics/events';
 
-export function UpgradeContent() {
+interface UpgradeContentProps {
+  currentTier: 'free' | 'pro';
+}
+
+export function UpgradeContent({ currentTier }: UpgradeContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isPro = currentTier === 'pro';
 
   const handleUpgrade = async () => {
     trackUpgradeClicked('upgrade_page');
@@ -58,10 +64,21 @@ export function UpgradeContent() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="text-center mb-8 sm:mb-12">
-        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3 sm:mb-4">Upgrade to Pro</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3 sm:mb-4">
+          {isPro ? "You're on Pro" : 'Upgrade to Pro'}
+        </h1>
         <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
-          Unlock unlimited consultations and advanced features for your natural health journey
+          {isPro
+            ? 'Thanks for being a Pro member. Manage your subscription anytime from Settings.'
+            : 'Unlock unlimited consultations and advanced features for your natural health journey'}
         </p>
+        {isPro && (
+          <div className="mt-6">
+            <Link href="/settings">
+              <Button variant="outline" className="gap-2">Manage subscription</Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Pricing Cards */}
@@ -85,7 +102,13 @@ export function UpgradeContent() {
                 </li>
               ))}
             </ul>
-            <Button variant="outline" className="w-full" disabled>Current Plan</Button>
+            {isPro ? (
+              <p className="text-xs text-center text-muted-foreground">
+                Pro includes everything on Free, plus more.
+              </p>
+            ) : (
+              <Button variant="outline" className="w-full" disabled>Current Plan</Button>
+            )}
           </CardContent>
         </Card>
 
@@ -114,26 +137,32 @@ export function UpgradeContent() {
                 </li>
               ))}
             </ul>
-            <Button
-              className="w-full bg-accent hover:bg-accent/90 text-base sm:text-lg py-5 sm:py-6"
-              onClick={handleUpgrade}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                'Upgrade to Pro'
-              )}
-            </Button>
-            {error && (
-              <p className="text-xs text-center text-red-600 mt-2">{error}</p>
+            {isPro ? (
+              <Button variant="outline" className="w-full" disabled>Current Plan</Button>
+            ) : (
+              <>
+                <Button
+                  className="w-full bg-accent hover:bg-accent/90 text-base sm:text-lg py-5 sm:py-6"
+                  onClick={handleUpgrade}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Upgrade to Pro'
+                  )}
+                </Button>
+                {error && (
+                  <p className="text-xs text-center text-red-600 mt-2">{error}</p>
+                )}
+                <p className="text-xs text-center text-muted-foreground mt-3">
+                  Cancel anytime. No questions asked.
+                </p>
+              </>
             )}
-            <p className="text-xs text-center text-muted-foreground mt-3">
-              Cancel anytime. No questions asked.
-            </p>
           </CardContent>
         </Card>
       </div>

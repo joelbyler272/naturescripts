@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { chatWithClaude } from '@/lib/anthropic/client';
 import { buildProtocolSystemPrompt } from '@/lib/consultation/prompts';
+import { recordApiUsage } from '@/lib/admin/apiUsage';
 import { sendVerificationEmail } from '@/lib/email/resend';
 import { OnboardingState, getProfileData, buildProtocolContext } from '@/lib/onboarding/stateMachine';
 import { HealthContext, GeneratedProtocol } from '@/lib/consultation/types';
@@ -191,6 +192,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       systemPrompt: protocolPrompt,
       messages: [{ role: 'user', content: protocolContext }]
     });
+
+    recordApiUsage({
+      endpoint: 'onboarding-complete',
+      model: protocolResponse.usage.model,
+      inputTokens: protocolResponse.usage.inputTokens,
+      outputTokens: protocolResponse.usage.outputTokens,
+    }).catch(() => { /* silently ignore tracking failures */ });
 
     let protocol: GeneratedProtocol;
     try {

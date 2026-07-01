@@ -90,11 +90,21 @@ export default function LandingPage() {
   ]
 
   const handleStartConsultation = () => {
-    if (query.trim()) {
-      router.push(`${routes.onboarding}?q=${encodeURIComponent(query.trim())}`)
-    } else {
-      router.push(routes.onboarding)
+    const trimmed = query.trim()
+    // Stash the symptom in sessionStorage rather than encoding it as ?q= in
+    // the URL. The query-string version was leaking user-typed health concerns
+    // through PostHog page-view payloads, the Cloudflare referrer header, and
+    // the document title. sessionStorage is per-tab and never crosses the
+    // network, so the symptom only reaches the AI, not analytics.
+    if (trimmed && typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem("ns_pending_concern", trimmed)
+      } catch {
+        // Storage might be disabled (private mode, quota); fall through to
+        // the un-prefilled onboarding rather than block the user.
+      }
     }
+    router.push(routes.onboarding)
   }
 
   return (

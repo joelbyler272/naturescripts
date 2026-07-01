@@ -3,8 +3,15 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { Remedy, REMEDY_GROUPS, RemedyGroup } from '@/lib/remedies/types';
-import { Search, Leaf, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Leaf, ArrowRight, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Threshold below which a remedy gets a "Caution" warning badge in the listing.
+// 1.0-2.0 indicates very weak evidence and is typically combined with notable
+// safety concerns (e.g. Aconite at 1.2 — historically toxic plant). The
+// detail page always shows full safety guidance; this badge is the at-a-glance
+// hint so users don't browse a toxic herb the same way they browse Ginger.
+const LOW_EVIDENCE_THRESHOLD = 2.0;
 
 const ITEMS_PER_PAGE = 15;
 const ALL_GROUPS = ['All', ...REMEDY_GROUPS] as const;
@@ -174,6 +181,16 @@ export function RemediesContent({ initialRemedies }: RemediesContentProps) {
                         <span className="px-2 py-0.5 bg-secondary text-xs text-foreground rounded-full">
                           {remedy.category}
                         </span>
+                        {remedy.rating < LOW_EVIDENCE_THRESHOLD && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 text-xs font-medium rounded-full border border-amber-200"
+                            aria-label="Caution: low evidence, see safety information before use"
+                            title="Caution: low evidence. Review safety information on the detail page before considering this remedy."
+                          >
+                            <AlertTriangle className="w-3 h-3" aria-hidden="true" />
+                            Caution
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs sm:text-sm text-muted-foreground italic mb-2">
                         {remedy.botanicalName}

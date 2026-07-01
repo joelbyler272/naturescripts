@@ -7,12 +7,15 @@ import path from 'path';
 const DEV_MODE = process.env.NODE_ENV === 'development';
 const LOG_DIR = path.join(process.cwd(), 'logs');
 
-// Claude API Pricing (as of 2024)
-// https://www.anthropic.com/pricing
+// Claude API Pricing — verify against https://www.anthropic.com/pricing
 const CLAUDE_PRICING = {
+  'claude-sonnet-4-6': {
+    input: 3.00 / 1_000_000,
+    output: 15.00 / 1_000_000,
+  },
   'claude-sonnet-4-20250514': {
-    input: 3.00 / 1_000_000,  // $3.00 per 1M input tokens
-    output: 15.00 / 1_000_000, // $15.00 per 1M output tokens
+    input: 3.00 / 1_000_000,
+    output: 15.00 / 1_000_000,
   },
   'claude-3-5-sonnet-20241022': {
     input: 3.00 / 1_000_000,
@@ -100,8 +103,8 @@ export function logConsultationCall(params: {
   const dateString = getDateString();
   
   // Calculate tokens and cost
-  const model = response.model || 'claude-sonnet-4-20250514';
-  const pricing = CLAUDE_PRICING[model as keyof typeof CLAUDE_PRICING] || CLAUDE_PRICING['claude-sonnet-4-20250514'];
+  const model = response.model || 'claude-sonnet-4-6';
+  const pricing = CLAUDE_PRICING[model as keyof typeof CLAUDE_PRICING] || CLAUDE_PRICING['claude-sonnet-4-6'];
   
   const systemTokens = estimateTokens(request.systemPrompt);
   const messageTokens = request.messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);

@@ -1,15 +1,54 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { OnboardingChat } from '@/components/onboarding/OnboardingChat';
 import { Logo } from '@/components/shared/Logo';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
+const PENDING_CONCERN_KEY = 'ns_pending_concern';
+
 function OnboardingInner() {
   const searchParams = useSearchParams();
-  const initialQuery = searchParams.get('q') || undefined;
+  const router = useRouter();
+  const pathname = usePathname();
+  const [initialQuery, setInitialQuery] = useState<string | undefined>(undefined);
+  const [resolved, setResolved] = useState(false);
+
+  // Resolve initial concern client-side so we can prefer sessionStorage
+  // (per-tab, never networked) over ?q= (leaks to PostHog/referrer/title).
+  // Also strip any legacy ?q= from the URL so the symptom doesn't sit in the
+  // address bar / page <title> longer than necessary.
+  useEffect(() => {
+    let value: string | undefined;
+    try {
+      const stashed = window.sessionStorage.getItem(PENDING_CONCERN_KEY);
+      if (stashed) {
+        window.sessionStorage.removeItem(PENDING_CONCERN_KEY);
+        value = stashed;
+      }
+    } catch {
+      // sessionStorage unavailable; fall through to ?q= compatibility path.
+    }
+    if (!value) {
+      const fromQuery = searchParams.get('q');
+      if (fromQuery) value = fromQuery;
+    }
+    if (searchParams.has('q')) {
+      router.replace(pathname);
+    }
+    setInitialQuery(value || undefined);
+    setResolved(true);
+  }, [searchParams, router, pathname]);
+
+  if (!resolved) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" aria-label="Loading" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

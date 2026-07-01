@@ -105,12 +105,19 @@ export async function applyRateLimit(
   const limiter = getUpstashLimiter(maxRequests, windowMs);
 
   if (limiter) {
-    const result = await limiter.limit(`${key}:${identifier}`);
-    return {
-      allowed: result.success,
-      remaining: result.remaining,
-      retryAfter: result.success ? 0 : Math.max(0, result.reset - Date.now()),
-    };
+    try {
+      const result = await limiter.limit(`${key}:${identifier}`);
+      return {
+        allowed: result.success,
+        remaining: result.remaining,
+        retryAfter: result.success ? 0 : Math.max(0, result.reset - Date.now()),
+      };
+    } catch (err) {
+      // Fail-open on Redis errors so a transient Upstash issue doesn't
+      // 500 every authenticated request. Log and let the request through.
+      console.warn('[RATE LIMIT] Upstash call failed, allowing request:', err instanceof Error ? err.message : err);
+      return { allowed: true, remaining: maxRequests, retryAfter: 0 };
+    }
   }
 
   // Fallback: in-memory (single-instance only, for local dev)
