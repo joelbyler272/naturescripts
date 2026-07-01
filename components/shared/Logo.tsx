@@ -5,29 +5,20 @@ import { colors } from '@/lib/constants/colors'
 
 interface LogoProps {
   size?: 'sm' | 'default' | 'lg' | 'display'
-  showTagline?: boolean
   className?: string
   linkToHome?: boolean
 }
 
-export function Logo({ 
-  size = 'default', 
-  showTagline = true, 
+export function Logo({
+  size = 'default',
   className,
-  linkToHome = true 
+  linkToHome = true
 }: LogoProps) {
   const sizeClasses = {
     sm: 'text-[1.2rem]',
-    default: 'text-[1.6rem]',
+    default: 'text-[1.3rem] sm:text-[1.6rem]',
     lg: 'text-[2.5rem]',
     display: 'text-[clamp(4rem,12vw,8rem)]',
-  }
-
-  const taglineSizes = {
-    sm: 'text-[7px]',
-    default: 'text-[9px]',
-    lg: 'text-[11px]',
-    display: 'hidden',
   }
 
   const logoContent = (
@@ -44,14 +35,6 @@ export function Logo({
           Scripts
         </span>
       </div>
-      {showTagline && size !== 'display' && (
-        <span className={cn(
-          'mt-0.5 block w-full text-right tracking-[0.4em] text-muted-foreground/40 uppercase',
-          taglineSizes[size]
-        )}>
-          Protocol
-        </span>
-      )}
     </div>
   )
 

@@ -47,7 +47,7 @@ export default function LandingPage() {
       setAnimatedStats({
         time: Math.round(progress * 3),
         parts: Math.round(progress * 3),
-        herbs: Math.round(progress * 700),
+        herbs: Math.round(progress * 2000),
       })
       if (step >= steps) clearInterval(timer)
     }, interval)
@@ -114,9 +114,11 @@ export default function LandingPage() {
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/30">
           <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute top-20 left-[10%] w-72 h-72 rounded-full opacity-[0.04] animate-float-slow" style={{ backgroundColor: colors.sage.DEFAULT }} />
-            <div className="absolute top-48 right-[12%] w-56 h-56 rounded-full opacity-[0.03] animate-float-medium" style={{ backgroundColor: colors.sage.DEFAULT }} />
-            <div className="absolute bottom-24 left-[25%] w-40 h-40 rounded-full opacity-[0.03] animate-float-fast" style={{ backgroundColor: colors.sage.DEFAULT }} />
+            <div className="absolute top-16 left-[8%] w-80 h-[1px] rotate-[25deg] opacity-[0.06] animate-float-slow" style={{ backgroundColor: colors.sage.DEFAULT }} />
+            <div className="absolute top-40 right-[10%] w-64 h-[1px] -rotate-[15deg] opacity-[0.05] animate-float-medium" style={{ backgroundColor: colors.sage.DEFAULT }} />
+            <div className="absolute bottom-32 left-[20%] w-48 h-[1px] rotate-[35deg] opacity-[0.05] animate-float-fast" style={{ backgroundColor: colors.sage.DEFAULT }} />
+            <div className="absolute top-1/3 right-[25%] w-3 h-3 rounded-full opacity-[0.06] animate-float-medium" style={{ backgroundColor: colors.sage.DEFAULT }} />
+            <div className="absolute bottom-1/4 left-[15%] w-2 h-2 rounded-full opacity-[0.05] animate-float-slow" style={{ backgroundColor: colors.sage.DEFAULT }} />
           </div>
         </div>
 
@@ -327,7 +329,7 @@ export default function LandingPage() {
             Three steps to your protocol
           </h2>
 
-          <div className="grid md:grid-cols-3 gap-6 md:gap-4">
+          <div className="grid md:grid-cols-3 gap-6 md:gap-8">
             {[
               {
                 step: "01",
@@ -353,7 +355,7 @@ export default function LandingPage() {
                 </div>
                 {/* Connector arrow (desktop only) */}
                 {index < 2 && (
-                  <div className="hidden md:flex absolute top-1/2 -right-4 w-8 items-center justify-center z-10">
+                  <div className="hidden md:flex absolute top-1/2 -right-6 w-12 items-center justify-center z-10">
                     <ArrowRight className="w-4 h-4 text-border" />
                   </div>
                 )}

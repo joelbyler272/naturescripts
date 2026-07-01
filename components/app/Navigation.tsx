@@ -188,18 +188,18 @@ export function Navigation({
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Link
               href={routes.signIn}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Sign In
             </Link>
             <Link
               href={routes.onboarding}
-              className="text-sm px-4 py-2 rounded-full bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-foreground text-background hover:bg-foreground/90 transition-colors whitespace-nowrap"
             >
-              Start Consultation
+              Get Started
             </Link>
           </div>
         </div>

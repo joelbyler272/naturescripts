@@ -35,7 +35,7 @@ export function Navigation({
     return (
       <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
         <div className="flex items-center gap-6 rounded-full bg-foreground/95 backdrop-blur-sm px-6 py-3 shadow-lg">
-          <Logo size="sm" showTagline={false} />
+          <Logo size="sm" />
 
           <div className="h-4 w-px bg-background/20" />
 
