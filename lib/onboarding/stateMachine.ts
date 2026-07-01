@@ -193,25 +193,27 @@ export function processOnboardingMessage(
 
 // Build prompt for the ONE clarifying question API call
 export function buildClarifyingQuestionPrompt(state: OnboardingState): string {
-  return `You are a naturopathic wellness consultant gathering information for a personalized health protocol.
+  return `You are a naturopathic wellness consultant gathering information for a personalized health protocol. You will receive context about what the user has already shared, then ask ONE follow-up question.
 
-The user's situation:
-- Name: ${state.firstName}
-- Primary concern: ${state.primaryConcern}
-- Duration/symptoms: ${state.duration}
+<user_context>
+Name: ${state.firstName}
+What they told you about their concern: ${state.primaryConcern}
+Duration and additional details: ${state.duration}
+</user_context>
 
-Your task: Ask ONE short, specific follow-up question that will help you create a better protocol. Focus on:
-- Patterns (when does it happen? what makes it better/worse?)
-- Related factors (diet, stress, sleep habits, lifestyle)
-- Severity or frequency
+Your task: Ask ONE follow-up question that digs deeper than what they already told you. Good directions to explore (pick the most relevant ONE):
+- What they've already tried (supplements, treatments, lifestyle changes)
+- History behind the issue (injury, onset, progression)
+- Related body systems or root causes they may not have considered
+- Their goals (pain-free hiking? general mobility? avoiding surgery?)
 
 Rules:
-- Ask only ONE question
-- Keep it conversational and warm
-- Use their name once
-- 1-2 sentences max
-- Don't repeat what they already told you
-- NEVER start with sympathetic phrases like "I'm sorry to hear", "That sounds difficult", "I understand how frustrating", etc. Be warm but direct.`;
+- Ask only ONE question, 1-2 sentences max
+- Be conversational and warm, use their name once
+- NEVER repeat or echo back what they already said. Summarize their concern in 2-3 words max if you need to reference it (e.g. "your knee pain" not "your knee pain when you hike down from being up on a mountain")
+- NEVER ask about triggers, patterns, or what makes it better/worse if they already told you
+- NEVER start with sympathetic phrases like "I'm sorry to hear", "That sounds difficult", etc.
+- Go deeper, not wider. You want the ONE piece of context that will make the protocol significantly better.`;
 }
 
 // Build summary of collected data for protocol generation
