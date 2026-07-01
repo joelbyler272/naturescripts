@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
-import { FileDown, RefreshCw, Lock, Loader2, Crown } from 'lucide-react';
+import { FileDown, RefreshCw, Lock, Loader2 } from 'lucide-react';
 import { trackUpgradeClicked } from '@/lib/analytics/events';
 
 interface ProtocolActionsProps {
@@ -89,21 +89,6 @@ export function ProtocolActions({ consultationId, protocolTitle }: ProtocolActio
         )}
         {isPro ? 'Adjust Protocol' : 'Adjust (Pro)'}
       </Button>
-
-      {/* Upgrade hint for free users */}
-      {!isPro && (
-        <Button
-          variant="ghost"
-          onClick={() => {
-            trackUpgradeClicked('protocol_actions_upgrade');
-            router.push(routes.upgrade);
-          }}
-          className="gap-2 text-accent hover:text-accent/80"
-        >
-          <Crown className="w-4 h-4" />
-          Upgrade to Pro
-        </Button>
-      )}
 
       {downloadError && (
         <p className="w-full text-sm text-destructive mt-1">{downloadError}</p>

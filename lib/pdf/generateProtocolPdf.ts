@@ -1,234 +1,253 @@
 import jsPDF from 'jspdf';
 import { GeneratedProtocol, Recommendation } from '@/lib/consultation/types';
 
-const COLORS = {
-  accent: [107, 142, 127] as [number, number, number], // sage green
-  text: [30, 30, 30] as [number, number, number],
-  muted: [100, 100, 100] as [number, number, number],
-  light: [240, 240, 240] as [number, number, number],
+const C = {
+  sage:     [107, 142, 127] as const,
+  sageDark: [74, 105, 92] as const,
+  sageTint: [237, 243, 240] as const,
+  gold:     [201, 166, 107] as const,
+  goldDark: [150, 112, 55] as const,
+  goldTint: [245, 238, 224] as const,
+  cream:    [250, 250, 248] as const,
+  card:     [255, 255, 255] as const,
+  char:     [44, 44, 44] as const,
+  body:     [66, 66, 66] as const,
+  muted:    [100, 100, 100] as const,
+  border:   [229, 226, 219] as const,
+  safeBg:   [251, 246, 236] as const,
+  safeInk:  [138, 109, 59] as const,
+  white:    [255, 255, 255] as const,
 };
 
-const MARGINS = {
-  left: 20,
-  right: 20,
-  top: 20,
-  bottom: 20,
-};
+type RGB = readonly [number, number, number];
 
-/**
- * Generate a PDF from a protocol
- */
+const PAGE_W = 612;
+const PAGE_H = 792;
+const M = 54;
+const CW = PAGE_W - M * 2;
+const FOOTER_LINE = 754;
+const FOOTER_TXT = 770;
+const CONTENT_BOTTOM = 730;
+
+function fill(d: jsPDF, c: RGB) { d.setFillColor(c[0], c[1], c[2]); }
+function stroke(d: jsPDF, c: RGB) { d.setDrawColor(c[0], c[1], c[2]); }
+function ink(d: jsPDF, c: RGB) { d.setTextColor(c[0], c[1], c[2]); }
+
+function mapType(type: string): string {
+  if (type === 'herb') return 'Herb';
+  if (type === 'essential_oil') return 'Essential Oil';
+  return 'Supplement';
+}
+
+function isHerbType(type: string): boolean {
+  return type === 'herb' || type === 'essential_oil';
+}
+
+function card(d: jsPDF, x: number, y: number, w: number, rec: Recommendation, num: number, draw: boolean): number {
+  const padX = 16, padTop = 12, padBottom = 12;
+  const ix = x + padX;
+  const iw = w - padX * 2;
+  let cy = y + padTop;
+
+  const badge = 20;
+  const nameX = ix + badge + 12;
+  const displayType = mapType(rec.type);
+  const herbLike = isHerbType(rec.type);
+
+  d.setFont('helvetica', 'bold'); d.setFontSize(7.5);
+  const tagTxt = displayType.toUpperCase();
+  const tagW = d.getTextWidth(tagTxt) + 14;
+  const tagH = 15;
+  const tagBg = herbLike ? C.sageTint : C.goldTint;
+  const tagFg = herbLike ? C.sageDark : C.goldDark;
+
+  if (draw) {
+    fill(d, C.sage); d.roundedRect(ix, cy, badge, badge, 5, 5, 'F');
+    ink(d, C.white); d.setFont('helvetica', 'bold'); d.setFontSize(11);
+    d.text(String(num), ix + badge / 2, cy + badge / 2 + 3.8, { align: 'center' });
+
+    ink(d, C.char); d.setFont('helvetica', 'bold'); d.setFontSize(13.5);
+    d.text(rec.name, nameX, cy + 14.5);
+
+    const tagX = x + w - padX - tagW;
+    fill(d, tagBg); d.roundedRect(tagX, cy + 2.5, tagW, tagH, 7, 7, 'F');
+    ink(d, tagFg); d.setFont('helvetica', 'bold'); d.setFontSize(7.5);
+    d.text(tagTxt, tagX + tagW / 2, cy + 2.5 + tagH / 2 + 2.5, { align: 'center' });
+  }
+  cy += badge + 10;
+
+  const col2 = ix + iw * 0.5;
+  if (draw) {
+    d.setFont('helvetica', 'bold'); d.setFontSize(7.5); ink(d, C.goldDark);
+    d.text('DOSAGE', ix, cy); d.text('TIMING', col2, cy);
+  }
+  cy += 12;
+  if (draw) {
+    d.setFont('helvetica', 'bold'); d.setFontSize(10.5); ink(d, C.char);
+    d.text(rec.dosage, ix, cy);
+    d.text(rec.timing, col2, cy);
+  }
+  cy += 16;
+
+  if (draw) { d.setFont('helvetica', 'bold'); d.setFontSize(7); ink(d, C.muted); d.text('WHY THIS', ix, cy); }
+  cy += 10;
+  d.setFont('helvetica', 'normal'); d.setFontSize(9.5);
+  const lines = d.splitTextToSize(rec.rationale, iw);
+  if (draw) { ink(d, C.body); d.text(lines, ix, cy, { lineHeightFactor: 1.24 }); }
+  cy += lines.length * 11.5;
+
+  if (rec.cautions) {
+    cy += 7;
+    d.setFont('helvetica', 'italic'); d.setFontSize(8);
+    const sLines = d.splitTextToSize('Safety   ' + rec.cautions, iw - 22);
+    const bandH = sLines.length * 9.5 + 11;
+    if (draw) {
+      fill(d, C.safeBg); d.roundedRect(ix, cy, iw, bandH, 5, 5, 'F');
+      fill(d, C.gold); d.roundedRect(ix, cy, 3, bandH, 1.5, 1.5, 'F');
+      ink(d, C.safeInk); d.setFont('helvetica', 'italic'); d.setFontSize(8);
+      d.text(sLines, ix + 13, cy + 11, { lineHeightFactor: 1.3 });
+    }
+    cy += bandH;
+  }
+
+  cy += padBottom;
+  return cy - y;
+}
+
+function disclaimer(d: jsPDF, x: number, y: number, w: number, text: string, draw: boolean): number {
+  const pad = 12;
+  const iw = w - pad * 2;
+  d.setFont('helvetica', 'normal'); d.setFontSize(7.5);
+  const lines = d.splitTextToSize(text, iw);
+  const h = 11 + 10 + lines.length * 9.5 + 11;
+  if (draw) {
+    fill(d, C.cream); stroke(d, C.border); d.setLineWidth(0.75);
+    d.roundedRect(x, y, w, h, 8, 8, 'FD');
+    d.setFont('helvetica', 'bold'); d.setFontSize(7.5); ink(d, C.muted);
+    d.text('DISCLAIMER', x + pad, y + 13);
+    d.setFont('helvetica', 'normal'); d.setFontSize(7.5); ink(d, C.muted);
+    d.text(lines, x + pad, y + 24, { lineHeightFactor: 1.26 });
+  }
+  return h;
+}
+
+function drawFooter(d: jsPDF, pageNum: number, pageCount: number) {
+  stroke(d, C.border); d.setLineWidth(0.75);
+  d.line(M, FOOTER_LINE, PAGE_W - M, FOOTER_LINE);
+  d.setFont('helvetica', 'normal'); d.setFontSize(8); ink(d, C.muted);
+  d.text('Generated by NatureScripts', M, FOOTER_TXT);
+  d.text('naturescripts.io', PAGE_W - M, FOOTER_TXT, { align: 'right' });
+  if (pageCount > 1) {
+    d.text('Page ' + pageNum + ' of ' + pageCount, PAGE_W / 2, FOOTER_TXT, { align: 'center' });
+  }
+}
+
+function pageBg(d: jsPDF) { fill(d, C.cream); d.rect(0, 0, PAGE_W, PAGE_H, 'F'); }
+
 export async function generateProtocolPdf(
   protocol: GeneratedProtocol,
   userName?: string
 ): Promise<Blob> {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const contentWidth = pageWidth - MARGINS.left - MARGINS.right;
-  let y = MARGINS.top;
+  const d = new jsPDF({ unit: 'pt', format: 'letter', compress: true });
+  pageBg(d);
 
-  // Helper to add new page if needed
-  const checkPageBreak = (neededHeight: number) => {
-    if (y + neededHeight > pageHeight - MARGINS.bottom) {
-      doc.addPage();
-      y = MARGINS.top;
-      return true;
-    }
-    return false;
-  };
+  // Header
+  d.setFont('helvetica', 'bold'); d.setFontSize(20); ink(d, C.char);
+  d.text('Nature', M, 66);
+  const nW = d.getTextWidth('Nature');
+  d.setFont('helvetica', 'normal'); ink(d, C.sage);
+  d.text('Scripts', M + nW, 66);
 
-  // Helper to wrap text
-  const addWrappedText = (text: string, x: number, maxWidth: number, lineHeight: number = 6) => {
-    const lines = doc.splitTextToSize(text, maxWidth);
-    lines.forEach((line: string) => {
-      checkPageBreak(lineHeight);
-      doc.text(line, x, y);
-      y += lineHeight;
-    });
-  };
+  d.setFont('helvetica', 'bold'); d.setFontSize(8.5); ink(d, C.gold);
+  d.text('P E R S O N A L I Z E D   W E L L N E S S   P R O T O C O L', PAGE_W - M, 62, { align: 'right' });
 
-  // === HEADER ===
-  doc.setFillColor(...COLORS.accent);
-  doc.rect(0, 0, pageWidth, 35, 'F');
+  stroke(d, C.sage); d.setLineWidth(1.4); d.line(M, 80, PAGE_W - M, 80);
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.text('NatureScripts', MARGINS.left, 18);
+  // Meta bar
+  const mbY = 90, mbH = 28;
+  fill(d, C.sageTint); d.roundedRect(M, mbY, CW, mbH, 6, 6, 'F');
+  const mbBase = mbY + mbH / 2 + 3.3;
 
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Your Personalized Wellness Protocol', MARGINS.left, 28);
-
-  y = 50;
-
-  // === USER & DATE ===
-  doc.setTextColor(...COLORS.muted);
-  doc.setFontSize(10);
   const dateStr = new Date(protocol.created_at || Date.now()).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
+
   if (userName) {
-    doc.text(`Prepared for: ${userName}`, MARGINS.left, y);
-    y += 5;
-  }
-  doc.text(`Date: ${dateStr}`, MARGINS.left, y);
-  y += 15;
-
-  // === SUMMARY ===
-  doc.setTextColor(...COLORS.text);
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Summary', MARGINS.left, y);
-  y += 8;
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  addWrappedText(protocol.summary, MARGINS.left, contentWidth);
-  y += 10;
-
-  // === RECOMMENDATIONS ===
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-
-  if (!protocol.recommendations || protocol.recommendations.length === 0) {
-    doc.text('Recommendations', MARGINS.left, y);
-    y += 10;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('No recommendations available.', MARGINS.left, y);
-    y += 10;
-  } else {
-    doc.text(`Recommendations (${protocol.recommendations.length})`, MARGINS.left, y);
-    y += 10;
-
-    protocol.recommendations.forEach((rec: Recommendation, index: number) => {
-      checkPageBreak(40);
-
-      // Recommendation box
-      doc.setFillColor(...COLORS.light);
-      doc.roundedRect(MARGINS.left, y - 4, contentWidth, 35, 3, 3, 'F');
-
-      // Number badge
-      doc.setFillColor(...COLORS.accent);
-      doc.circle(MARGINS.left + 8, y + 4, 6, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(String(index + 1), MARGINS.left + 8, y + 6, { align: 'center' });
-
-      // Name
-      doc.setTextColor(...COLORS.text);
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text(rec.name, MARGINS.left + 18, y + 5);
-
-      // Type
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...COLORS.muted);
-      doc.text(rec.type.replace('_', ' ').toUpperCase(), MARGINS.left + 18, y + 11);
-
-      // Dosage
-      doc.setFontSize(10);
-      doc.setTextColor(...COLORS.text);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Dosage: ${rec.dosage}`, MARGINS.left + 18, y + 18);
-
-      // Timing
-      doc.text(`Timing: ${rec.timing}`, MARGINS.left + 18, y + 24);
-
-      y += 38;
-
-      // Rationale (if space)
-      if (rec.rationale) {
-        checkPageBreak(15);
-        doc.setFontSize(9);
-        doc.setTextColor(...COLORS.muted);
-        addWrappedText(`Why: ${rec.rationale}`, MARGINS.left + 4, contentWidth - 8, 5);
-        y += 5;
-      }
-    });
+    d.setFont('helvetica', 'normal'); d.setFontSize(9); ink(d, C.muted);
+    d.text('Prepared for', M + 16, mbBase);
+    const pfW = d.getTextWidth('Prepared for');
+    d.setFont('helvetica', 'bold'); ink(d, C.char);
+    d.text(userName, M + 16 + pfW + 8, mbBase);
   }
 
-  // === DIETARY SHIFTS ===
-  if (protocol.dietary_shifts && protocol.dietary_shifts.length > 0) {
-    checkPageBreak(30);
-    y += 5;
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...COLORS.text);
-    doc.text('Dietary Shifts', MARGINS.left, y);
-    y += 8;
+  d.setFont('helvetica', 'bold'); d.setFontSize(9); ink(d, C.char);
+  d.text(dateStr, PAGE_W - M - 16, mbBase, { align: 'right' });
+  const dvW = d.getTextWidth(dateStr);
+  d.setFont('helvetica', 'normal'); ink(d, C.muted);
+  d.text('Date', PAGE_W - M - 16 - dvW - 8, mbBase, { align: 'right' });
 
-    protocol.dietary_shifts.forEach((shift) => {
-      checkPageBreak(15);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${shift.action.toUpperCase()}: ${shift.item}`, MARGINS.left, y);
-      y += 5;
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...COLORS.muted);
-      addWrappedText(shift.rationale, MARGINS.left + 4, contentWidth - 4, 5);
-      doc.setTextColor(...COLORS.text);
-      y += 3;
-    });
+  // Protocol title + summary
+  d.setFont('helvetica', 'bold'); d.setFontSize(8.5); ink(d, C.sage);
+  d.text('Y O U R   P R O T O C O L', M, 140);
+
+  const title = protocol.title || 'Your Wellness Protocol';
+  d.setFont('helvetica', 'bold'); d.setFontSize(22); ink(d, C.char);
+  d.text(title, M, 165);
+
+  let y = 184;
+  d.setFont('helvetica', 'normal'); d.setFontSize(10.5); ink(d, C.body);
+  const sumLines = d.splitTextToSize(protocol.summary, CW);
+  d.text(sumLines, M, y, { lineHeightFactor: 1.32 });
+  y += sumLines.length * 13.8 + 10;
+
+  // Recommendations section header
+  const recs = protocol.recommendations || [];
+  d.setFont('helvetica', 'bold'); d.setFontSize(9); ink(d, C.char);
+  const secLabel = 'RECOMMENDATIONS';
+  d.text(secLabel, M, y);
+  const slW = d.getTextWidth(secLabel);
+
+  d.setFontSize(8); ink(d, C.muted);
+  const cntTxt = recs.length + (recs.length === 1 ? ' item' : ' items');
+  d.text(cntTxt, PAGE_W - M, y, { align: 'right' });
+  const cntW = d.getTextWidth(cntTxt);
+
+  stroke(d, C.border); d.setLineWidth(0.75);
+  d.line(M + slW + 12, y - 3, PAGE_W - M - cntW - 12, y - 3);
+  y += 14;
+
+  // Cards with page-break handling
+  let pageNum = 1;
+  for (let i = 0; i < recs.length; i++) {
+    const h = card(d, M, 0, CW, recs[i], i + 1, false);
+    if (y + h > CONTENT_BOTTOM) {
+      drawFooter(d, pageNum, 0);
+      d.addPage(); pageBg(d); pageNum++;
+      y = 54;
+    }
+    fill(d, C.card); stroke(d, C.border); d.setLineWidth(0.9);
+    d.roundedRect(M, y, CW, h, 12, 12, 'FD');
+    card(d, M, y, CW, recs[i], i + 1, true);
+    y += h + 10;
   }
 
-  // === LIFESTYLE PRACTICES ===
-  if (protocol.lifestyle_practices && protocol.lifestyle_practices.length > 0) {
-    checkPageBreak(30);
-    y += 5;
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...COLORS.text);
-    doc.text('Lifestyle Practices', MARGINS.left, y);
-    y += 8;
+  // Disclaimer
+  y += 2;
+  const disclaimerText = protocol.disclaimer ||
+    'Generated by NatureScripts for educational purposes only. Not a medical diagnosis and not a substitute for advice from a licensed provider. Consult your healthcare provider before starting any supplement.';
+  const dh = disclaimer(d, M, 0, CW, disclaimerText, false);
+  if (y + dh > CONTENT_BOTTOM) {
+    d.addPage(); pageBg(d); pageNum++;
+    y = 54;
+  }
+  disclaimer(d, M, y, CW, disclaimerText, true);
 
-    protocol.lifestyle_practices.forEach((practice) => {
-      checkPageBreak(15);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(practice.practice, MARGINS.left, y);
-      if (practice.timing) {
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...COLORS.muted);
-        doc.text(` (${practice.timing})`, MARGINS.left + doc.getTextWidth(practice.practice) + 2, y);
-      }
-      y += 5;
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...COLORS.muted);
-      addWrappedText(practice.rationale, MARGINS.left + 4, contentWidth - 4, 5);
-      doc.setTextColor(...COLORS.text);
-      y += 3;
-    });
+  // Footers on every page
+  const total = d.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    d.setPage(p);
+    drawFooter(d, p, total);
   }
 
-  // === DISCLAIMER ===
-  checkPageBreak(30);
-  y += 10;
-  doc.setFillColor(255, 250, 240);
-  doc.roundedRect(MARGINS.left, y - 4, contentWidth, 25, 3, 3, 'F');
-  doc.setDrawColor(255, 200, 100);
-  doc.roundedRect(MARGINS.left, y - 4, contentWidth, 25, 3, 3, 'S');
-
-  doc.setFontSize(8);
-  doc.setTextColor(150, 100, 50);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Disclaimer', MARGINS.left + 4, y + 2);
-  doc.setFont('helvetica', 'normal');
-  const disclaimerLines = doc.splitTextToSize(protocol.disclaimer, contentWidth - 8);
-  doc.text(disclaimerLines, MARGINS.left + 4, y + 8);
-
-  // === FOOTER ===
-  const footerY = pageHeight - 10;
-  doc.setFontSize(8);
-  doc.setTextColor(...COLORS.muted);
-  doc.text('Generated by NatureScripts • naturescripts.com', pageWidth / 2, footerY, { align: 'center' });
-
-  return doc.output('blob');
+  return d.output('blob');
 }

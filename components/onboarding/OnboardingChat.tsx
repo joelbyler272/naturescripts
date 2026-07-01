@@ -13,7 +13,7 @@ import {
   getProfileData
 } from '@/lib/onboarding/stateMachine';
 import { logger } from '@/lib/utils/logger';
-import { Mail, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Mail, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { TurnstileWidget } from '@/components/shared/TurnstileWidget';
 
@@ -152,9 +152,8 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
         }
       }
       if (!clarifySuccess) {
-        // Build a specific fallback using what the user actually told us
-        const concern = result.newState.primaryConcern?.toLowerCase() || 'that';
-        const fallbackQuestion = `${result.newState.firstName}, have you noticed anything that tends to make your ${concern} better or worse — like certain activities, foods, or time of day?`;
+        const name = result.newState.firstName || '';
+        const fallbackQuestion = `${name}, what have you already tried for this, and how did it go? That will help me avoid recommending things you've already ruled out.`;
         const assistantMessage = createMessage('assistant', fallbackQuestion);
         setMessages(prev => [...prev, assistantMessage]);
       }
@@ -275,8 +274,11 @@ export function OnboardingChat({ initialQuery }: OnboardingChatProps) {
         {/* Auto-generating protocol indicator */}
         {isGenerating && completionState === 'creating' && (
           <div className="flex flex-col items-center pt-6 pb-4">
-            <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4">
-              <Loader2 className="w-8 h-8 text-accent animate-spin" />
+            <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4 animate-pulse">
+              <span className="flex items-baseline">
+                <span className="text-2xl font-bold text-foreground">N</span>
+                <span className="text-2xl font-bold text-accent">S</span>
+              </span>
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
               Creating your personalized protocol...

@@ -10,6 +10,12 @@ function getCookieDomain(): string | undefined {
   return undefined;
 }
 
+const INTAKE_EXEMPT_PREFIXES = ['/intake', '/protocols', '/settings', '/help', '/upgrade'];
+
+function isIntakeExemptRoute(pathname: string): boolean {
+  return INTAKE_EXEMPT_PREFIXES.some(prefix => pathname.startsWith(prefix));
+}
+
 export async function updateSession(request: NextRequest) {
   const hostname = request.headers.get('host') || 'localhost:3000';
   const { type, subdomain } = getSubdomainInfo(hostname);
@@ -105,7 +111,21 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/auth/callback');
 
   if (!skipAuthRefresh) {
-    await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Redirect authenticated users who haven't completed intake
+    if (user && isConsumerRoute(pathname) && !isIntakeExemptRoute(pathname)) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('intake_completed')
+        .eq('id', user.id)
+        .single();
+
+      if (profile && !profile.intake_completed) {
+        const intakeUrl = new URL('/intake', request.url);
+        return NextResponse.redirect(intakeUrl);
+      }
+    }
   }
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
   const protocol = rootDomain.includes('localhost') ? 'http' : 'https';
