@@ -7,7 +7,7 @@ import { useConsultations } from '@/lib/hooks/useConsultations';
 import { useUsageLimits } from '@/lib/hooks/useUsageLimits';
 import { routes } from '@/lib/constants/routes';
 import { USAGE_LIMITS } from '@/lib/constants/limits';
-import { Plus, Loader2, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Lock, Crown } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Lock, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackUpgradeClicked } from '@/lib/analytics/events';
 import { Button } from '@/components/ui/button';
@@ -58,25 +58,16 @@ export function ProtocolsContent() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">My Protocols</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Your personalized health protocols from past consultations
-            {pastProtocols.length > 0 && (
-              isPro 
-                ? ` (${pastProtocols.length} total)`
-                : ` (${accessibleProtocols.length} of ${pastProtocols.length})`
-            )}
-          </p>
-        </div>
-        <Link
-          href={routes.consultation}
-          className="inline-flex items-center gap-2 bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium self-start"
-        >
-          <Plus className="w-4 h-4" />
-          New Consultation
-        </Link>
+      <div className="mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">My Protocols</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
+          Your personalized health protocols from past consultations
+          {pastProtocols.length > 0 && (
+            isPro
+              ? ` (${pastProtocols.length} total)`
+              : ` (${accessibleProtocols.length} of ${pastProtocols.length})`
+          )}
+        </p>
       </div>
 
       {/* Loading */}

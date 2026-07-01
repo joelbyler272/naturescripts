@@ -15,7 +15,7 @@ export default function ContactPage() {
     // For now, open mailto with the form data
     const subject = encodeURIComponent(`NatureScripts Contact: ${formState.name}`)
     const body = encodeURIComponent(`From: ${formState.name} (${formState.email})\n\n${formState.message}`)
-    window.location.href = `mailto:support@naturescripts.com?subject=${subject}&body=${body}`
+    window.location.href = `mailto:info@naturescripts.io?subject=${subject}&body=${body}`
     setSubmitted(true)
   }
 
@@ -44,10 +44,10 @@ export default function ContactPage() {
                 <h3 className="font-medium text-sm text-foreground">Email us</h3>
               </div>
               <a
-                href="mailto:support@naturescripts.com"
+                href="mailto:info@naturescripts.io"
                 className="text-sm text-accent hover:text-accent/80 transition-colors"
               >
-                support@naturescripts.com
+                info@naturescripts.io
               </a>
               <p className="text-xs text-muted-foreground mt-2">
                 We typically respond within 24 hours.
@@ -83,7 +83,7 @@ export default function ContactPage() {
                 </div>
                 <h3 className="font-medium text-foreground mb-2">Message ready to send</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Your email client should have opened with your message. If it didn't, email us directly at support@naturescripts.com.
+                  Your email client should have opened with your message. If it didn't, email us directly at info@naturescripts.io.
                 </p>
                 <button
                   onClick={() => { setSubmitted(false); setFormState({ name: "", email: "", message: "" }) }}

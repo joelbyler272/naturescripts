@@ -69,3 +69,18 @@ export interface Remedy {
   pharmaceuticalEquivalents?: PharmaceuticalEquivalent[];
   lastUpdated: string;
 }
+
+export interface RemedyListing {
+  id: string;
+  slug: string;
+  name: string;
+  botanicalName: string;
+  aliases: string[];
+  category: string;
+  group?: RemedyGroup;
+  tags: string[];
+  rating: number;
+  summary: string;
+  benefits: RemedyBenefit[];
+  faqs: RemedyFAQ[];
+}

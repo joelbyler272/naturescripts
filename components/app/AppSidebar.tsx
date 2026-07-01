@@ -3,11 +3,11 @@
 import { usePathname } from 'next/navigation';
 import { useSidebar } from './SidebarContext';
 import { NSLogo } from './NSLogo';
-import { SidebarSection } from './SidebarSection';
 import { SidebarItem } from './SidebarItem';
 import { routes } from '@/lib/constants/routes';
 import {
   Home,
+  FileText,
   Leaf,
   HelpCircle,
 } from 'lucide-react';
@@ -19,10 +19,6 @@ export const SIDEBAR_WIDTH_COLLAPSED = 56;
 export function AppSidebar() {
   const { collapsed, toggleCollapsed, mounted } = useSidebar();
   const pathname = usePathname();
-
-  const isHomeSection = pathname === routes.dashboard ||
-    pathname.startsWith('/consultations') ||
-    pathname.startsWith('/protocols');
 
   if (!mounted) {
     return (
@@ -54,16 +50,18 @@ export function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 py-2 overflow-y-auto">
         <div className="space-y-1 px-2">
-          <SidebarSection
+          <SidebarItem
+            href={routes.dashboard}
+            label="Dashboard"
             icon={Home}
-            label="Home"
             collapsed={collapsed}
-            defaultExpanded={isHomeSection}
-            items={[
-              { href: routes.dashboard, label: 'Overview' },
-              { href: routes.protocols, label: 'My Protocols' },
-              { href: routes.consultation, label: 'New Consultation' },
-            ]}
+          />
+
+          <SidebarItem
+            href={routes.protocols}
+            label="My Protocols"
+            icon={FileText}
+            collapsed={collapsed}
           />
 
           <SidebarItem

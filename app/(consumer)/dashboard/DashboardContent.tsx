@@ -82,7 +82,7 @@ export function DashboardContent() {
     <div className="w-full">
       {/* Welcome Header */}
       <div className="mb-6 sm:mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:pr-14">
           <div>
             <WelcomeHeader firstName={firstName} />
             <p className="text-sm sm:text-base text-muted-foreground mt-1">

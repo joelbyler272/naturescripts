@@ -1,5 +1,7 @@
-import { Remedy } from './types';
+import { Remedy, RemedyListing } from './types';
 import { createClient } from '@/lib/supabase/server';
+
+const LISTING_COLUMNS = 'id, slug, name, botanical_name, aliases, category, remedy_group, tags, rating, summary, benefits, faqs';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRowToRemedy(row: any): Remedy {
@@ -48,6 +50,41 @@ export async function getAllRemediesFromDb(): Promise<Remedy[]> {
   }
 
   return (data ?? []).map(mapRowToRemedy);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapRowToRemedyListing(row: any): RemedyListing {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    botanicalName: row.botanical_name,
+    aliases: row.aliases ?? [],
+    category: row.category,
+    tags: row.tags ?? [],
+    rating: Number(row.rating),
+    summary: row.summary,
+    benefits: row.benefits ?? [],
+    faqs: row.faqs ?? [],
+    group: row.remedy_group || 'Herbs',
+  };
+}
+
+export async function getAllRemedyListings(): Promise<RemedyListing[]> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('remedies')
+    .select(LISTING_COLUMNS)
+    .order('name', { ascending: true })
+    .limit(5000);
+
+  if (error) {
+    console.error('Failed to fetch remedy listings:', error.message);
+    return [];
+  }
+
+  return (data ?? []).map(mapRowToRemedyListing);
 }
 
 export async function getRemedyBySlugFromDb(slug: string): Promise<Remedy | undefined> {
