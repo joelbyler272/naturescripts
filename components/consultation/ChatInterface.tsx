@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { createConsultation, checkCanConsult, getConsultation } from '@/lib/supabase/database';
 import { logger } from '@/lib/utils/logger';
 import { CHAT_LIMITS } from '@/lib/utils/validation';
-import { ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { trackConsultationStarted, trackProtocolGenerated, trackLimitReached } from '@/lib/analytics/events';
 
@@ -51,6 +51,14 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  // Auto-generate protocol when ready
+  useEffect(() => {
+    if (isReadyToGenerate && !isGenerating && !generatedProtocol) {
+      handleGenerateProtocol();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReadyToGenerate]);
 
   // Abort in-flight requests on unmount
   useEffect(() => {
@@ -228,6 +236,13 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
       );
       setMessages(prev => [...prev, successMessage]);
 
+      // Auto-navigate to the protocol
+      if (consultationId.current) {
+        router.push(`/protocols/${consultationId.current}`);
+      } else {
+        router.push('/protocols');
+      }
+
     } catch (error) {
       logger.error('Protocol generation error:', error);
       setSaveError('Failed to generate protocol. Please try again.');
@@ -240,14 +255,6 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
     } finally {
       setIsTyping(false);
       setIsGenerating(false);
-    }
-  };
-
-  const handleViewProtocol = () => {
-    if (consultationId.current) {
-      router.push(`/protocols/${consultationId.current}`);
-    } else {
-      router.push('/protocols');
     }
   };
 
@@ -288,37 +295,14 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
       )}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {messages.map((message) => (
-          <ChatMessage key={message.id} role={message.role} content={message.content} />
+          <ChatMessage key={message.id} role={message.role} content={message.content} userInitial={user?.user_metadata?.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()} />
         ))}
 
         {isTyping && <TypingIndicator />}
 
-        {/* Action buttons */}
-        {(isReadyToGenerate || generatedProtocol) && !isGenerating && (
-          <div className="flex justify-center pt-4 min-h-[60px]">
-            {isReadyToGenerate && !generatedProtocol && (
-              <button
-                onClick={handleGenerateProtocol}
-                className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
-              >
-                Generate my protocol
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
-              </button>
-            )}
-            {generatedProtocol && (
-              <div className="flex flex-col items-center gap-2">
-                <button
-                  onClick={handleViewProtocol}
-                  className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
-                >
-                  View your protocol
-                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                </button>
-                {saveError && (
-                  <p className="text-xs text-amber-600 text-center max-w-xs">{saveError}</p>
-                )}
-              </div>
-            )}
+        {saveError && (
+          <div className="flex justify-center pt-4">
+            <p className="text-xs text-amber-600 text-center max-w-xs">{saveError}</p>
           </div>
         )}
 
@@ -329,10 +313,10 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
         onSend={handleUserMessage}
         disabled={isTyping || isReadyToGenerate || isGenerating || !!generatedProtocol}
         placeholder={
-          isReadyToGenerate
-            ? "Click the button above to generate your protocol"
+          isGenerating
+            ? "Generating your protocol..."
             : generatedProtocol
-            ? "Protocol generated! Click to view."
+            ? "Redirecting to your protocol..."
             : "Share more details..."
         }
       />
