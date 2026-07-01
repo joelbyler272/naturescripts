@@ -141,7 +141,7 @@ export default function LandingPage() {
             <div className="w-full max-w-2xl">
               <div className="rounded-2xl bg-foreground p-[5px] shadow-[0_20px_60px_rgba(0,0,0,0.12)]">
                 <div className="flex items-center gap-2">
-                  <SearchIcon className="w-5 h-5 text-background/30 ml-5 shrink-0" />
+                  <SearchIcon className="w-5 h-5 text-background/30 ml-3 sm:ml-5 shrink-0" />
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -149,13 +149,13 @@ export default function LandingPage() {
                     placeholder="I'm exhausted all the time, bloated after meals..."
                     maxLength={500}
                     aria-label="Describe your health concern"
-                    className="h-14 flex-1 bg-transparent px-3 text-[15px] text-background placeholder:text-background/35 focus:outline-none"
+                    className="h-14 flex-1 min-w-0 bg-transparent px-2 sm:px-3 text-[14px] sm:text-[15px] text-background placeholder:text-background/35 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={handleStartConsultation}
                     aria-label="Start consultation"
-                    className="h-12 shrink-0 rounded-xl px-6 text-[14px] font-medium text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+                    className="h-12 shrink-0 rounded-xl px-4 sm:px-6 text-[13px] sm:text-[14px] font-medium text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
                     style={{ backgroundColor: colors.sage.DEFAULT }}
                   >
                     Get my protocol
