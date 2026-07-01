@@ -16,7 +16,7 @@ export function Logo({
 }: LogoProps) {
   const sizeClasses = {
     sm: 'text-[1.2rem]',
-    default: 'text-[1.3rem] sm:text-[1.6rem]',
+    default: 'text-[1.1rem] sm:text-[1.6rem]',
     lg: 'text-[2.5rem]',
     display: 'text-[clamp(4rem,12vw,8rem)]',
   }
