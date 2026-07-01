@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { Remedy, REMEDY_GROUPS, RemedyGroup } from '@/lib/remedies/types';
+import { RemedyListing, REMEDY_GROUPS, RemedyGroup } from '@/lib/remedies/types';
 import { Search, Leaf, ArrowRight, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +18,7 @@ const ALL_GROUPS = ['All', ...REMEDY_GROUPS] as const;
 type GroupTab = typeof ALL_GROUPS[number];
 
 interface RemediesContentProps {
-  initialRemedies: Remedy[];
+  initialRemedies: RemedyListing[];
 }
 
 export function RemediesContent({ initialRemedies }: RemediesContentProps) {
@@ -48,8 +48,8 @@ export function RemediesContent({ initialRemedies }: RemediesContentProps) {
 
     // Search with name-first priority
     const lowerQuery = query.toLowerCase();
-    const nameMatches: Remedy[] = [];
-    const otherMatches: Remedy[] = [];
+    const nameMatches: RemedyListing[] = [];
+    const otherMatches: RemedyListing[] = [];
 
     for (const remedy of grouped) {
       if (remedy.name.toLowerCase().includes(lowerQuery)) {
@@ -204,7 +204,7 @@ export function RemediesContent({ initialRemedies }: RemediesContentProps) {
                           <span className="text-xs text-muted-foreground">evidence</span>
                         </div>
                         <div className="hidden sm:flex gap-1">
-                          {remedy.tags.slice(0, 3).map((tag) => (
+                          {remedy.tags.slice(0, 3).map((tag: string) => (
                             <span
                               key={tag}
                               className="text-xs text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded"

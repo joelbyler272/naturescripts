@@ -24,7 +24,7 @@ const faqCategories = [
       },
       {
         question: "Do I need an account to use NatureScripts?",
-        answer: "No. You can get your first consultation completely free without creating an account. An account is only needed if you want to save your protocols, track symptoms, or access Pro features.",
+        answer: "You can start your first consultation without an account. We'll create one for you during the process so you can save and revisit your protocol.",
       },
     ],
   },
@@ -50,11 +50,11 @@ const faqCategories = [
     faqs: [
       {
         question: "Can I try NatureScripts without paying?",
-        answer: "Yes. Your first consultation is completely free, no account or credit card needed. The free plan gives you 5 consultations per week with full safety checking.",
+        answer: "Yes. The free plan gives you 5 consultations per week with full safety checking. No credit card needed.",
       },
       {
         question: "What does Pro include?",
-        answer: "Pro ($12.99/month) includes unlimited consultations, symptom and supplement tracking, protocol history and comparison, the ability to adjust and refine protocols over time, and priority support.",
+        answer: "Pro includes unlimited consultations, full protocol history, and priority support.",
       },
       {
         question: "Can I cancel Pro anytime?",
@@ -75,7 +75,7 @@ const faqCategories = [
       },
       {
         question: "Can I delete my data?",
-        answer: "Yes. You can request deletion of your data at any time by contacting support@naturescripts.com. We'll remove your data within 30 days of the request.",
+        answer: "Yes. You can request deletion of your data at any time by emailing info@naturescripts.io. We'll remove your data within 30 days of the request.",
       },
     ],
   },
@@ -98,9 +98,9 @@ export default function FAQsPage() {
         </h1>
         <p className="text-lg text-muted-foreground max-w-xl mx-auto">
           Everything you need to know about NatureScripts. Can't find your answer?{" "}
-          <Link href={routes.contact} className="text-accent hover:text-accent/80 transition-colors">
-            Contact us
-          </Link>.
+          <a href="mailto:info@naturescripts.io" className="text-accent hover:text-accent/80 transition-colors">
+            Email us
+          </a>.
         </p>
       </div>
 
@@ -151,13 +151,13 @@ export default function FAQsPage() {
       <div className="max-w-3xl mx-auto px-6 mt-14 text-center">
         <p className="text-muted-foreground mb-4">Still have questions?</p>
         <div className="flex items-center justify-center gap-4">
-          <Link
-            href={routes.contact}
+          <a
+            href="mailto:info@naturescripts.io"
             className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-medium text-white hover:brightness-110 transition-all"
           >
-            Contact us
+            Email us
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </a>
           <Link
             href={routes.onboarding}
             className="inline-flex items-center gap-2 rounded-xl border border-border/50 px-6 py-3 text-sm font-medium text-foreground hover:bg-secondary/30 transition-all"

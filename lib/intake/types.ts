@@ -72,7 +72,6 @@ export const DEFAULT_INTAKE_DATA: IntakeData = {
 export const GENDER_OPTIONS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
-  { value: 'non-binary', label: 'Non-binary' },
   { value: 'prefer-not-to-say', label: 'Prefer not to say' },
 ];
 
@@ -117,6 +116,8 @@ export const WATER_OPTIONS = [
   { value: '6-8', label: '6-8 glasses' },
   { value: 'more-than-8', label: 'More than 8 glasses' },
 ];
+
+export const WATER_GLASS_OZ = 8;
 
 export const ALCOHOL_OPTIONS = [
   { value: 'none', label: 'None' },

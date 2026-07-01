@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { RemediesContent } from './RemediesContent';
-import { getAllRemediesFromDb } from '@/lib/remedies/queries';
+import { getAllRemedyListings } from '@/lib/remedies/queries';
 import { getAllRemedies } from '@/lib/remedies/data';
-import { Remedy } from '@/lib/remedies/types';
+import { RemedyListing } from '@/lib/remedies/types';
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: 'Remedy Database',
@@ -14,13 +16,12 @@ export const metadata: Metadata = {
 };
 
 export default async function RemediesPage() {
-  let remedies: Remedy[];
+  let remedies: RemedyListing[];
   try {
-    remedies = await getAllRemediesFromDb();
+    remedies = await getAllRemedyListings();
   } catch {
     remedies = [];
   }
-  // Fall back to hardcoded data if DB returns empty
   if (remedies.length === 0) {
     remedies = getAllRemedies();
   }

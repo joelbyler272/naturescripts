@@ -2,13 +2,13 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, MessageSquare, Leaf } from 'lucide-react';
+import { Home, FileText, Leaf } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: routes.dashboard, label: 'Home', icon: Home },
-  { href: routes.consultation, label: 'Consult', icon: MessageSquare },
+  { href: routes.dashboard, label: 'Dashboard', icon: Home },
+  { href: routes.protocols, label: 'Protocols', icon: FileText },
   { href: routes.remedies, label: 'Remedies', icon: Leaf },
 ];
 

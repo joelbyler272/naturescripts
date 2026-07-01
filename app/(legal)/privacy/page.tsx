@@ -81,8 +81,8 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-medium text-foreground mb-3">8. Contact</h2>
           <p className="text-sm leading-relaxed">
             For privacy questions or data requests, contact us at{" "}
-            <a href="mailto:privacy@naturescripts.com" className="text-accent hover:text-accent/80 transition-colors">
-              privacy@naturescripts.com
+            <a href="mailto:info@naturescripts.io" className="text-accent hover:text-accent/80 transition-colors">
+              info@naturescripts.io
             </a>.
           </p>
         </section>

@@ -3,30 +3,13 @@ import { routes } from "@/lib/constants/routes"
 import { colors } from "@/lib/constants/colors"
 
 const footerLinks = {
-  naturescripts: {
-    title: "NatureScripts",
+  company: {
+    title: "Company",
     links: [
       { label: "How It Works", href: routes.howItWorks },
       { label: "Start Consultation", href: routes.onboarding },
       { label: "Remedy Database", href: routes.remedies },
       { label: "Pricing", href: routes.pricing },
-    ]
-  },
-  company: {
-    title: "Company",
-    links: [
-      { label: "About Us", href: routes.about },
-      { label: "Our Approach", href: routes.approach },
-      { label: "Contact", href: routes.contact },
-      { label: "FAQs", href: routes.faqs },
-    ]
-  },
-  library: {
-    title: "Library",
-    links: [
-      { label: "Health Guides", href: routes.libraryGuides },
-      { label: "Research", href: routes.libraryResearch },
-      { label: "Blog", href: routes.blog },
     ]
   },
   legal: {
@@ -35,16 +18,9 @@ const footerLinks = {
       { label: "Terms of Service", href: routes.terms },
       { label: "Privacy Policy", href: routes.privacy },
       { label: "Medical Disclaimer", href: routes.disclaimer },
+      { label: "Contact", href: routes.contact },
     ]
   },
-  connect: {
-    title: "Connect",
-    links: [
-      { label: "X / Twitter", href: "https://twitter.com/naturescripts", external: true },
-      { label: "Instagram", href: "https://instagram.com/naturescripts", external: true },
-      { label: "LinkedIn", href: "https://linkedin.com/company/naturescripts", external: true },
-    ]
-  }
 }
 
 function FooterLink({ href, label, external }: { href: string; label: string; external?: boolean }) {
@@ -106,12 +82,9 @@ export function Footer() {
 
       {/* Link Columns - Centered */}
       <div className="mx-auto max-w-5xl px-6 pb-16">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-5 justify-items-start lg:justify-items-center">
-          <FooterColumn {...footerLinks.naturescripts} />
+        <div className="grid grid-cols-2 gap-8 max-w-lg mx-auto justify-items-start sm:justify-items-center">
           <FooterColumn {...footerLinks.company} />
-          <FooterColumn {...footerLinks.library} />
           <FooterColumn {...footerLinks.legal} />
-          <FooterColumn {...footerLinks.connect} />
         </div>
       </div>
 

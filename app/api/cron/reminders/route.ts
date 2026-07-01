@@ -8,7 +8,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const RESEND_API_KEY = process.env.RESEND_API_KEY!;
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.com';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.io';
 
 const INACTIVITY_THRESHOLD_DAYS = 3;
 const REMINDER_COOLDOWN_DAYS = 7;
@@ -139,7 +139,7 @@ async function processReminder(
   const html = generateReminderHtml({
     firstName: user.first_name || 'there',
     daysSinceLastLog,
-    dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.com'}/tracking`,
+    dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.io'}/tracking`,
   });
 
   await resend.emails.send({

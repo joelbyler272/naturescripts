@@ -465,21 +465,47 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
                       <option value="">Select...</option>
                       <option value="male">Male</option>
                       <option value="female">Female</option>
-                      <option value="non-binary">Non-binary</option>
                       <option value="prefer-not-to-say">Prefer not to say</option>
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Height (inches)</label>
-                    <Input
-                      type="number"
-                      value={heightCm ? Math.round(Number(heightCm) / 2.54 * 10) / 10 : ''}
-                      onChange={(e) => setHeightCm(e.target.value ? Math.round(Number(e.target.value) * 2.54) : '')}
-                      placeholder="e.g., 68"
-                      min={20}
-                      max={100}
-                      step={0.5}
-                    />
+                    <label className="text-xs text-muted-foreground">Height</label>
+                    <div className="flex gap-1.5">
+                      <div className="flex-1 relative">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={heightCm ? String(Math.floor(Math.round(Number(heightCm) / 2.54) / 12)) : ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            const ft = val ? Number(val) : 0;
+                            const currentIn = heightCm ? Math.round(Number(heightCm) / 2.54) % 12 : 0;
+                            if (!val && !currentIn) { setHeightCm(''); } else { setHeightCm(Math.round((ft * 12 + currentIn) * 2.54)); }
+                          }}
+                          placeholder="ft"
+                          className="pr-7"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">ft</span>
+                      </div>
+                      <div className="flex-1 relative">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={heightCm ? String(Math.round(Number(heightCm) / 2.54) % 12) : ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            const inches = val ? Number(val) : 0;
+                            const currentFt = heightCm ? Math.floor(Math.round(Number(heightCm) / 2.54) / 12) : 0;
+                            if (!val && !currentFt) { setHeightCm(''); } else { setHeightCm(Math.round((currentFt * 12 + inches) * 2.54)); }
+                          }}
+                          placeholder="in"
+                          className="pr-7"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">in</span>
+                      </div>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Weight (lbs)</label>
@@ -492,62 +518,6 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
                       max={660}
                       step={0.5}
                     />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Activity Level</label>
-                    <select
-                      value={activityLevel}
-                      onChange={(e) => setActivityLevel(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <option value="">Select...</option>
-                      <option value="sedentary">Sedentary</option>
-                      <option value="light">Light</option>
-                      <option value="moderate">Moderate</option>
-                      <option value="active">Active</option>
-                      <option value="very-active">Very Active</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Sleep (hrs/night)</label>
-                    <Input
-                      type="number"
-                      value={sleepHours}
-                      onChange={(e) => setSleepHours(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="Hours"
-                      min={0}
-                      max={24}
-                      step={0.5}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Stress (1-10)</label>
-                    <Input
-                      type="number"
-                      value={stressLevel}
-                      onChange={(e) => setStressLevel(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="1-10"
-                      min={1}
-                      max={10}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Diet Type</label>
-                    <select
-                      value={dietType}
-                      onChange={(e) => setDietType(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <option value="">Select...</option>
-                      <option value="omnivore">Omnivore</option>
-                      <option value="vegetarian">Vegetarian</option>
-                      <option value="vegan">Vegan</option>
-                      <option value="keto">Keto</option>
-                      <option value="paleo">Paleo</option>
-                      <option value="other">Other</option>
-                    </select>
                   </div>
                 </div>
               </div>
@@ -747,7 +717,7 @@ export function SettingsContent({ isDev: isDevProp = false }: SettingsContentPro
                 </Badge>
               </div>
               {userTier === 'free' ? (
-                <Link href={routes.upgrade}>
+                <Link href={routes.upgrade} className="block mt-4">
                   <Button className="w-full bg-accent hover:bg-accent/90">Upgrade to Pro</Button>
                 </Link>
               ) : (

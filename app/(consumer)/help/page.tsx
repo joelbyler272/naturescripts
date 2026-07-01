@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { routes } from '@/lib/constants/routes';
 import {
   HelpCircle,
   MessageSquare,
@@ -11,7 +9,6 @@ import {
   CreditCard,
   Shield,
   ChevronDown,
-  ExternalLink,
   Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,11 +24,7 @@ const helpSections = [
       },
       {
         q: 'How many consultations do I get?',
-        a: 'Free users get 5 consultations per week. Pro users ($12.99/month) get unlimited consultations.',
-      },
-      {
-        q: 'Can I adjust a previous protocol?',
-        a: 'Yes. From any past protocol, click "Adjust Protocol" to start a new consultation that references your previous recommendations.',
+        a: 'Free users get 5 consultations per week. Pro users get unlimited consultations.',
       },
     ],
   },
@@ -41,11 +34,11 @@ const helpSections = [
     faqs: [
       {
         q: 'What\'s included in a protocol?',
-        a: 'Every protocol includes remedy recommendations with dosages, timing, and a daily schedule. Pro protocols also include dietary shifts, lifestyle practices, and tracking suggestions.',
+        a: 'Every protocol includes remedy recommendations with dosages, timing, and rationale for each recommendation. You can also download your protocol as a PDF.',
       },
       {
         q: 'Where can I find my past protocols?',
-        a: 'Go to Home > My Protocols in the sidebar, or visit the Your Protocols section on your dashboard.',
+        a: 'Click "My Protocols" in the sidebar to see all your past consultations and protocols.',
       },
       {
         q: 'Are the product links affiliated?',
@@ -77,7 +70,7 @@ const helpSections = [
     faqs: [
       {
         q: 'What does Pro include?',
-        a: 'Unlimited consultations, comprehensive protocols with dietary and lifestyle guidance, symptom and supplement tracking, full protocol history, and priority support — all for $12.99/month.',
+        a: 'Unlimited consultations, full protocol history, and priority support.',
       },
       {
         q: 'Can I cancel anytime?',
@@ -99,7 +92,7 @@ const helpSections = [
       },
       {
         q: 'Can I delete my data?',
-        a: 'Yes. Contact us at the email below and we\'ll delete your account and all associated data.',
+        a: 'Yes. Email us at info@naturescripts.io and we\'ll delete your account and all associated data.',
       },
     ],
   },
@@ -172,22 +165,13 @@ export default function HelpPage() {
         <p className="text-sm text-muted-foreground mb-4">
           Can&apos;t find what you&apos;re looking for? We&apos;re here to help.
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <a
-            href="mailto:support@naturescripts.io"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 transition-colors"
-          >
-            <Mail className="w-4 h-4" />
-            support@naturescripts.io
-          </a>
-          <Link
-            href={routes.faqs}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-foreground text-sm font-medium rounded-lg border border-border/50 hover:bg-secondary/30 transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Full FAQ page
-          </Link>
-        </div>
+        <a
+          href="mailto:info@naturescripts.io"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 transition-colors"
+        >
+          <Mail className="w-4 h-4" />
+          info@naturescripts.io
+        </a>
       </div>
     </div>
   );

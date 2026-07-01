@@ -73,8 +73,8 @@ export default function TermsPage() {
           <h2 className="text-lg font-medium text-foreground mb-3">8. Contact</h2>
           <p className="text-sm leading-relaxed">
             For questions about these terms, contact us at{" "}
-            <a href="mailto:legal@naturescripts.com" className="text-accent hover:text-accent/80 transition-colors">
-              legal@naturescripts.com
+            <a href="mailto:info@naturescripts.io" className="text-accent hover:text-accent/80 transition-colors">
+              info@naturescripts.io
             </a>.
           </p>
         </section>

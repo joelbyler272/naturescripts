@@ -9,7 +9,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const RESEND_API_KEY = process.env.RESEND_API_KEY!;
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.com';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.io';
 
 const BATCH_SIZE = 50;
 const CONCURRENCY = 5; // Process 5 users simultaneously
@@ -150,7 +150,7 @@ async function processUser(
 
   const insights = await generateWeeklyInsights(weeklyData);
 
-  const APP_URL_SAFE = process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.com';
+  const APP_URL_SAFE = process.env.NEXT_PUBLIC_APP_URL || 'https://naturescripts.io';
 
   // Generate and send email
   const html = generateWeeklySummaryHtml({

@@ -3,7 +3,7 @@ import { User, Consultation, HerbDatabase, Message, Protocol } from '@/types';
 // Hardcoded User (for skeleton - assuming logged in)
 export const MOCK_USER: User = {
   id: 'user-123',
-  email: 'demo@naturescripts.com',
+  email: 'demo@naturescripts.io',
   first_name: 'Jordan',
   email_verified: true,
   tier: 'free',
