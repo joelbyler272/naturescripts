@@ -45,6 +45,7 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
   const [generatedProtocol, setGeneratedProtocol] = useState<GeneratedProtocol | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [generateFailed, setGenerateFailed] = useState(false);
   const [adjustingProtocol, setAdjustingProtocol] = useState<string | null>(null);
 
   // Auto-scroll to bottom
@@ -52,9 +53,9 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Auto-generate protocol when ready
+  // Auto-generate protocol when ready (skip if a previous attempt failed)
   useEffect(() => {
-    if (isReadyToGenerate && !isGenerating && !generatedProtocol) {
+    if (isReadyToGenerate && !isGenerating && !generatedProtocol && !generateFailed) {
       handleGenerateProtocol();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,12 +247,12 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
     } catch (error) {
       logger.error('Protocol generation error:', error);
       setSaveError('Failed to generate protocol. Please try again.');
+      setGenerateFailed(true);
       const errorMessage = createMessage(
         'assistant',
         "I had trouble generating your protocol. Please try again."
       );
       setMessages(prev => [...prev, errorMessage]);
-      setIsReadyToGenerate(true); // Allow retry
     } finally {
       setIsTyping(false);
       setIsGenerating(false);
@@ -300,9 +301,20 @@ export function ChatInterface({ initialQuery, adjustConsultationId }: ChatInterf
 
         {isTyping && <TypingIndicator />}
 
-        {saveError && (
-          <div className="flex justify-center pt-4">
+        {generateFailed && (
+          <div className="flex flex-col items-center gap-2 pt-4">
             <p className="text-xs text-amber-600 text-center max-w-xs">{saveError}</p>
+            <button
+              onClick={() => {
+                setGenerateFailed(false);
+                setSaveError(null);
+                handleGenerateProtocol();
+              }}
+              className="bg-accent hover:bg-accent/90 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try again
+            </button>
           </div>
         )}
 
